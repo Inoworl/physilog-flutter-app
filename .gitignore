@@ -1,0 +1,24 @@
+# direnv (アカウント情報)
+.envrc
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
+
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Firebase
+firebase-debug.log
+
+# 環境変数
+.env
+.env.*
