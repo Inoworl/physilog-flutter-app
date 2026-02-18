@@ -1,0 +1,63 @@
+name: physi_log
+description: "スポーツ体力測定動画計測アプリ"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # 状態管理
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # ルーティング
+  go_router: ^14.6.2
+
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.3.4
+  cloud_firestore: ^5.6.5
+
+  # 動画操作
+  video_player: ^2.9.2
+  image_picker: ^1.1.2
+  video_compress: ^3.1.3
+
+  # ローカルDB
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # データモデル
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # ユーティリティ
+  path_provider: ^2.1.5
+  permission_handler: ^11.3.1
+  intl: ^0.19.0
+  uuid: ^4.5.1
+  share_plus: ^10.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+  # コード生成
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.6.3
+
+  # テスト
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
