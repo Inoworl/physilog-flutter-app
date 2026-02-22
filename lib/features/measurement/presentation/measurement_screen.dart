@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
@@ -25,9 +26,25 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     super.initState();
     if (widget.videoPath != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(videoPlayerProvider.notifier).initializeVideo(widget.videoPath!);
+        ref
+            .read(videoPlayerProvider.notifier)
+            .initializeVideo(widget.videoPath!);
       });
     }
+  }
+
+  InputDecoration _filledDecoration(
+    String label, {
+    IconData? icon,
+    bool align = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: icon != null ? Icon(icon) : null,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      alignLabelWithHint: align,
+    );
   }
 
   @override
@@ -39,6 +56,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     final frameDuration = Duration(
       milliseconds: (1000 / measureState.fps).round(),
     );
+    final hasVideo = videoState.isInitialized && videoState.controller != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -51,23 +69,27 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
       body: videoState.error != null
           ? Center(child: Text(videoState.error!))
           : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(
                 children: [
-                  // 動画プレイヤー
-                  VideoPlayerWidget(
-                    controller: videoState.controller,
-                    isInitialized: videoState.isInitialized,
-                    isPlaying: videoState.isPlaying,
-                    onTap: () =>
-                        ref.read(videoPlayerProvider.notifier).togglePlay(),
-                  ),
-
-                  // シークバー
-                  if (videoState.isInitialized) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
+                  _MeasurementSectionCard(
+                    title: '動画プレビュー',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: VideoPlayerWidget(
+                            controller: videoState.controller,
+                            isInitialized: videoState.isInitialized,
+                            isPlaying: videoState.isPlaying,
+                            onTap: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .togglePlay(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (hasVideo) ...[
                           Slider(
                             value: videoState.currentPosition.inMilliseconds
                                 .toDouble()
@@ -80,180 +102,226 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 .toDouble()
                                 .clamp(1, double.infinity),
                             onChanged: (value) {
-                              ref.read(videoPlayerProvider.notifier).seekTo(
+                              ref
+                                  .read(videoPlayerProvider.notifier)
+                                  .seekTo(
                                     Duration(milliseconds: value.round()),
                                   );
                             },
                           ),
-                          Text(
-                            videoState.currentPosition.toTimestamp(),
-                            style: const TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontSize: 16,
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              videoState.currentPosition.toTimestamp(),
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // シークコントロール
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: SeekControls(
-                        isPlaying: videoState.isPlaying,
-                        fps: measureState.fps,
-                        onSeekBackward100ms: () => ref
-                            .read(videoPlayerProvider.notifier)
-                            .seekBackward(const Duration(milliseconds: 100)),
-                        onSeekBackward1Frame: () => ref
-                            .read(videoPlayerProvider.notifier)
-                            .seekBackward(frameDuration),
-                        onTogglePlay: () =>
-                            ref.read(videoPlayerProvider.notifier).togglePlay(),
-                        onSeekForward1Frame: () => ref
-                            .read(videoPlayerProvider.notifier)
-                            .seekForward(frameDuration),
-                        onSeekForward100ms: () => ref
-                            .read(videoPlayerProvider.notifier)
-                            .seekForward(const Duration(milliseconds: 100)),
-                      ),
-                    ),
-
-                    const Divider(),
-
-                    // 計測結果表示
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TimeDisplay(
-                        startPosition: measureState.startPosition,
-                        endPosition: measureState.endPosition,
-                        calculatedTime: measureState.calculatedTime,
-                        fps: measureState.fps,
-                        onConfirmStart: () {
-                          ref
-                              .read(measurementProvider.notifier)
-                              .setStartPosition(videoState.currentPosition);
-                        },
-                        onConfirmEnd: () {
-                          ref
-                              .read(measurementProvider.notifier)
-                              .setEndPosition(videoState.currentPosition);
-                        },
-                      ),
-                    ),
-
-                    // 再設定ボタン
-                    if (measureState.startPosition != null ||
-                        measureState.endPosition != null)
-                      TextButton.icon(
-                        onPressed: () =>
-                            ref.read(measurementProvider.notifier).resetPositions(),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('再設定'),
-                      ),
-
-                    const Divider(),
-
-                    // FPS選択
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Text('FPS:', style: theme.textTheme.bodyMedium),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: SegmentedButton<double>(
-                              segments: AppConstants.fpsOptions
-                                  .map((fps) => ButtonSegment(
-                                        value: fps,
-                                        label: Text('${fps.toInt()}'),
-                                      ))
-                                  .toList(),
-                              selected: {measureState.fps},
-                              onSelectionChanged: (values) {
-                                ref
-                                    .read(measurementProvider.notifier)
-                                    .setFps(values.first);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 入力フォーム
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          TextField(
-                            decoration: const InputDecoration(
-                              labelText: '選手名',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLength: AppConstants.maxAthleteNameLength,
-                            onChanged: (value) => ref
-                                .read(measurementProvider.notifier)
-                                .setAthleteName(value),
                           ),
                           const SizedBox(height: 12),
-                          Autocomplete<String>(
-                            optionsBuilder: (textEditingValue) {
-                              if (textEditingValue.text.isEmpty) {
-                                return AppConstants.eventSuggestions;
-                              }
-                              return AppConstants.eventSuggestions.where(
-                                (option) => option.contains(textEditingValue.text),
-                              );
-                            },
-                            onSelected: (selection) {
+                          SeekControls(
+                            isPlaying: videoState.isPlaying,
+                            fps: measureState.fps,
+                            onSeekBackward100ms: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .seekBackward(
+                                  const Duration(milliseconds: 100),
+                                ),
+                            onSeekBackward1Frame: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .seekBackward(frameDuration),
+                            onTogglePlay: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .togglePlay(),
+                            onSeekForward1Frame: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .seekForward(frameDuration),
+                            onSeekForward100ms: () => ref
+                                .read(videoPlayerProvider.notifier)
+                                .seekForward(const Duration(milliseconds: 100)),
+                          ),
+                        ] else ...[
+                          Text(
+                            '動画が読み込まれていません。\n「動画を読み込む」から計測用の動画を選択してください。',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: () => context.pushNamed('videoImport'),
+                            icon: const Icon(Icons.video_call),
+                            label: const Text('動画を読み込む'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (hasVideo) ...[
+                    const SizedBox(height: 16),
+                    _MeasurementSectionCard(
+                      title: '計測コントロール',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            '動画を再生して開始と終了のフレームを指定します。',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    ref
+                                        .read(measurementProvider.notifier)
+                                        .setStartPosition(
+                                          videoState.currentPosition,
+                                        );
+                                  },
+                                  icon: const Icon(Icons.play_arrow),
+                                  label: const Text('スタート'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.error,
+                                  ),
+                                  onPressed: () {
+                                    ref
+                                        .read(measurementProvider.notifier)
+                                        .setEndPosition(
+                                          videoState.currentPosition,
+                                        );
+                                  },
+                                  icon: const Icon(Icons.flag),
+                                  label: const Text('ストップ'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (measureState.startPosition != null ||
+                              measureState.endPosition != null) ...[
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: () => ref
+                                  .read(measurementProvider.notifier)
+                                  .resetPositions(),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('続けて測定する'),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          TimeDisplay(
+                            startPosition: measureState.startPosition,
+                            endPosition: measureState.endPosition,
+                            calculatedTime: measureState.calculatedTime,
+                            fps: measureState.fps,
+                            onConfirmStart: () {
                               ref
                                   .read(measurementProvider.notifier)
-                                  .setEventType(selection);
+                                  .setStartPosition(videoState.currentPosition);
                             },
-                            fieldViewBuilder: (context, controller, focusNode,
-                                onFieldSubmitted) {
-                              return TextField(
-                                controller: controller,
-                                focusNode: focusNode,
-                                decoration: const InputDecoration(
-                                  labelText: '種目',
-                                  border: OutlineInputBorder(),
-                                ),
-                                maxLength: AppConstants.maxEventTypeLength,
-                                onChanged: (value) => ref
-                                    .read(measurementProvider.notifier)
-                                    .setEventType(value),
-                              );
+                            onConfirmEnd: () {
+                              ref
+                                  .read(measurementProvider.notifier)
+                                  .setEndPosition(videoState.currentPosition);
                             },
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            decoration: const InputDecoration(
-                              labelText: 'メモ',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLength: AppConstants.maxMemoLength,
-                            maxLines: 3,
-                            onChanged: (value) => ref
-                                .read(measurementProvider.notifier)
-                                .setMemo(value),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 16),
-
-                    // 保存ボタン
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: measureState.isSaving ||
+                  ],
+                  const SizedBox(height: 16),
+                  _MeasurementSectionCard(
+                    title: '計測情報の入力',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('FPSを選択', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: AppConstants.fpsOptions.map((fpsOption) {
+                            final selected = measureState.fps == fpsOption;
+                            return ChoiceChip(
+                              label: Text('${fpsOption.toInt()} fps'),
+                              selected: selected,
+                              onSelected: (_) => ref
+                                  .read(measurementProvider.notifier)
+                                  .setFps(fpsOption),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          decoration: _filledDecoration(
+                            '選手名',
+                            icon: Icons.person,
+                          ),
+                          maxLength: AppConstants.maxAthleteNameLength,
+                          onChanged: (value) => ref
+                              .read(measurementProvider.notifier)
+                              .setAthleteName(value),
+                        ),
+                        const SizedBox(height: 12),
+                        Autocomplete<String>(
+                          optionsBuilder: (textEditingValue) {
+                            if (textEditingValue.text.isEmpty) {
+                              return AppConstants.eventSuggestions;
+                            }
+                            return AppConstants.eventSuggestions.where(
+                              (option) =>
+                                  option.contains(textEditingValue.text),
+                            );
+                          },
+                          onSelected: (selection) {
+                            ref
+                                .read(measurementProvider.notifier)
+                                .setEventType(selection);
+                          },
+                          fieldViewBuilder:
+                              (
+                                context,
+                                controller,
+                                focusNode,
+                                onFieldSubmitted,
+                              ) {
+                                return TextField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  decoration: _filledDecoration(
+                                    '種目',
+                                    icon: Icons.flag,
+                                  ),
+                                  maxLength: AppConstants.maxEventTypeLength,
+                                  onChanged: (value) => ref
+                                      .read(measurementProvider.notifier)
+                                      .setEventType(value),
+                                );
+                              },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          decoration: _filledDecoration(
+                            'メモ',
+                            icon: Icons.edit_note,
+                            align: true,
+                          ),
+                          maxLength: AppConstants.maxMemoLength,
+                          maxLines: 3,
+                          onChanged: (value) => ref
+                              .read(measurementProvider.notifier)
+                              .setMemo(value),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed:
+                              measureState.isSaving ||
                                   measureState.calculatedTime == null ||
                                   measureState.athleteName.isEmpty ||
                                   measureState.eventType.isEmpty
@@ -268,13 +336,16 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('保存'),
+                              : const Text('記録する'),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        OutlinedButton(
+                          onPressed: () => context.pushNamed('videoImport'),
+                          child: const Text('別の動画を読み込む'),
+                        ),
+                      ],
                     ),
-
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -291,23 +362,20 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
           .saveRecord(videoPath: widget.videoPath);
 
       if (record != null && mounted) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('記録を保存しました')),
-        );
+        messenger.showSnackBar(const SnackBar(content: Text('記録を保存しました')));
         navigator.popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('保存に失敗しました: $e')),
-        );
+        messenger.showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
       }
     }
   }
 
   Future<void> _onBack(BuildContext context) async {
     final measureState = ref.read(measurementProvider);
-    final hasData = measureState.startPosition != null ||
+    final hasData =
+        measureState.startPosition != null ||
         measureState.endPosition != null ||
         measureState.athleteName.isNotEmpty;
 
@@ -336,5 +404,37 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     } else {
       Navigator.of(context).pop();
     }
+  }
+}
+
+class _MeasurementSectionCard extends StatelessWidget {
+  const _MeasurementSectionCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -1,0 +1,11 @@
+{
+  "FLAVOR": "development",
+  "IOS_APP_ID": "com.physilog.physiLog.dev",
+  "ANDROID_APP_ID": "com.physilog.physi_log.dev",
+  "APP_NAME": "PhysiLog Dev",
+  "FIREBASE_OPTIONS_CLASS": "DefaultFirebaseOptions",
+  "ADMOB_IOS_APP_ID": "",
+  "ADMOB_ANDROID_APP_ID": "",
+  "ADMOB_IOS_BANNER_ID": "",
+  "ADMOB_ANDROID_BANNER_ID": ""
+}
