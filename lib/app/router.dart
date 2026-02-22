@@ -1,51 +1,136 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:physi_log/features/records/presentation/record_list_screen.dart';
+import 'package:physi_log/features/home/presentation/home_screen.dart';
+import 'package:physi_log/features/manage/presentation/manage_screen.dart';
+import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
 import 'package:physi_log/features/records/presentation/record_detail_screen.dart';
 import 'package:physi_log/features/records/presentation/record_edit_screen.dart';
+import 'package:physi_log/features/records/presentation/records_tab_screen.dart';
 import 'package:physi_log/features/video_import/presentation/video_import_screen.dart';
-import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
+import 'package:physi_log/shared/widgets/app_bottom_nav_shell.dart';
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// 右からスライドインするトランジション
+Widget _slideFromRight(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  return SlideTransition(
+    position: Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeInOut,
+    )),
+    child: child,
+  );
+}
 
 final router = GoRouter(
+  navigatorKey: _rootNavigatorKey,
   initialLocation: '/',
   routes: [
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return AppBottomNavShell(navigationShell: navigationShell);
+      },
+      branches: [
+        // Branch 0: ホーム
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/',
+              name: 'home',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
+        ),
+        // Branch 1: 計測（動画取り込み）
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/import',
+              name: 'videoImport',
+              builder: (context, state) => const VideoImportScreen(),
+            ),
+          ],
+        ),
+        // Branch 2: 記録
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/records',
+              name: 'recordList',
+              builder: (context, state) => const RecordsTabScreen(),
+            ),
+          ],
+        ),
+        // Branch 3: 管理
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/manage',
+              name: 'manage',
+              builder: (context, state) => const ManageScreen(),
+            ),
+          ],
+        ),
+      ],
+    ),
+    // タブ外のルート（フルスクリーン遷移・スライドアニメーション）
     GoRoute(
-      path: '/',
-      name: 'recordList',
-      builder: (context, state) => const RecordListScreen(),
+      path: '/measure',
+      name: 'measurement',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: MeasurementScreen(
+            videoPath: extra?['videoPath'] as String?,
+            existingRecordId: extra?['recordId'] as String?,
+          ),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
     ),
     GoRoute(
       path: '/records/:id',
       name: 'recordDetail',
-      builder: (context, state) {
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
         final id = state.pathParameters['id']!;
-        return RecordDetailScreen(recordId: id);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: RecordDetailScreen(recordId: id),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
       },
       routes: [
         GoRoute(
           path: 'edit',
           name: 'recordEdit',
-          builder: (context, state) {
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder: (context, state) {
             final id = state.pathParameters['id']!;
-            return RecordEditScreen(recordId: id);
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: RecordEditScreen(recordId: id),
+              transitionsBuilder: _slideFromRight,
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
+            );
           },
         ),
       ],
-    ),
-    GoRoute(
-      path: '/import',
-      name: 'videoImport',
-      builder: (context, state) => const VideoImportScreen(),
-    ),
-    GoRoute(
-      path: '/measure',
-      name: 'measurement',
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        return MeasurementScreen(
-          videoPath: extra?['videoPath'] as String?,
-          existingRecordId: extra?['recordId'] as String?,
-        );
-      },
     ),
   ],
 );
