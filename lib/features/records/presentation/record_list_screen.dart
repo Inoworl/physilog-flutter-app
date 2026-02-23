@@ -30,16 +30,9 @@ class _RecordListScreenState extends ConsumerState<RecordListScreen> {
       case _ShortcutAction.measure:
         context.pushNamed('videoImport');
         break;
-      case _ShortcutAction.record:
-        context.pushNamed('measurement');
-        break;
-      case _ShortcutAction.sheet:
+      case _ShortcutAction.records:
         RecordFilterSheet.show(context);
         break;
-      default:
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
     }
   }
 
@@ -228,7 +221,7 @@ class _RecordListScreenState extends ConsumerState<RecordListScreen> {
   }
 }
 
-enum _ShortcutAction { athlete, event, record, measure, sheet, edit }
+enum _ShortcutAction { measure, records }
 
 enum HomeContentTab { top, records, measure }
 
@@ -251,36 +244,17 @@ class _HomeShortcutSection extends StatelessWidget {
     final theme = Theme.of(context);
     const items = [
       _ShortcutItem(
-        '選手登録',
-        _ShortcutAction.athlete,
-        'チームやクラスの選手を追加します',
-        Icons.group_add,
-      ),
-      _ShortcutItem(
-        '種目登録',
-        _ShortcutAction.event,
-        '計測する種目や距離を登録します',
-        Icons.flag_circle,
-      ),
-      _ShortcutItem(
-        '記録する',
-        _ShortcutAction.record,
-        '手入力で記録シートに結果を残します',
-        Icons.edit_note,
-      ),
-      _ShortcutItem(
         '測定する',
         _ShortcutAction.measure,
         '動画から開始/終了フレームを決めて計測',
         Icons.videocam_outlined,
       ),
       _ShortcutItem(
-        '記録シート',
-        _ShortcutAction.sheet,
-        '表形式で記録を確認できます',
-        Icons.table_chart_outlined,
+        '記録を絞り込む',
+        _ShortcutAction.records,
+        '記録一覧のフィルタと並び順を設定します',
+        Icons.filter_list,
       ),
-      _ShortcutItem('編集', _ShortcutAction.edit, '選手・種目の情報を更新します', Icons.tune),
     ];
 
     return Padding(
@@ -474,7 +448,7 @@ class _EmptyRecordPlaceholder extends StatelessWidget {
     return const EmptyState(
       icon: Icons.timer_off,
       title: '記録がありません',
-      subtitle: '下の記録シートに記録が表示されます',
+      subtitle: '動画を取り込んで計測し、最初の記録を作成してください',
     );
   }
 }
