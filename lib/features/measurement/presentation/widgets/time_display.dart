@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
 
@@ -23,41 +24,50 @@ class TimeDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final accuracy = fps > 0 ? 1000 / fps : 0.0;
 
-    return Column(
-      children: [
-        // 開始位置
-        _PositionRow(
-          label: '開始',
-          position: startPosition,
-          onConfirm: onConfirmStart,
-        ),
-        const SizedBox(height: 8),
-        // 終了位置
-        _PositionRow(
-          label: '終了',
-          position: endPosition,
-          onConfirm: onConfirmEnd,
-        ),
-        const SizedBox(height: 16),
-        // 算出タイム
-        Text(
-          calculatedTime != null
-              ? '${(calculatedTime!.inMilliseconds / 1000).toStringAsFixed(2)}秒'
-              : '--.--秒',
-          style: AppTextStyles.timeDisplay.copyWith(
-            color: theme.colorScheme.primary,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.timerBg,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // 開始位置
+          _PositionRow(
+            label: '開始',
+            position: startPosition,
+            onConfirm: onConfirmStart,
           ),
-        ),
-        const SizedBox(height: 4),
-        // 精度情報
-        Text(
-          '精度: ±${accuracy.toStringAsFixed(1)}ms (${fps.toInt()}fps)',
-          style: AppTextStyles.accuracy,
-        ),
-      ],
+          const SizedBox(height: 8),
+          // 終了位置
+          _PositionRow(
+            label: '終了',
+            position: endPosition,
+            onConfirm: onConfirmEnd,
+          ),
+          const SizedBox(height: 16),
+          // 算出タイム - ネオングリーン大数字
+          Text(
+            calculatedTime != null
+                ? '${(calculatedTime!.inMilliseconds / 1000).toStringAsFixed(2)}秒'
+                : '--.--秒',
+            style: AppTextStyles.timeDisplay.copyWith(
+              color: AppColors.timerText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 精度情報
+          Text(
+            '精度: ±${accuracy.toStringAsFixed(1)}ms (${fps.toInt()}fps)',
+            style: AppTextStyles.accuracy.copyWith(
+              color: Colors.white70,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -75,16 +85,14 @@ class _PositionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Row(
       children: [
         SizedBox(
           width: 48,
           child: Text(
             label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+            style: AppTextStyles.timeDisplaySmall.copyWith(
+              color: Colors.white70,
             ),
           ),
         ),
@@ -92,14 +100,16 @@ class _PositionRow extends StatelessWidget {
         Expanded(
           child: Text(
             position?.toTimestamp() ?? '--:--.---',
-            style: const TextStyle(
-              fontFamily: 'RobotoMono',
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
+            style: AppTextStyles.timeDisplaySmall.copyWith(
+              color: Colors.white,
             ),
           ),
         ),
         FilledButton.tonal(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.white12,
+            foregroundColor: Colors.white,
+          ),
           onPressed: onConfirm,
           child: const Text('確定'),
         ),
