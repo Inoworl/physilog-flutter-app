@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:physi_log/app/theme/app_colors.dart';
+import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
@@ -57,6 +59,9 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
       milliseconds: (1000 / measureState.fps).round(),
     );
     final hasVideo = videoState.isInitialized && videoState.controller != null;
+    final hasPositions =
+        measureState.startPosition != null ||
+        measureState.endPosition != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -69,27 +74,43 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
       body: videoState.error != null
           ? Center(child: Text(videoState.error!))
           : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.xxl,
+              ),
               child: Column(
                 children: [
+                  // ── 動画プレビューセクション ──
                   _MeasurementSectionCard(
                     title: '動画プレビュー',
+                    icon: Icons.videocam,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: VideoPlayerWidget(
-                            controller: videoState.controller,
-                            isInitialized: videoState.isInitialized,
-                            isPlaying: videoState.isPlaying,
-                            onTap: () => ref
-                                .read(videoPlayerProvider.notifier)
-                                .togglePlay(),
+                        // ダーク背景コンテナ
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: VideoPlayerWidget(
+                              controller: videoState.controller,
+                              isInitialized: videoState.isInitialized,
+                              isPlaying: videoState.isPlaying,
+                              onTap: () => ref
+                                  .read(videoPlayerProvider.notifier)
+                                  .togglePlay(),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         if (hasVideo) ...[
+                          // シークスライダー
                           Slider(
                             value: videoState.currentPosition.inMilliseconds
                                 .toDouble()
@@ -109,17 +130,16 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                   );
                             },
                           ),
+                          // タイムスタンプ
                           Align(
                             alignment: Alignment.centerRight,
                             child: Text(
                               videoState.currentPosition.toTimestamp(),
-                              style: const TextStyle(
-                                fontFamily: 'RobotoMono',
-                                fontSize: 16,
-                              ),
+                              style: AppTextStyles.timeDisplaySmall,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
+                          // シークコントロール
                           SeekControls(
                             isPlaying: videoState.isPlaying,
                             fps: measureState.fps,
@@ -139,7 +159,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 .seekForward(frameDuration),
                             onSeekForward100ms: () => ref
                                 .read(videoPlayerProvider.notifier)
-                                .seekForward(const Duration(milliseconds: 100)),
+                                .seekForward(
+                                    const Duration(milliseconds: 100)),
                           ),
                         ] else ...[
                           Text(
@@ -147,7 +168,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
                           FilledButton.icon(
                             onPressed: () => context.pushNamed('videoImport'),
                             icon: const Icon(Icons.video_call),
@@ -157,10 +178,13 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                       ],
                     ),
                   ),
+
                   if (hasVideo) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
+                    // ── 計測コントロールセクション ──
                     _MeasurementSectionCard(
                       title: '計測コントロール',
+                      icon: Icons.timer,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -168,53 +192,95 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                             '動画を再生して開始と終了のフレームを指定します。',
                             style: theme.textTheme.bodyMedium,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
+                          // スタート/ストップボタン + 確定値
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // スタートボタン
                               Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: () {
-                                    ref
-                                        .read(measurementProvider.notifier)
-                                        .setStartPosition(
-                                          videoState.currentPosition,
-                                        );
-                                  },
-                                  icon: const Icon(Icons.play_arrow),
-                                  label: const Text('スタート'),
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      height: 56,
+                                      width: double.infinity,
+                                      child: FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              AppColors.startColor,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        onPressed: () {
+                                          ref
+                                              .read(measurementProvider
+                                                  .notifier)
+                                              .setStartPosition(
+                                                videoState.currentPosition,
+                                              );
+                                        },
+                                        icon: const Icon(Icons.play_arrow),
+                                        label: const Text('スタート'),
+                                      ),
+                                    ),
+                                    if (measureState.startPosition !=
+                                        null) ...[
+                                      const SizedBox(height: AppSpacing.xs),
+                                      Text(
+                                        measureState.startPosition!
+                                            .toTimestamp(),
+                                        style: AppTextStyles.timeDisplaySmall
+                                            .copyWith(
+                                          color: AppColors.startColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
+                              // ストップボタン
                               Expanded(
-                                child: FilledButton.icon(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.error,
-                                  ),
-                                  onPressed: () {
-                                    ref
-                                        .read(measurementProvider.notifier)
-                                        .setEndPosition(
-                                          videoState.currentPosition,
-                                        );
-                                  },
-                                  icon: const Icon(Icons.flag),
-                                  label: const Text('ストップ'),
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      height: 56,
+                                      width: double.infinity,
+                                      child: FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: AppColors.endColor,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        onPressed: () {
+                                          ref
+                                              .read(measurementProvider
+                                                  .notifier)
+                                              .setEndPosition(
+                                                videoState.currentPosition,
+                                              );
+                                        },
+                                        icon: const Icon(Icons.flag),
+                                        label: const Text('ストップ'),
+                                      ),
+                                    ),
+                                    if (measureState.endPosition !=
+                                        null) ...[
+                                      const SizedBox(height: AppSpacing.xs),
+                                      Text(
+                                        measureState.endPosition!
+                                            .toTimestamp(),
+                                        style: AppTextStyles.timeDisplaySmall
+                                            .copyWith(
+                                          color: AppColors.endColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                          if (measureState.startPosition != null ||
-                              measureState.endPosition != null) ...[
-                            const SizedBox(height: 12),
-                            OutlinedButton.icon(
-                              onPressed: () => ref
-                                  .read(measurementProvider.notifier)
-                                  .resetPositions(),
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('続けて測定する'),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.lg),
+                          // タイマー表示（ダークカード）
                           TimeDisplay(
                             startPosition: measureState.startPosition,
                             endPosition: measureState.endPosition,
@@ -223,31 +289,38 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                             onConfirmStart: () {
                               ref
                                   .read(measurementProvider.notifier)
-                                  .setStartPosition(videoState.currentPosition);
+                                  .setStartPosition(
+                                      videoState.currentPosition);
                             },
                             onConfirmEnd: () {
                               ref
                                   .read(measurementProvider.notifier)
-                                  .setEndPosition(videoState.currentPosition);
+                                  .setEndPosition(
+                                      videoState.currentPosition);
                             },
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
+
+                  const SizedBox(height: AppSpacing.lg),
+                  // ── 計測情報の入力セクション ──
                   _MeasurementSectionCard(
                     title: '計測情報の入力',
+                    icon: Icons.edit_note,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('FPSを選択', style: theme.textTheme.titleSmall),
-                        const SizedBox(height: 8),
+                        Text('FPSを選択', style: AppTextStyles.cardTitle),
+                        const SizedBox(height: AppSpacing.sm),
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: AppConstants.fpsOptions.map((fpsOption) {
-                            final selected = measureState.fps == fpsOption;
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children:
+                              AppConstants.fpsOptions.map((fpsOption) {
+                            final selected =
+                                measureState.fps == fpsOption;
                             return ChoiceChip(
                               label: Text('${fpsOption.toInt()} fps'),
                               selected: selected,
@@ -257,7 +330,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                             );
                           }).toList(),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         TextField(
                           decoration: _filledDecoration(
                             '選手名',
@@ -268,7 +341,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                               .read(measurementProvider.notifier)
                               .setAthleteName(value),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         Autocomplete<String>(
                           optionsBuilder: (textEditingValue) {
                             if (textEditingValue.text.isEmpty) {
@@ -298,14 +371,15 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                     '種目',
                                     icon: Icons.flag,
                                   ),
-                                  maxLength: AppConstants.maxEventTypeLength,
+                                  maxLength:
+                                      AppConstants.maxEventTypeLength,
                                   onChanged: (value) => ref
                                       .read(measurementProvider.notifier)
                                       .setEventType(value),
                                 );
                               },
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         TextField(
                           decoration: _filledDecoration(
                             'メモ',
@@ -318,30 +392,63 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                               .read(measurementProvider.notifier)
                               .setMemo(value),
                         ),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed:
-                              measureState.isSaving ||
-                                  measureState.calculatedTime == null ||
-                                  measureState.athleteName.isEmpty ||
-                                  measureState.eventType.isEmpty
-                              ? null
-                              : () => _onSave(context),
-                          child: measureState.isSaving
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                        const SizedBox(height: AppSpacing.lg),
+                        // アクションボタン横並び
+                        Row(
+                          children: [
+                            if (hasPositions) ...[
+                              Expanded(
+                                child: SizedBox(
+                                  height: 48,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => ref
+                                        .read(measurementProvider.notifier)
+                                        .resetPositions(),
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('続けて測定'),
                                   ),
-                                )
-                              : const Text('記録する'),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                            ],
+                            Expanded(
+                              child: SizedBox(
+                                height: 48,
+                                child: FilledButton.icon(
+                                  onPressed:
+                                      measureState.isSaving ||
+                                          measureState.calculatedTime ==
+                                              null ||
+                                          measureState
+                                              .athleteName.isEmpty ||
+                                          measureState.eventType.isEmpty
+                                      ? null
+                                      : () => _onSave(context),
+                                  icon: measureState.isSaving
+                                      ? const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child:
+                                              CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.save),
+                                  label: const Text('記録する'),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        OutlinedButton(
-                          onPressed: () => context.pushNamed('videoImport'),
-                          child: const Text('別の動画を読み込む'),
+                        const SizedBox(height: AppSpacing.md),
+                        // テキストリンクスタイル
+                        Center(
+                          child: TextButton(
+                            onPressed: () =>
+                                context.pushNamed('videoImport'),
+                            child: const Text('別の動画を読み込む'),
+                          ),
                         ),
                       ],
                     ),
@@ -408,29 +515,36 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
 }
 
 class _MeasurementSectionCard extends StatelessWidget {
-  const _MeasurementSectionCard({required this.title, required this.child});
+  const _MeasurementSectionCard({
+    required this.title,
+    required this.child,
+    this.icon,
+  });
 
   final String title;
   final Widget child;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 0,
+      // CardTheme から 16dp角丸 + outline border を継承
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                Text(title, style: AppTextStyles.sectionTitle),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             child,
           ],
         ),

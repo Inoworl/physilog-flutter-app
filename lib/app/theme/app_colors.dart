@@ -26,4 +26,26 @@ class AppColors {
   static const textPrimary = Color(0xFF212121);
   static const textSecondary = Color(0xFF757575);
   static const textOnPrimary = Colors.white;
+
+  // 計測UI専用カラー
+  static const startColor = Color(0xFF2E7D32);
+  static const endColor = Color(0xFFC62828);
+  static const timerBg = Color(0xFF1A1A2E);
+  static const timerText = Color(0xFF00E676);
+
+  // 記録シート用
+  static const tableHeader = Color(0xFFE3F2FD);
+  static const tableStripe = Color(0xFFFAFAFA);
+}
+
+/// スペーシングシステム（4dpグリッドベース）
+class AppSpacing {
+  AppSpacing._();
+
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double xxl = 32;
 }
