@@ -67,7 +67,6 @@ platform :ios do
       File.binwrite(profile_path, Base64.decode64(profile_base64))
 
       sh "cd .. && flutter pub get"
-      sh "cd .. && flutter build ios --release --flavor dev --no-codesign --target lib/main.dart --dart-define-from-file=dart_define/dev_dart_define.json --build-number #{build_number}"
 
       build_app(
         workspace: "Runner.xcworkspace",
@@ -79,6 +78,8 @@ platform :ios do
         silent: false,
         suppress_xcode_output: false,
         buildlog_path: "./build/logs",
+        clean: true,
+        xcargs: "DEVELOPMENT_TEAM=#{team_id} CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='#{profile_name}'",
         export_options: {
           method: "app-store",
           teamID: team_id,
