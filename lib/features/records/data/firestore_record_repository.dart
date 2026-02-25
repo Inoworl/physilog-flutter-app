@@ -5,7 +5,7 @@ import 'package:physi_log/models/measurement_record.dart';
 
 class FirestoreRecordRepository implements RecordRepository {
   FirestoreRecordRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 

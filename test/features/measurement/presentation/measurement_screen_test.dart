@@ -50,18 +50,15 @@ void main() {
         GoRoute(
           path: '/import',
           name: 'videoImport',
-          builder: (_, __) => const Scaffold(
-            body: Center(child: Text('VIDEO_IMPORT_SCREEN')),
-          ),
+          builder: (_, __) =>
+              const Scaffold(body: Center(child: Text('VIDEO_IMPORT_SCREEN'))),
         ),
       ],
     );
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          measurementProvider.overrideWith((ref) => notifier),
-        ],
+        overrides: [measurementProvider.overrideWith((ref) => notifier)],
         child: MaterialApp.router(routerConfig: router),
       ),
     );

@@ -27,15 +27,15 @@ final recordRepositoryProvider = Provider<RecordRepository>((ref) {
 
 final recordListNotifierProvider =
     StateNotifierProvider<RecordListNotifier, RecordListState>((ref) {
-  final repository = ref.watch(recordRepositoryProvider);
-  final userId = ref.watch(currentUserIdProvider);
-  final filter = ref.watch(recordFilterNotifierProvider);
-  return RecordListNotifier(repository, userId, filter);
-});
+      final repository = ref.watch(recordRepositoryProvider);
+      final userId = ref.watch(currentUserIdProvider);
+      final filter = ref.watch(recordFilterNotifierProvider);
+      return RecordListNotifier(repository, userId, filter);
+    });
 
 class RecordListNotifier extends StateNotifier<RecordListState> {
   RecordListNotifier(this._repository, this._userId, this._filter)
-      : super(const RecordListState.loading()) {
+    : super(const RecordListState.loading()) {
     loadRecords();
   }
 

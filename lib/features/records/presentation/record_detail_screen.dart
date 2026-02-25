@@ -8,11 +8,12 @@ import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
 
-final _recordDetailProvider =
-    FutureProvider.family<MeasurementRecord?, String>((ref, id) async {
-  final repository = ref.watch(recordRepositoryProvider);
-  return repository.getRecord(id);
-});
+final _recordDetailProvider = FutureProvider.family<MeasurementRecord?, String>(
+  (ref, id) async {
+    final repository = ref.watch(recordRepositoryProvider);
+    return repository.getRecord(id);
+  },
+);
 
 class RecordDetailScreen extends ConsumerWidget {
   const RecordDetailScreen({super.key, required this.recordId});

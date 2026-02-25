@@ -60,8 +60,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     );
     final hasVideo = videoState.isInitialized && videoState.controller != null;
     final hasPositions =
-        measureState.startPosition != null ||
-        measureState.endPosition != null;
+        measureState.startPosition != null || measureState.endPosition != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -159,8 +158,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 .seekForward(frameDuration),
                             onSeekForward100ms: () => ref
                                 .read(videoPlayerProvider.notifier)
-                                .seekForward(
-                                    const Duration(milliseconds: 100)),
+                                .seekForward(const Duration(milliseconds: 100)),
                           ),
                         ] else ...[
                           Text(
@@ -206,14 +204,14 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                       width: double.infinity,
                                       child: FilledButton.icon(
                                         style: FilledButton.styleFrom(
-                                          backgroundColor:
-                                              AppColors.startColor,
+                                          backgroundColor: AppColors.startColor,
                                           foregroundColor: Colors.white,
                                         ),
                                         onPressed: () {
                                           ref
-                                              .read(measurementProvider
-                                                  .notifier)
+                                              .read(
+                                                measurementProvider.notifier,
+                                              )
                                               .setStartPosition(
                                                 videoState.currentPosition,
                                               );
@@ -222,16 +220,15 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                         label: const Text('スタート'),
                                       ),
                                     ),
-                                    if (measureState.startPosition !=
-                                        null) ...[
+                                    if (measureState.startPosition != null) ...[
                                       const SizedBox(height: AppSpacing.xs),
                                       Text(
                                         measureState.startPosition!
                                             .toTimestamp(),
                                         style: AppTextStyles.timeDisplaySmall
                                             .copyWith(
-                                          color: AppColors.startColor,
-                                        ),
+                                              color: AppColors.startColor,
+                                            ),
                                       ),
                                     ],
                                   ],
@@ -252,8 +249,9 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                         ),
                                         onPressed: () {
                                           ref
-                                              .read(measurementProvider
-                                                  .notifier)
+                                              .read(
+                                                measurementProvider.notifier,
+                                              )
                                               .setEndPosition(
                                                 videoState.currentPosition,
                                               );
@@ -262,16 +260,14 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                         label: const Text('ストップ'),
                                       ),
                                     ),
-                                    if (measureState.endPosition !=
-                                        null) ...[
+                                    if (measureState.endPosition != null) ...[
                                       const SizedBox(height: AppSpacing.xs),
                                       Text(
-                                        measureState.endPosition!
-                                            .toTimestamp(),
+                                        measureState.endPosition!.toTimestamp(),
                                         style: AppTextStyles.timeDisplaySmall
                                             .copyWith(
-                                          color: AppColors.endColor,
-                                        ),
+                                              color: AppColors.endColor,
+                                            ),
                                       ),
                                     ],
                                   ],
@@ -289,14 +285,12 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                             onConfirmStart: () {
                               ref
                                   .read(measurementProvider.notifier)
-                                  .setStartPosition(
-                                      videoState.currentPosition);
+                                  .setStartPosition(videoState.currentPosition);
                             },
                             onConfirmEnd: () {
                               ref
                                   .read(measurementProvider.notifier)
-                                  .setEndPosition(
-                                      videoState.currentPosition);
+                                  .setEndPosition(videoState.currentPosition);
                             },
                           ),
                         ],
@@ -317,10 +311,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                         Wrap(
                           spacing: AppSpacing.sm,
                           runSpacing: AppSpacing.sm,
-                          children:
-                              AppConstants.fpsOptions.map((fpsOption) {
-                            final selected =
-                                measureState.fps == fpsOption;
+                          children: AppConstants.fpsOptions.map((fpsOption) {
+                            final selected = measureState.fps == fpsOption;
                             return ChoiceChip(
                               label: Text('${fpsOption.toInt()} fps'),
                               selected: selected,
@@ -371,8 +363,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                     '種目',
                                     icon: Icons.flag,
                                   ),
-                                  maxLength:
-                                      AppConstants.maxEventTypeLength,
+                                  maxLength: AppConstants.maxEventTypeLength,
                                   onChanged: (value) => ref
                                       .read(measurementProvider.notifier)
                                       .setEventType(value),
@@ -420,10 +411,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 child: FilledButton.icon(
                                   onPressed:
                                       measureState.isSaving ||
-                                          measureState.calculatedTime ==
-                                              null ||
-                                          measureState
-                                              .athleteName.isEmpty ||
+                                          measureState.calculatedTime == null ||
+                                          measureState.athleteName.isEmpty ||
                                           measureState.eventType.isEmpty
                                       ? null
                                       : () => _onSave(context),
@@ -431,8 +420,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                       ? const SizedBox(
                                           height: 18,
                                           width: 18,
-                                          child:
-                                              CircularProgressIndicator(
+                                          child: CircularProgressIndicator(
                                             strokeWidth: 2,
                                             color: Colors.white,
                                           ),
@@ -448,8 +436,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                         // テキストリンクスタイル
                         Center(
                           child: TextButton(
-                            onPressed: () =>
-                                context.pushNamed('videoImport'),
+                            onPressed: () => context.pushNamed('videoImport'),
                             child: const Text('別の動画を読み込む'),
                           ),
                         ),

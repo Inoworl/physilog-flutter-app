@@ -60,7 +60,9 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final userId = ref.read(currentUserIdProvider) ?? 'local-user';
-    final seconds = double.parse(_timeController.text.trim().replaceAll(',', '.'));
+    final seconds = double.parse(
+      _timeController.text.trim().replaceAll(',', '.'),
+    );
     final durationMs = (seconds * 1000).round();
     final now = DateTime.now();
     final measuredAt = DateTime(
@@ -96,14 +98,10 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
 
       if (!mounted) return;
       navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('手動記録を保存しました')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('手動記録を保存しました')));
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('保存に失敗しました: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -139,18 +137,14 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurfaceVariant
-                          .withValues(alpha: 0.4),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                Text(
-                  '手動記録',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('手動記録', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.xl),
 
                 // 選手名
@@ -202,8 +196,9 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                     prefixIcon: Icon(Icons.timer),
                     hintText: '例: 12.34',
                   ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'タイムを入力してください';
@@ -241,7 +236,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   maxLines: 3,
                   maxLength: AppConstants.maxMemoLength,
                   validator: (value) {
-                    if (value != null && value.length > AppConstants.maxMemoLength) {
+                    if (value != null &&
+                        value.length > AppConstants.maxMemoLength) {
                       return '${AppConstants.maxMemoLength}文字以内で入力してください';
                     }
                     return null;

@@ -77,22 +77,13 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, '選手名'),
-      '山田太郎',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, '種目'),
-      '50m走',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, '選手名'), '山田太郎');
+    await tester.enterText(find.widgetWithText(TextFormField, '種目'), '50m走');
     await tester.enterText(
       find.widgetWithText(TextFormField, 'タイム（秒）'),
       '12.34',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'メモ'),
-      'テストメモ',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'メモ'), 'テストメモ');
 
     final submitButton = find.widgetWithText(FilledButton, '記録する');
     await tester.dragUntilVisible(

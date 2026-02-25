@@ -73,14 +73,8 @@ class _SeekButton extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          onPressed: onPressed,
-          icon: Icon(icon),
-        ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
+        IconButton(onPressed: onPressed, icon: Icon(icon)),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
       ],
     );
   }

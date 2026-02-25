@@ -41,10 +41,7 @@ class ManageScreen extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.onAdd,
-  });
+  const _SectionHeader({required this.title, required this.onAdd});
 
   final String title;
   final VoidCallback onAdd;
@@ -113,9 +110,9 @@ class _EventList extends StatelessWidget {
                   if (value == 'edit') {
                     EventFormSheet.show(context, name: events[i]);
                   } else if (value == 'delete') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('この機能は準備中です')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
                   }
                 },
                 itemBuilder: (_) => const [
