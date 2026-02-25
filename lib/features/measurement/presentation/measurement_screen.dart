@@ -401,9 +401,12 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 child: SizedBox(
                                   height: 48,
                                   child: OutlinedButton.icon(
-                                    onPressed: () => ref
-                                        .read(measurementProvider.notifier)
-                                        .resetPositions(),
+                                    onPressed: () {
+                                      ref
+                                          .read(measurementProvider.notifier)
+                                          .resetPositions();
+                                      context.pushNamed('videoImport');
+                                    },
                                     icon: const Icon(Icons.refresh),
                                     label: const Text('続けて測定'),
                                   ),
