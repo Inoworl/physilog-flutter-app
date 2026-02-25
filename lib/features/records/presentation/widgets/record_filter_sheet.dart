@@ -31,7 +31,9 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
   void initState() {
     super.initState();
     final filter = ref.read(recordFilterNotifierProvider);
-    _athleteNameController = TextEditingController(text: filter.athleteName ?? '');
+    _athleteNameController = TextEditingController(
+      text: filter.athleteName ?? '',
+    );
     _selectedEventType = filter.eventType;
     _dateFrom = filter.dateFrom;
     _dateTo = filter.dateTo;
@@ -97,7 +99,8 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                     (e) => DropdownMenuItem(value: e, child: Text(e)),
                   ),
                 ],
-                onChanged: (value) => setState(() => _selectedEventType = value),
+                onChanged: (value) =>
+                    setState(() => _selectedEventType = value),
               ),
               const SizedBox(height: 16),
 
@@ -109,7 +112,9 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                       onPressed: () => _selectDate(isFrom: true),
                       icon: const Icon(Icons.calendar_today, size: 16),
                       label: Text(
-                        _dateFrom != null ? dateFormat.format(_dateFrom!) : '開始日',
+                        _dateFrom != null
+                            ? dateFormat.format(_dateFrom!)
+                            : '開始日',
                       ),
                     ),
                   ),
@@ -148,10 +153,7 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
               const SizedBox(height: 24),
 
               // 適用ボタン
-              FilledButton(
-                onPressed: _applyFilter,
-                child: const Text('適用'),
-              ),
+              FilledButton(onPressed: _applyFilter, child: const Text('適用')),
             ],
           ),
         );

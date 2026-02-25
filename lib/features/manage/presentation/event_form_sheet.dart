@@ -37,16 +37,16 @@ class _EventFormSheetState extends State<EventFormSheet> {
   }
 
   void _submit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('この機能は準備中です')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
     Navigator.pop(context);
   }
 
   void _delete() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('この機能は準備中です')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
     Navigator.pop(context);
   }
 
@@ -79,9 +79,7 @@ class _EventFormSheetState extends State<EventFormSheet> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _delete,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('この種目を削除'),
             ),
           ],

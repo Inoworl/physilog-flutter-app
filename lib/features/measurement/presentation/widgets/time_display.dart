@@ -62,9 +62,7 @@ class TimeDisplay extends StatelessWidget {
           // 精度情報
           Text(
             '精度: ±${accuracy.toStringAsFixed(1)}ms (${fps.toInt()}fps)',
-            style: AppTextStyles.accuracy.copyWith(
-              color: Colors.white70,
-            ),
+            style: AppTextStyles.accuracy.copyWith(color: Colors.white70),
           ),
         ],
       ),
@@ -100,9 +98,7 @@ class _PositionRow extends StatelessWidget {
         Expanded(
           child: Text(
             position?.toTimestamp() ?? '--:--.---',
-            style: AppTextStyles.timeDisplaySmall.copyWith(
-              color: Colors.white,
-            ),
+            style: AppTextStyles.timeDisplaySmall.copyWith(color: Colors.white),
           ),
         ),
         FilledButton.tonal(

@@ -40,9 +40,9 @@ class _VideoImportScreenState extends ConsumerState<VideoImportScreen> {
         if (prev is VideoImportCompressing) {
           Navigator.of(context, rootNavigator: true).pop();
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(next.message)));
       }
     });
 
@@ -71,8 +71,8 @@ class _VideoImportScreenState extends ConsumerState<VideoImportScreen> {
               Text(
                 '計測する動画を選択してください',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
@@ -82,7 +82,9 @@ class _VideoImportScreenState extends ConsumerState<VideoImportScreen> {
                 subtitle: '今すぐ撮影して計測',
                 onTap: isPicking
                     ? null
-                    : () => ref.read(videoImportProvider.notifier).pickFromCamera(),
+                    : () => ref
+                          .read(videoImportProvider.notifier)
+                          .pickFromCamera(),
               ),
               const SizedBox(height: AppSpacing.md),
               _ActionCard(
@@ -91,7 +93,9 @@ class _VideoImportScreenState extends ConsumerState<VideoImportScreen> {
                 subtitle: '保存済みの動画から選択',
                 onTap: isPicking
                     ? null
-                    : () => ref.read(videoImportProvider.notifier).pickFromGallery(),
+                    : () => ref
+                          .read(videoImportProvider.notifier)
+                          .pickFromGallery(),
               ),
             ],
           ),
@@ -107,8 +111,9 @@ class _VideoImportScreenState extends ConsumerState<VideoImportScreen> {
       builder: (_) => Consumer(
         builder: (context, ref, _) {
           final state = ref.watch(videoImportProvider);
-          final progress =
-              state is VideoImportCompressing ? state.progress : 0.0;
+          final progress = state is VideoImportCompressing
+              ? state.progress
+              : 0.0;
           return CompressProgressDialog(progress: progress);
         },
       ),
@@ -185,10 +190,10 @@ class _ActionCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isDisabled
-                                ? colorScheme.onSurface.withValues(alpha: 0.38)
-                                : colorScheme.onSurfaceVariant,
-                          ),
+                        color: isDisabled
+                            ? colorScheme.onSurface.withValues(alpha: 0.38)
+                            : colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),

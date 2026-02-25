@@ -9,9 +9,9 @@ import 'package:physi_log/shared/widgets/loading_state.dart';
 
 final _recordForEditProvider =
     FutureProvider.family<MeasurementRecord?, String>((ref, id) async {
-  final repository = ref.watch(recordRepositoryProvider);
-  return repository.getRecord(id);
-});
+      final repository = ref.watch(recordRepositoryProvider);
+      return repository.getRecord(id);
+    });
 
 class RecordEditScreen extends ConsumerStatefulWidget {
   const RecordEditScreen({super.key, required this.recordId});
@@ -166,7 +166,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
               maxLines: 4,
               maxLength: AppConstants.maxMemoLength,
               validator: (value) {
-                if (value != null && value.length > AppConstants.maxMemoLength) {
+                if (value != null &&
+                    value.length > AppConstants.maxMemoLength) {
                   return '${AppConstants.maxMemoLength}文字以内で入力してください';
                 }
                 return null;
@@ -218,16 +219,16 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
       ref.invalidate(recordListNotifierProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('記録を更新しました')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('記録を更新しました')));
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存に失敗しました: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

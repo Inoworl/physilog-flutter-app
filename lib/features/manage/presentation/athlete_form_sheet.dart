@@ -40,16 +40,16 @@ class _AthleteFormSheetState extends State<AthleteFormSheet> {
   }
 
   void _submit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('この機能は準備中です')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
     Navigator.pop(context);
   }
 
   void _delete() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('この機能は準備中です')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
     Navigator.pop(context);
   }
 
@@ -89,9 +89,7 @@ class _AthleteFormSheetState extends State<AthleteFormSheet> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _delete,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('この選手を削除'),
             ),
           ],

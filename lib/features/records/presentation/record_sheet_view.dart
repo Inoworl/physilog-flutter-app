@@ -39,12 +39,10 @@ class RecordSheetView extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 120),
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-              dataRowColor: WidgetStateProperty.resolveWith<Color?>(
-                (states) {
-                  final index = states.contains(WidgetState.selected) ? 0 : -1;
-                  return index >= 0 ? AppColors.tableStripe : null;
-                },
-              ),
+              dataRowColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                final index = states.contains(WidgetState.selected) ? 0 : -1;
+                return index >= 0 ? AppColors.tableStripe : null;
+              }),
               columns: const [
                 DataColumn(label: Text('日付', style: AppTextStyles.caption)),
                 DataColumn(label: Text('選手名', style: AppTextStyles.caption)),
@@ -62,28 +60,38 @@ class RecordSheetView extends ConsumerWidget {
                     index.isOdd ? AppColors.tableStripe : Colors.transparent,
                   ),
                   cells: [
-                    DataCell(Text(
-                      dateFormat.format(record.measuredAt),
-                      style: AppTextStyles.caption,
-                    )),
-                    DataCell(Text(
-                      record.athleteName.isEmpty ? '未登録' : record.athleteName,
-                      style: AppTextStyles.body,
-                    )),
-                    DataCell(Text(
-                      record.eventType.isEmpty ? '未設定' : record.eventType,
-                      style: AppTextStyles.caption,
-                    )),
-                    DataCell(Text(
-                      record.formattedDuration,
-                      style: AppTextStyles.timeDisplaySmall.copyWith(
-                        color: theme.colorScheme.primary,
+                    DataCell(
+                      Text(
+                        dateFormat.format(record.measuredAt),
+                        style: AppTextStyles.caption,
                       ),
-                    )),
-                    DataCell(Text(
-                      record.accuracyInfo ?? '-',
-                      style: AppTextStyles.accuracy,
-                    )),
+                    ),
+                    DataCell(
+                      Text(
+                        record.athleteName.isEmpty ? '未登録' : record.athleteName,
+                        style: AppTextStyles.body,
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        record.eventType.isEmpty ? '未設定' : record.eventType,
+                        style: AppTextStyles.caption,
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        record.formattedDuration,
+                        style: AppTextStyles.timeDisplaySmall.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        record.accuracyInfo ?? '-',
+                        style: AppTextStyles.accuracy,
+                      ),
+                    ),
                   ],
                 );
               }),

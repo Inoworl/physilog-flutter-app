@@ -3,8 +3,8 @@ import 'package:physi_log/features/records/domain/record_filter.dart';
 
 final recordFilterNotifierProvider =
     StateNotifierProvider<RecordFilterNotifier, RecordFilter>((ref) {
-  return RecordFilterNotifier();
-});
+      return RecordFilterNotifier();
+    });
 
 class RecordFilterNotifier extends StateNotifier<RecordFilter> {
   RecordFilterNotifier() : super(const RecordFilter());

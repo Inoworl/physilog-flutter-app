@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AppBottomNavShell extends StatelessWidget {
-  const AppBottomNavShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppBottomNavShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 

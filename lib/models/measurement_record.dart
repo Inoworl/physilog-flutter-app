@@ -32,7 +32,9 @@ class MeasurementRecord with _$MeasurementRecord {
     return MeasurementRecord.fromJson({
       'id': doc.id,
       ...data,
-      'measuredAt': (data['measuredAt'] as Timestamp).toDate().toIso8601String(),
+      'measuredAt': (data['measuredAt'] as Timestamp)
+          .toDate()
+          .toIso8601String(),
       'createdAt': (data['createdAt'] as Timestamp).toDate().toIso8601String(),
       'updatedAt': (data['updatedAt'] as Timestamp).toDate().toIso8601String(),
     });

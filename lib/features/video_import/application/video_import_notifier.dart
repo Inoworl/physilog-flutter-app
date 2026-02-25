@@ -106,7 +106,9 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
   Future<void> _compressVideo(String sourcePath) async {
     state = const VideoImportCompressing(progress: 0);
 
-    _compressSubscription = VideoCompress.compressProgress$.subscribe((progress) {
+    _compressSubscription = VideoCompress.compressProgress$.subscribe((
+      progress,
+    ) {
       state = VideoImportCompressing(progress: progress);
     });
 
@@ -159,5 +161,5 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
 
 final videoImportProvider =
     StateNotifierProvider.autoDispose<VideoImportNotifier, VideoImportState>(
-  (ref) => VideoImportNotifier(),
-);
+      (ref) => VideoImportNotifier(),
+    );
