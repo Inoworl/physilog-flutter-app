@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AppBottomNavShell extends StatelessWidget {
-  const AppBottomNavShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppBottomNavShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
@@ -42,11 +39,6 @@ class AppBottomNavShell extends StatelessWidget {
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon: Icon(Icons.receipt_long),
             label: '記録',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outlined),
-            selectedIcon: Icon(Icons.people),
-            label: '管理',
           ),
         ],
       ),

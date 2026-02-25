@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
-import 'package:physi_log/features/manage/presentation/manage_screen.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
 import 'package:physi_log/features/records/presentation/record_detail_screen.dart';
 import 'package:physi_log/features/records/presentation/record_edit_screen.dart';
@@ -22,10 +21,7 @@ Widget _slideFromRight(
     position: Tween<Offset>(
       begin: const Offset(1.0, 0.0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeInOut,
-    )),
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
     child: child,
   );
 }
@@ -66,16 +62,6 @@ final router = GoRouter(
               path: '/records',
               name: 'recordList',
               builder: (context, state) => const RecordsTabScreen(),
-            ),
-          ],
-        ),
-        // Branch 3: 管理
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/manage',
-              name: 'manage',
-              builder: (context, state) => const ManageScreen(),
             ),
           ],
         ),

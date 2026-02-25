@@ -75,13 +75,9 @@ class _QuickActionsSection extends StatelessWidget {
         const SizedBox(width: AppSpacing.lg),
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.edit_note,
-            label: '手動記録',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('準備中')),
-              );
-            },
+            icon: Icons.receipt_long,
+            label: '記録一覧',
+            onTap: () => context.goNamed('recordList'),
           ),
         ),
       ],
@@ -108,9 +104,7 @@ class _QuickActionCard extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -193,17 +187,14 @@ class _EmptyRecordsCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Center(
           child: Text(
             'まだ記録がありません',
-            style:
-                AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
         ),
       ),
@@ -224,10 +215,16 @@ class _StatsSection extends ConsumerWidget {
     );
 
     final totalCount = records.length;
-    final athleteCount =
-        records.map((r) => r.athleteName).where((n) => n.isNotEmpty).toSet().length;
-    final eventCount =
-        records.map((r) => r.eventType).where((e) => e.isNotEmpty).toSet().length;
+    final athleteCount = records
+        .map((r) => r.athleteName)
+        .where((n) => n.isNotEmpty)
+        .toSet()
+        .length;
+    final eventCount = records
+        .map((r) => r.eventType)
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .length;
 
     return Row(
       children: [
@@ -259,9 +256,7 @@ class _StatCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -273,9 +268,9 @@ class _StatCard extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(label, style: AppTextStyles.caption),

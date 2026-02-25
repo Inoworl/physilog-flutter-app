@@ -29,5 +29,8 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('動画計測'), findsOneWidget);
+    expect(find.text('手動記録'), findsNothing);
+    expect(find.text('管理'), findsNothing);
+    expect(find.text('記録一覧'), findsOneWidget);
   });
 }
