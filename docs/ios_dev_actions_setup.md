@@ -26,10 +26,12 @@
   - Provisioning Profile 名（Xcode の `PROVISIONING_PROFILE_SPECIFIER` と同じ文字列）
 - `DEVELOPMENT_TEAM_ID`
   - Apple Developer Team ID（例: `XXXXXXXXXX`）
-- `APPLE_ID`
-  - App Store Connect へアップロードする Apple ID（メールアドレス）
-- `APP_SPECIFIC_PASSWORD`
-  - Apple ID の app-specific password
+- `ASC_KEY_ID`
+  - App Store Connect API Key の Key ID
+- `ASC_ISSUER_ID`
+  - App Store Connect API Key の Issuer ID
+- `ASC_API_KEY_BASE64`
+  - App Store Connect API Key (`.p8`) を base64 化した文字列
 
 任意（Firebase 初期化用）:
 
