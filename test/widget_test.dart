@@ -29,5 +29,13 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('動画計測'), findsOneWidget);
+    expect(find.text('手動記録'), findsOneWidget);
+    expect(find.text('管理'), findsOneWidget);
+
+    await tester.tap(find.text('記録'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('一覧'), findsOneWidget);
+    expect(find.text('シート'), findsOneWidget);
   });
 }
