@@ -2,10 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:physi_log/features/measurement/domain/measurement_state.dart';
+import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 class MeasurementNotifier extends StateNotifier<MeasurementState> {
-  MeasurementNotifier() : super(const MeasurementState());
+  MeasurementNotifier({
+    required RecordRepository repository,
+    required String? userId,
+  }) : _repository = repository,
+       _userId = userId,
+       super(const MeasurementState());
+
+  final RecordRepository _repository;
+  final String? _userId;
 
   void setStartPosition(Duration position) {
     state = state.copyWith(startPosition: position, calculatedTime: null);
@@ -66,9 +77,10 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
 
     try {
       final now = DateTime.now();
+      final resolvedUserId = _userId ?? 'local-user';
       final record = MeasurementRecord(
         id: const Uuid().v4(),
-        userId: '',
+        userId: resolvedUserId,
         athleteName: state.athleteName,
         eventType: state.eventType,
         startMs: start.inMilliseconds,
@@ -82,7 +94,7 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
         updatedAt: now,
       );
 
-      // TODO: Firestore/ローカル保存は後で実装
+      await _repository.saveRecord(record);
       state = state.copyWith(isSaving: false);
       return record;
     } catch (e) {
@@ -94,5 +106,8 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
 
 final measurementProvider =
     StateNotifierProvider.autoDispose<MeasurementNotifier, MeasurementState>(
-  (ref) => MeasurementNotifier(),
-);
+      (ref) => MeasurementNotifier(
+        repository: ref.watch(recordRepositoryProvider),
+        userId: ref.watch(currentUserIdProvider),
+      ),
+    );

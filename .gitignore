@@ -27,3 +27,6 @@ firebase-debug.log
 # 環境変数
 .env
 .env.*
+
+# AI planning artifacts (moved to symlinked external workspace)
+.ai
