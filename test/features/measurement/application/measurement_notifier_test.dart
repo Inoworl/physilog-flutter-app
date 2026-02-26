@@ -49,4 +49,25 @@ void main() {
     expect(saved.single.userId, 'local-user');
     expect(saved.single.athleteName, 'テスト選手');
   });
+
+  test('saveRecord成功時にonRecordSavedが呼ばれる', () async {
+    final repository = LocalRecordRepository();
+    var callbackCount = 0;
+    final notifier = MeasurementNotifier(
+      repository: repository,
+      userId: 'local-user',
+      onRecordSaved: () {
+        callbackCount++;
+      },
+    );
+    notifier.setStartPosition(const Duration(milliseconds: 500));
+    notifier.setEndPosition(const Duration(milliseconds: 1500));
+    notifier.setAthleteName('テスト選手');
+    notifier.setEventType('50m走');
+
+    final result = await notifier.saveRecord(videoPath: '/tmp/test.mp4');
+
+    expect(result, isNotNull);
+    expect(callbackCount, 1);
+  });
 }

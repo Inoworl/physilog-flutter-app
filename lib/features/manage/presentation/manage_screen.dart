@@ -7,7 +7,7 @@ import 'package:physi_log/features/manage/presentation/event_form_sheet.dart';
 class ManageScreen extends StatelessWidget {
   const ManageScreen({super.key});
 
-  static const _athletes = ['田中太郎', '鈴木花子', '佐藤一郎'];
+  static const _athletes = <String>[];
   static const _events = ['50m走', '100m走', '立ち幅跳び', '20mシャトルラン'];
 
   @override
@@ -69,6 +69,16 @@ class _AthleteList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (athletes.isEmpty) {
+      return const Card(
+        child: ListTile(
+          leading: Icon(Icons.info_outline),
+          title: Text('選手データはまだありません'),
+          subtitle: Text('右上の「追加」から選手を登録できます'),
+        ),
+      );
+    }
+
     return Card(
       child: Column(
         children: [
@@ -115,10 +125,11 @@ class _EventList extends StatelessWidget {
                     ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
                   }
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('編集')),
-                  PopupMenuItem(value: 'delete', child: Text('削除')),
-                ],
+                itemBuilder:
+                    (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('編集')),
+                      PopupMenuItem(value: 'delete', child: Text('削除')),
+                    ],
               ),
             ),
             if (i < events.length - 1) const Divider(height: 1),
