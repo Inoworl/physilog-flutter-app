@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,12 +12,15 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
   MeasurementNotifier({
     required RecordRepository repository,
     required String? userId,
+    VoidCallback? onRecordSaved,
   }) : _repository = repository,
        _userId = userId,
+       _onRecordSaved = onRecordSaved,
        super(const MeasurementState());
 
   final RecordRepository _repository;
   final String? _userId;
+  final VoidCallback? _onRecordSaved;
 
   void setStartPosition(Duration position) {
     state = state.copyWith(startPosition: position, calculatedTime: null);
@@ -95,6 +99,7 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
       );
 
       await _repository.saveRecord(record);
+      _onRecordSaved?.call();
       state = state.copyWith(isSaving: false);
       return record;
     } catch (e) {
@@ -109,5 +114,6 @@ final measurementProvider =
       (ref) => MeasurementNotifier(
         repository: ref.watch(recordRepositoryProvider),
         userId: ref.watch(currentUserIdProvider),
+        onRecordSaved: () => ref.invalidate(recordListNotifierProvider),
       ),
     );

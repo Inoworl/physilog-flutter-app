@@ -36,9 +36,9 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('検索機能は準備中です')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('検索機能は準備中です')));
             },
           ),
           IconButton(
@@ -81,9 +81,7 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
                       key: const ValueKey(RecordsViewMode.list),
                       onRefresh: _refresh,
                     )
-                  : const RecordSheetView(
-                      key: ValueKey(RecordsViewMode.sheet),
-                    ),
+                  : const RecordSheetView(key: ValueKey(RecordsViewMode.sheet)),
             ),
           ),
         ],
@@ -127,9 +125,7 @@ class _RecordListContent extends ConsumerWidget {
               if (index == records.length) {
                 if (!isLoadingMore) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ref
-                        .read(recordListNotifierProvider.notifier)
-                        .loadMore();
+                    ref.read(recordListNotifierProvider.notifier).loadMore();
                   });
                 }
                 return const Padding(
@@ -148,10 +144,8 @@ class _RecordListContent extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.error,
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                confirmDismiss: (_) => DeleteConfirmationDialog.show(
-                  context,
-                  record.athleteName,
-                ),
+                confirmDismiss: (_) =>
+                    DeleteConfirmationDialog.show(context, record.athleteName),
                 onDismissed: (_) {
                   ref
                       .read(recordListNotifierProvider.notifier)

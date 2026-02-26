@@ -26,9 +26,7 @@ class _RecordListScreenState extends ConsumerState<RecordListScreen> {
     final state = ref.watch(recordListNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('記録'),
-      ),
+      appBar: AppBar(title: const Text('記録')),
       body: state.when(
         loading: () => const LoadingState(message: '記録を読み込み中...'),
         error: (message) => ErrorState(message: message, onRetry: _refresh),
@@ -41,8 +39,9 @@ class _RecordListScreenState extends ConsumerState<RecordListScreen> {
               isLoadingMore: isLoadingMore,
               onLoadMore: () =>
                   ref.read(recordListNotifierProvider.notifier).loadMore(),
-              onDelete: (id) =>
-                  ref.read(recordListNotifierProvider.notifier).deleteRecord(id),
+              onDelete: (id) => ref
+                  .read(recordListNotifierProvider.notifier)
+                  .deleteRecord(id),
             ),
           );
         },

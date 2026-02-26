@@ -22,9 +22,7 @@ class VideoPlayerWidget extends StatelessWidget {
         aspectRatio: 16 / 9,
         child: ColoredBox(
           color: Colors.black,
-          child: Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
         ),
       );
     }

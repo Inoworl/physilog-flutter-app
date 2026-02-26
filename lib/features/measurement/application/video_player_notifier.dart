@@ -123,5 +123,5 @@ class VideoPlayerNotifier extends StateNotifier<VideoPlayerState> {
 
 final videoPlayerProvider =
     StateNotifierProvider.autoDispose<VideoPlayerNotifier, VideoPlayerState>(
-  (ref) => VideoPlayerNotifier(),
-);
+      (ref) => VideoPlayerNotifier(),
+    );

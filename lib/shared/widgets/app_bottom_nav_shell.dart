@@ -2,23 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AppBottomNavShell extends StatelessWidget {
-  const AppBottomNavShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppBottomNavShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: KeyedSubtree(
-          key: ValueKey<int>(navigationShell.currentIndex),
-          child: navigationShell,
-        ),
-      ),
+      body: navigationShell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) {

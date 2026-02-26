@@ -40,10 +40,7 @@ class PositionMarker extends StatelessWidget {
             ),
           ),
         ),
-        FilledButton.tonal(
-          onPressed: onConfirm,
-          child: const Text('確定'),
-        ),
+        FilledButton.tonal(onPressed: onConfirm, child: const Text('確定')),
       ],
     );
   }

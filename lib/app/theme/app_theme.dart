@@ -10,10 +10,7 @@ class AppTheme {
       colorSchemeSeed: AppColors.primary,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.surface,
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-      ),
+      appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
       // カード: 16dp角丸 outline style
       cardTheme: CardThemeData(
         elevation: 0,
@@ -48,9 +45,7 @@ class AppTheme {
       ),
       // TextField: 12dp角丸
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade400),
@@ -68,16 +63,12 @@ class AppTheme {
         showDragHandle: true,
       ),
       // NavigationBar: elevation 2
-      navigationBarTheme: const NavigationBarThemeData(
-        elevation: 2,
-      ),
+      navigationBarTheme: const NavigationBarThemeData(elevation: 2),
       // FAB: 16dp角丸
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
