@@ -1,0 +1,26 @@
+name: Setup CI
+description: Setup CI environment for PhysiLog
+
+runs:
+  using: composite
+  steps:
+    - name: Read Flutter SDK version from .fvmrc
+      id: flutter_sdk_version
+      run: |
+        if [ -f .fvmrc ]; then
+          echo "version=$(jq -r '.flutter' .fvmrc)" >> "$GITHUB_OUTPUT"
+        else
+          echo "version=stable" >> "$GITHUB_OUTPUT"
+        fi
+      shell: bash
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ steps.flutter_sdk_version.outputs.version }}
+        channel: stable
+        cache: true
+
+    - name: Get dependencies
+      run: flutter pub get
+      shell: bash
