@@ -38,6 +38,9 @@ jobs:
           p12-file-base64: ${{ secrets.IOS_CERTIFICATES_P12_BASE64 }}
           p12-password: ${{ secrets.IOS_CERTIFICATES_P12_PASSWORD }}
 
+      - name: Generate code (freezed/json/riverpod)
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
       - name: Check build tools
         run: |
           fastlane --version
