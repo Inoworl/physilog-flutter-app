@@ -29,9 +29,6 @@ platform :ios do
       UI.user_error!("ASC_KEY_ID, ASC_ISSUER_ID and ASC_API_KEY_BASE64 are required")
     end
 
-    build_number = (20000 + sh("cd .. && git rev-list --all --count", log: false).strip.to_i).to_s
-    UI.message("Build number: #{build_number}")
-
     api_key_path = "./AuthKey.p8"
     profile_dir = File.join(ENV["HOME"], "Library/MobileDevice/Provisioning Profiles")
     profile_path = File.join(profile_dir, "#{SecureRandom.uuid}.mobileprovision")
@@ -39,6 +36,30 @@ platform :ios do
     begin
       FileUtils.mkdir_p(profile_dir)
       File.binwrite(profile_path, Base64.decode64(profile_base64))
+      File.binwrite(api_key_path, Base64.decode64(asc_api_key_base64))
+
+      api_key = app_store_connect_api_key(
+        key_id: asc_key_id,
+        issuer_id: asc_issuer_id,
+        key_filepath: File.expand_path(api_key_path),
+        in_house: false
+      )
+
+      release_version = get_version_number(
+        xcodeproj: "Runner.xcodeproj",
+        target: "Runner",
+        configuration: "Release-dev"
+      )
+      latest_build_number = latest_testflight_build_number(
+        api_key: api_key,
+        app_identifier: "com.physilog.physiLog.dev",
+        version: release_version,
+        live: false,
+        initial_build_number: 1
+      )
+      ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
+      build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
+      UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
 
       sh "cd .. && flutter pub get"
       sh "pod install"
@@ -54,7 +75,7 @@ platform :ios do
         suppress_xcode_output: false,
         buildlog_path: "./build/logs",
         clean: true,
-        xcargs: "DEVELOPMENT_TEAM=#{team_id}",
+        xcargs: "DEVELOPMENT_TEAM=#{team_id} FLUTTER_BUILD_NUMBER=#{build_number}",
         export_options: {
           method: "app-store",
           teamID: team_id,
@@ -66,14 +87,6 @@ platform :ios do
           compileBitcode: false,
           uploadSymbols: true
         }
-      )
-
-      File.binwrite(api_key_path, Base64.decode64(asc_api_key_base64))
-      api_key = app_store_connect_api_key(
-        key_id: asc_key_id,
-        issuer_id: asc_issuer_id,
-        key_filepath: File.expand_path(api_key_path),
-        in_house: false
       )
 
       upload_to_testflight(
