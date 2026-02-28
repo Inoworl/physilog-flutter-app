@@ -30,6 +30,8 @@
 	<string>計測用の動画を撮影するためにカメラを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>計測用の動画をアルバムから選択するために写真ライブラリへアクセスします。</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
