@@ -1,6 +1,9 @@
 name: "[Release] Dev iOS"
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -10,7 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 90
     environment: dev
 
     steps:
@@ -56,6 +59,18 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+          DEV_TESTFLIGHT_EXTERNAL_GROUPS: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_GROUPS }}
+          DEV_TESTFLIGHT_NOTIFY_EXTERNAL_TESTERS: ${{ secrets.DEV_TESTFLIGHT_NOTIFY_EXTERNAL_TESTERS }}
+          DEV_TESTFLIGHT_BETA_APP_DESCRIPTION: ${{ secrets.DEV_TESTFLIGHT_BETA_APP_DESCRIPTION }}
+          DEV_TESTFLIGHT_WHATS_NEW_JA: ${{ secrets.DEV_TESTFLIGHT_WHATS_NEW_JA }}
+          DEV_TESTFLIGHT_FEEDBACK_EMAIL: ${{ secrets.DEV_TESTFLIGHT_FEEDBACK_EMAIL }}
+          DEV_TESTFLIGHT_CONTACT_FIRST_NAME: ${{ secrets.DEV_TESTFLIGHT_CONTACT_FIRST_NAME }}
+          DEV_TESTFLIGHT_CONTACT_LAST_NAME: ${{ secrets.DEV_TESTFLIGHT_CONTACT_LAST_NAME }}
+          DEV_TESTFLIGHT_CONTACT_EMAIL: ${{ secrets.DEV_TESTFLIGHT_CONTACT_EMAIL }}
+          DEV_TESTFLIGHT_CONTACT_PHONE_E164: ${{ secrets.DEV_TESTFLIGHT_CONTACT_PHONE_E164 }}
+          DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL }}
+          DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME }}
+          DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME }}
           FASTLANE_DISABLE_PTY: 1
           FASTLANE_EXPLICIT_OPEN3: 1
           FASTLANE_DISABLE_COLORS: 1

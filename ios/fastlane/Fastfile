@@ -12,12 +12,29 @@ platform :ios do
     require "fileutils"
     require "securerandom"
 
+    app_identifier = "com.physilog.physiLog.dev"
     profile_base64 = ENV["DEV_PROVISIONING_PROFILE_BASE64"].to_s
     profile_name = ENV["DEV_PROVISIONING_PROFILE_SPECIFIER"].to_s
     team_id = ENV["DEVELOPMENT_TEAM_ID"].to_s
     asc_key_id = ENV["ASC_KEY_ID"].to_s
     asc_issuer_id = ENV["ASC_ISSUER_ID"].to_s
     asc_api_key_base64 = ENV["ASC_API_KEY_BASE64"].to_s
+    external_groups = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_GROUPS", "External Testers")
+                         .split(",")
+                         .map(&:strip)
+                         .reject(&:empty?)
+    notify_external_testers = ENV.fetch("DEV_TESTFLIGHT_NOTIFY_EXTERNAL_TESTERS", "true")
+                                 .downcase == "true"
+    beta_app_description = ENV["DEV_TESTFLIGHT_BETA_APP_DESCRIPTION"].to_s.strip
+    localized_whats_new_ja = ENV.fetch("DEV_TESTFLIGHT_WHATS_NEW_JA", "初回ベータ版です。").to_s.strip
+    feedback_email = ENV["DEV_TESTFLIGHT_FEEDBACK_EMAIL"].to_s.strip
+    contact_first_name = ENV["DEV_TESTFLIGHT_CONTACT_FIRST_NAME"].to_s.strip
+    contact_last_name = ENV["DEV_TESTFLIGHT_CONTACT_LAST_NAME"].to_s.strip
+    contact_email = ENV["DEV_TESTFLIGHT_CONTACT_EMAIL"].to_s.strip
+    contact_phone = ENV["DEV_TESTFLIGHT_CONTACT_PHONE_E164"].to_s.strip
+    tester_email = ENV["DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL"].to_s.strip
+    tester_first_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME", "Test").to_s.strip
+    tester_last_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME", "User").to_s.strip
 
     if profile_base64.empty? || profile_name.empty?
       UI.user_error!("DEV_PROVISIONING_PROFILE_BASE64 and DEV_PROVISIONING_PROFILE_SPECIFIER are required")
@@ -27,6 +44,21 @@ platform :ios do
     end
     if asc_key_id.empty? || asc_issuer_id.empty? || asc_api_key_base64.empty?
       UI.user_error!("ASC_KEY_ID, ASC_ISSUER_ID and ASC_API_KEY_BASE64 are required")
+    end
+    if external_groups.empty?
+      UI.user_error!("DEV_TESTFLIGHT_EXTERNAL_GROUPS is required (example: External Testers)")
+    end
+    if beta_app_description.empty?
+      UI.user_error!("DEV_TESTFLIGHT_BETA_APP_DESCRIPTION is required")
+    end
+    if feedback_email.empty? || contact_email.empty?
+      UI.user_error!("DEV_TESTFLIGHT_FEEDBACK_EMAIL and DEV_TESTFLIGHT_CONTACT_EMAIL are required")
+    end
+    if contact_first_name.empty? || contact_last_name.empty?
+      UI.user_error!("DEV_TESTFLIGHT_CONTACT_FIRST_NAME and DEV_TESTFLIGHT_CONTACT_LAST_NAME are required")
+    end
+    if contact_phone.empty? || !contact_phone.start_with?("+")
+      UI.user_error!("DEV_TESTFLIGHT_CONTACT_PHONE_E164 must be E.164 format (example: +819012345678)")
     end
 
     api_key_path = "./AuthKey.p8"
@@ -52,7 +84,7 @@ platform :ios do
       )
       latest_build_number = latest_testflight_build_number(
         api_key: api_key,
-        app_identifier: "com.physilog.physiLog.dev",
+        app_identifier: app_identifier,
         version: release_version,
         live: false,
         initial_build_number: 1
@@ -92,9 +124,51 @@ platform :ios do
       upload_to_testflight(
         api_key: api_key,
         ipa: "./build/PhysiLog-Dev.ipa",
-        skip_waiting_for_build_processing: true,
-        skip_submission: true
+        app_identifier: app_identifier,
+        groups: external_groups,
+        distribute_external: true,
+        notify_external_testers: notify_external_testers,
+        beta_app_description: beta_app_description,
+        beta_app_feedback_email: feedback_email,
+        beta_app_review_info: {
+          contact_email: contact_email,
+          contact_first_name: contact_first_name,
+          contact_last_name: contact_last_name,
+          contact_phone: contact_phone,
+          demo_account_required: false
+        },
+        localized_build_info: {
+          "ja-JP" => {
+            whats_new: localized_whats_new_ja
+          }
+        },
+        localized_app_info: {
+          "ja-JP" => {
+            description: beta_app_description,
+            feedback_email: feedback_email
+          }
+        },
+        changelog: localized_whats_new_ja,
+        uses_non_exempt_encryption: false,
+        skip_waiting_for_build_processing: false,
+        skip_submission: false
       )
+
+      unless tester_email.empty?
+        begin
+          upload_to_testflight(
+            api_key: api_key,
+            app_identifier: app_identifier,
+            distribute_only: true,
+            email: tester_email,
+            first_name: tester_first_name,
+            last_name: tester_last_name,
+            groups: external_groups
+          )
+        rescue => e
+          UI.important("Skip external tester add: #{e.message}")
+        end
+      end
     ensure
       [api_key_path, profile_path].each do |path|
         begin
