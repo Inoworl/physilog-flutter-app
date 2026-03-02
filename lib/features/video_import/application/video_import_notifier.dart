@@ -6,8 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_compress/video_compress.dart';
 
-import 'package:physi_log/shared/constants/app_constants.dart';
-
 // 動画取り込み状態
 sealed class VideoImportState {
   const VideoImportState();
@@ -53,10 +51,7 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
     state = const VideoImportPicking();
 
     try {
-      final video = await _picker.pickVideo(
-        source: ImageSource.camera,
-        maxDuration: Duration(seconds: AppConstants.maxVideoDurationSeconds),
-      );
+      final video = await _picker.pickVideo(source: ImageSource.camera);
 
       if (video == null) {
         state = const VideoImportInitial();
@@ -73,10 +68,7 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
     state = const VideoImportPicking();
 
     try {
-      final video = await _picker.pickVideo(
-        source: ImageSource.gallery,
-        maxDuration: Duration(seconds: AppConstants.maxVideoDurationSeconds),
-      );
+      final video = await _picker.pickVideo(source: ImageSource.gallery);
 
       if (video == null) {
         state = const VideoImportInitial();
@@ -90,16 +82,6 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
   }
 
   Future<void> _processVideo(String sourcePath) async {
-    // 動画長チェック
-    final info = await VideoCompress.getMediaInfo(sourcePath);
-    final durationSec = (info.duration ?? 0) / 1000;
-    if (durationSec > AppConstants.maxVideoDurationSeconds) {
-      state = VideoImportError(
-        message: '動画は${AppConstants.maxVideoDurationSeconds}秒以内にしてください',
-      );
-      return;
-    }
-
     await _compressVideo(sourcePath);
   }
 
