@@ -5,6 +5,7 @@ part 'record_filter.freezed.dart';
 @freezed
 class RecordFilter with _$RecordFilter {
   const factory RecordFilter({
+    String? athleteId,
     String? athleteName,
     String? eventType,
     DateTime? dateFrom,

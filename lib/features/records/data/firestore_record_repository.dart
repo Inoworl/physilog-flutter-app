@@ -21,6 +21,9 @@ class FirestoreRecordRepository implements RecordRepository {
     Query query = _collection.where('userId', isEqualTo: userId);
 
     if (filter != null) {
+      if (filter.athleteId != null && filter.athleteId!.isNotEmpty) {
+        query = query.where('athleteId', isEqualTo: filter.athleteId);
+      }
       if (filter.athleteName != null && filter.athleteName!.isNotEmpty) {
         query = query.where('athleteName', isEqualTo: filter.athleteName);
       }

@@ -9,6 +9,7 @@ class MeasurementState with _$MeasurementState {
     Duration? endPosition,
     Duration? calculatedTime,
     @Default(60.0) double fps,
+    String? athleteId,
     @Default('') String athleteName,
     @Default('') String eventType,
     @Default('') String memo,
