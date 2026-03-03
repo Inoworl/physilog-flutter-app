@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
+import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/measurement_record.dart';
@@ -32,12 +35,40 @@ class _FakeRecordRepository implements RecordRepository {
   Future<void> updateRecord(MeasurementRecord record) async {}
 }
 
+class _FakeAthleteRepository implements AthleteRepository {
+  @override
+  Future<void> deleteAthlete(String id) async {}
+
+  @override
+  Future<List<Athlete>> getAthletes({required String userId}) async {
+    return [
+      Athlete(
+        id: 'athlete-1',
+        userId: userId,
+        name: 'テスト選手',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ];
+  }
+
+  @override
+  Future<void> saveAthlete(Athlete athlete) async {}
+
+  @override
+  Future<void> updateAthlete(Athlete athlete) async {}
+}
+
 void main() {
   testWidgets('続けて測定をタップすると動画取り込み画面へ遷移する', (tester) async {
     final notifier = MeasurementNotifier(
       repository: _FakeRecordRepository(),
       userId: 'local-user',
     )..setStartPosition(const Duration(milliseconds: 500));
+    final athleteNotifier = AthleteListNotifier(
+      repository: _FakeAthleteRepository(),
+      userId: 'local-user',
+    );
 
     final router = GoRouter(
       initialLocation: '/measure',
@@ -58,7 +89,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [measurementProvider.overrideWith((ref) => notifier)],
+        overrides: [
+          measurementProvider.overrideWith((ref) => notifier),
+          athleteListNotifierProvider.overrideWith((ref) => athleteNotifier),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );

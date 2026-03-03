@@ -10,7 +10,11 @@ class RecordFilterNotifier extends StateNotifier<RecordFilter> {
   RecordFilterNotifier() : super(const RecordFilter());
 
   void setAthleteName(String? name) {
-    state = state.copyWith(athleteName: name);
+    state = state.copyWith(athleteName: name, athleteId: null);
+  }
+
+  void setAthlete({String? athleteId, String? athleteName}) {
+    state = state.copyWith(athleteId: athleteId, athleteName: athleteName);
   }
 
   void setEventType(String? type) {
