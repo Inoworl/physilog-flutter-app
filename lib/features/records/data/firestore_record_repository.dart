@@ -9,7 +9,9 @@ class FirestoreRecordRepository implements RecordRepository {
 
   final FirebaseFirestore _firestore;
 
-  CollectionReference get _collection => _firestore.collection('records');
+  CollectionReference<Map<String, dynamic>> _collection(String userId) {
+    return _firestore.collection('users').doc(userId).collection('records');
+  }
 
   @override
   Future<List<MeasurementRecord>> getRecords({
@@ -18,7 +20,7 @@ class FirestoreRecordRepository implements RecordRepository {
     int limit = 20,
     MeasurementRecord? lastRecord,
   }) async {
-    Query query = _collection.where('userId', isEqualTo: userId);
+    Query<Map<String, dynamic>> query = _collection(userId);
 
     if (filter != null) {
       if (filter.athleteId != null && filter.athleteId!.isNotEmpty) {
@@ -62,7 +64,7 @@ class FirestoreRecordRepository implements RecordRepository {
     query = query.limit(limit);
 
     if (lastRecord != null) {
-      final lastDoc = await _collection.doc(lastRecord.id).get();
+      final lastDoc = await _collection(userId).doc(lastRecord.id).get();
       if (lastDoc.exists) {
         query = query.startAfterDocument(lastDoc);
       }
@@ -76,23 +78,42 @@ class FirestoreRecordRepository implements RecordRepository {
 
   @override
   Future<MeasurementRecord?> getRecord(String id) async {
-    final doc = await _collection.doc(id).get();
-    if (!doc.exists) return null;
+    final doc = await _findRecordDocById(id);
+    if (doc == null || !doc.exists) return null;
     return MeasurementRecord.fromFirestore(doc);
   }
 
   @override
   Future<void> saveRecord(MeasurementRecord record) async {
-    await _collection.doc(record.id).set(record.toFirestore());
+    await _collection(record.userId).doc(record.id).set(record.toFirestore());
   }
 
   @override
   Future<void> updateRecord(MeasurementRecord record) async {
-    await _collection.doc(record.id).update(record.toFirestore());
+    await _collection(
+      record.userId,
+    ).doc(record.id).update(record.toFirestore());
   }
 
   @override
   Future<void> deleteRecord(String id) async {
-    await _collection.doc(id).delete();
+    final doc = await _findRecordDocById(id);
+    if (doc != null && doc.exists) {
+      await doc.reference.delete();
+    }
+  }
+
+  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _findRecordDocById(
+    String id,
+  ) async {
+    final snapshot = await _firestore
+        .collectionGroup('records')
+        .where(FieldPath.documentId, isEqualTo: id)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return null;
+    }
+    return snapshot.docs.first;
   }
 }

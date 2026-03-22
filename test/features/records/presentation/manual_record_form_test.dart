@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
-import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
