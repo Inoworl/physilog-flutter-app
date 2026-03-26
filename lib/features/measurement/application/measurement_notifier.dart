@@ -85,7 +85,12 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
 
     try {
       final now = DateTime.now();
-      final resolvedUserId = _userId ?? 'local-user';
+      if (_userId == null) {
+        state = state.copyWith(isSaving: false);
+        return null;
+      }
+
+      final resolvedUserId = _userId;
       final record = MeasurementRecord(
         id: const Uuid().v4(),
         userId: resolvedUserId,

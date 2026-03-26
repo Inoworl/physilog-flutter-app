@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:physi_log/features/records/application/record_filter_notifier.dart';
-import 'package:physi_log/features/records/data/local_record_repository.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/measurement_record.dart';
@@ -20,10 +19,6 @@ class RecordListState with _$RecordListState {
   }) = _Loaded;
   const factory RecordListState.error(String message) = _Error;
 }
-
-final recordRepositoryProvider = Provider<RecordRepository>((ref) {
-  return LocalRecordRepository();
-});
 
 final recordListNotifierProvider =
     StateNotifierProvider<RecordListNotifier, RecordListState>((ref) {

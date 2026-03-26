@@ -1,9 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:physi_log/app/app.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
+import 'package:physi_log/firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,7 @@ Future<void> main() async {
 Future<void> _initializeFirebase() async {
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(options: AppFirebaseOptions.currentPlatform);
     }
   } catch (e) {
     debugPrint('Firebase初期化をスキップしました: $e');

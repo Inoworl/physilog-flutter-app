@@ -67,6 +67,7 @@ void main() {
     )..setStartPosition(const Duration(milliseconds: 500));
     final athleteNotifier = AthleteListNotifier(
       repository: _FakeAthleteRepository(),
+      recordRepository: _FakeRecordRepository(),
       userId: 'local-user',
     );
 
