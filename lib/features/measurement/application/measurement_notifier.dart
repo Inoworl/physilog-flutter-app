@@ -7,7 +7,6 @@ import 'package:physi_log/features/records/application/record_list_notifier.dart
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
-import 'package:physi_log/providers/repository_providers.dart';
 
 class MeasurementNotifier extends StateNotifier<MeasurementState> {
   MeasurementNotifier({
@@ -86,7 +85,12 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
 
     try {
       final now = DateTime.now();
-      final resolvedUserId = _userId ?? 'local-user';
+      if (_userId == null) {
+        state = state.copyWith(isSaving: false);
+        return null;
+      }
+
+      final resolvedUserId = _userId;
       final record = MeasurementRecord(
         id: const Uuid().v4(),
         userId: resolvedUserId,

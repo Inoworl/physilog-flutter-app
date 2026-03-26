@@ -3,7 +3,6 @@ import 'package:physi_log/app/overrides/in_memory_athlete_repository.dart';
 import 'package:physi_log/app/overrides/in_memory_record_repository.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/providers/app_providers.dart';
-import 'package:physi_log/providers/repository_providers.dart';
 
 List<Override> mockAppOverrides() {
   return [

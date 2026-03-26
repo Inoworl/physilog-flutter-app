@@ -8,7 +8,6 @@ import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
-import 'package:physi_log/providers/repository_providers.dart';
 
 class _FakeRecordRepository implements RecordRepository {
   final List<MeasurementRecord> savedRecords = [];

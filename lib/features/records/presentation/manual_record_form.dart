@@ -7,7 +7,6 @@ import 'package:physi_log/features/records/application/record_list_notifier.dart
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
-import 'package:physi_log/providers/repository_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
 
@@ -73,7 +72,14 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
 
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final userId = ref.read(currentUserIdProvider) ?? 'local-user';
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Firebase認証待機中です。少し待って再実行してください。')),
+      );
+      return;
+    }
+
     final selectedAthlete = _findSelectedAthlete(athletes);
     if (selectedAthlete == null) {
       messenger.showSnackBar(const SnackBar(content: Text('選手を選択してください')));
