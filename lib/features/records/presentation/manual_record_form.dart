@@ -7,6 +7,7 @@ import 'package:physi_log/features/records/application/record_list_notifier.dart
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
+import 'package:physi_log/providers/repository_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
 

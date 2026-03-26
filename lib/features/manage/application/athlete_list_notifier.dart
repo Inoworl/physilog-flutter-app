@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:physi_log/features/manage/data/local_athlete_repository.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/providers/app_providers.dart';
+import 'package:physi_log/providers/repository_providers.dart';
 import 'package:uuid/uuid.dart';
 
 part 'athlete_list_notifier.freezed.dart';
@@ -15,10 +15,6 @@ class AthleteListState with _$AthleteListState {
       _Loaded;
   const factory AthleteListState.error(String message) = _Error;
 }
-
-final athleteRepositoryProvider = Provider<AthleteRepository>((ref) {
-  return LocalAthleteRepository();
-});
 
 final athleteListNotifierProvider =
     StateNotifierProvider<AthleteListNotifier, AthleteListState>((ref) {
