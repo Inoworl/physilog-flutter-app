@@ -37,7 +37,7 @@ void main() {
     );
     notifier.setStartPosition(const Duration(seconds: 1));
     notifier.setEndPosition(const Duration(seconds: 2));
-    notifier.setAthleteName('テスト選手');
+    notifier.setAthlete(athleteId: 'athlete-1', athleteName: 'テスト選手');
     notifier.setEventType('30m走');
 
     final result = await notifier.saveRecord(videoPath: '/tmp/test.mp4');
@@ -48,6 +48,7 @@ void main() {
     expect(saved.length, 1);
     expect(saved.single.userId, 'local-user');
     expect(saved.single.athleteName, 'テスト選手');
+    expect(saved.single.athleteId, 'athlete-1');
   });
 
   test('saveRecord成功時にonRecordSavedが呼ばれる', () async {
@@ -62,7 +63,7 @@ void main() {
     );
     notifier.setStartPosition(const Duration(milliseconds: 500));
     notifier.setEndPosition(const Duration(milliseconds: 1500));
-    notifier.setAthleteName('テスト選手');
+    notifier.setAthlete(athleteId: 'athlete-1', athleteName: 'テスト選手');
     notifier.setEventType('50m走');
 
     final result = await notifier.saveRecord(videoPath: '/tmp/test.mp4');

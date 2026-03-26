@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
@@ -49,14 +52,53 @@ class _FakeRecordRepository implements RecordRepository {
   }
 }
 
+class _FakeAthleteRepository implements AthleteRepository {
+  _FakeAthleteRepository(this._athletes);
+
+  final List<Athlete> _athletes;
+
+  @override
+  Future<void> deleteAthlete(String id) async {
+    _athletes.removeWhere((athlete) => athlete.id == id);
+  }
+
+  @override
+  Future<List<Athlete>> getAthletes({required String userId}) async {
+    return _athletes.where((athlete) => athlete.userId == userId).toList();
+  }
+
+  @override
+  Future<void> saveAthlete(Athlete athlete) async {
+    _athletes.add(athlete);
+  }
+
+  @override
+  Future<void> updateAthlete(Athlete athlete) async {
+    final index = _athletes.indexWhere((item) => item.id == athlete.id);
+    if (index >= 0) {
+      _athletes[index] = athlete;
+    }
+  }
+}
+
 void main() {
   testWidgets('手動記録フォーム送信で記録が保存される', (tester) async {
     final fakeRepository = _FakeRecordRepository();
+    final fakeAthleteRepository = _FakeAthleteRepository([
+      Athlete(
+        id: 'athlete-1',
+        userId: 'test-user-id',
+        name: '山田太郎',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ]);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           recordRepositoryProvider.overrideWithValue(fakeRepository),
+          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
           currentUserIdProvider.overrideWithValue('test-user-id'),
         ],
         child: MaterialApp(
@@ -77,7 +119,14 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.widgetWithText(TextFormField, '選手名'), '山田太郎');
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
+        break;
+      }
+    }
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+
     await tester.enterText(find.widgetWithText(TextFormField, '種目'), '50m走');
     await tester.enterText(
       find.widgetWithText(TextFormField, 'タイム（秒）'),
@@ -85,18 +134,21 @@ void main() {
     );
     await tester.enterText(find.widgetWithText(TextFormField, 'メモ'), 'テストメモ');
 
+    final formList = find.byType(ListView).last;
+    for (var i = 0; i < 8; i++) {
+      await tester.drag(formList, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
+
     final submitButton = find.widgetWithText(FilledButton, '記録する');
-    await tester.dragUntilVisible(
-      submitButton,
-      find.byType(ListView).last,
-      const Offset(0, -200),
-    );
+    expect(submitButton, findsOneWidget);
     await tester.tap(submitButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(fakeRepository.savedRecords.length, 1);
     final saved = fakeRepository.savedRecords.single;
     expect(saved.userId, 'test-user-id');
+    expect(saved.athleteId, 'athlete-1');
     expect(saved.athleteName, '山田太郎');
     expect(saved.eventType, '50m走');
     expect(saved.durationMs, 12340);

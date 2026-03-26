@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
@@ -23,6 +25,9 @@ class MeasurementScreen extends ConsumerStatefulWidget {
 }
 
 class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
+  final TransformationController _videoZoomController =
+      TransformationController();
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +38,12 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
             .initializeVideo(widget.videoPath!);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _videoZoomController.dispose();
+    super.dispose();
   }
 
   InputDecoration _filledDecoration(
@@ -53,6 +64,11 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
   Widget build(BuildContext context) {
     final videoState = ref.watch(videoPlayerProvider);
     final measureState = ref.watch(measurementProvider);
+    final athleteState = ref.watch(athleteListNotifierProvider);
+    final List<Athlete> athletes = athleteState.maybeWhen(
+      loaded: (athletes) => athletes,
+      orElse: () => const <Athlete>[],
+    );
     final theme = Theme.of(context);
 
     final frameDuration = Duration(
@@ -61,6 +77,20 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     final hasVideo = videoState.isInitialized && videoState.controller != null;
     final hasPositions =
         measureState.startPosition != null || measureState.endPosition != null;
+    final selectedAthleteId =
+        athletes.any((athlete) => athlete.id == measureState.athleteId)
+        ? measureState.athleteId
+        : null;
+    if (athletes.isNotEmpty &&
+        (measureState.athleteId == null || measureState.athleteName.isEmpty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final selected = athletes.first;
+        ref
+            .read(measurementProvider.notifier)
+            .setAthlete(athleteId: selected.id, athleteName: selected.name);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -101,6 +131,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                               controller: videoState.controller,
                               isInitialized: videoState.isInitialized,
                               isPlaying: videoState.isPlaying,
+                              transformationController: _videoZoomController,
                               onTap: () => ref
                                   .read(videoPlayerProvider.notifier)
                                   .togglePlay(),
@@ -109,6 +140,25 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         if (hasVideo) ...[
+                          Row(
+                            children: [
+                              Text(
+                                'ピンチで拡大縮小',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  _videoZoomController.value =
+                                      Matrix4.identity();
+                                },
+                                icon: const Icon(Icons.fit_screen, size: 16),
+                                label: const Text('リセット'),
+                              ),
+                            ],
+                          ),
                           // シークスライダー
                           Slider(
                             value: videoState.currentPosition.inMilliseconds
@@ -323,16 +373,49 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                           }).toList(),
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        TextField(
-                          decoration: _filledDecoration(
-                            '選手名',
-                            icon: Icons.person,
+                        if (athletes.isEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '選手が登録されていません。管理タブから選手を追加してください。',
+                              style: theme.textTheme.bodyMedium,
+                            ),
                           ),
-                          maxLength: AppConstants.maxAthleteNameLength,
-                          onChanged: (value) => ref
-                              .read(measurementProvider.notifier)
-                              .setAthleteName(value),
-                        ),
+                        ] else ...[
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(selectedAthleteId),
+                            decoration: _filledDecoration(
+                              '選手',
+                              icon: Icons.person,
+                            ),
+                            initialValue: selectedAthleteId,
+                            items: athletes
+                                .map(
+                                  (athlete) => DropdownMenuItem<String>(
+                                    value: athlete.id,
+                                    child: Text(athlete.name),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              final selected = athletes.firstWhere(
+                                (athlete) => athlete.id == value,
+                              );
+                              ref
+                                  .read(measurementProvider.notifier)
+                                  .setAthlete(
+                                    athleteId: selected.id,
+                                    athleteName: selected.name,
+                                  );
+                            },
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.md),
                         Autocomplete<String>(
                           optionsBuilder: (textEditingValue) {
@@ -412,6 +495,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                   onPressed:
                                       measureState.isSaving ||
                                           measureState.calculatedTime == null ||
+                                          athletes.isEmpty ||
+                                          measureState.athleteId == null ||
                                           measureState.athleteName.isEmpty ||
                                           measureState.eventType.isEmpty
                                       ? null

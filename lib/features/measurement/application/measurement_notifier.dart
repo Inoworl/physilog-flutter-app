@@ -49,8 +49,12 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
     state = state.copyWith(fps: fps);
   }
 
+  void setAthlete({required String athleteId, required String athleteName}) {
+    state = state.copyWith(athleteId: athleteId, athleteName: athleteName);
+  }
+
   void setAthleteName(String name) {
-    state = state.copyWith(athleteName: name);
+    state = state.copyWith(athleteId: null, athleteName: name);
   }
 
   void setEventType(String type) {
@@ -85,6 +89,7 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
       final record = MeasurementRecord(
         id: const Uuid().v4(),
         userId: resolvedUserId,
+        athleteId: state.athleteId,
         athleteName: state.athleteName,
         eventType: state.eventType,
         startMs: start.inMilliseconds,

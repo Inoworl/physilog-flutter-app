@@ -2,7 +2,6 @@ class AppConstants {
   AppConstants._();
 
   // 動画制限
-  static const maxVideoDurationSeconds = 30;
   static const compressedVideoWidth = 720;
   static const compressedVideoFps = 30;
 

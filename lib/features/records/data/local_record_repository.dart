@@ -72,6 +72,9 @@ class LocalRecordRepository implements RecordRepository {
     RecordFilter filter,
   ) {
     return records.where((r) {
+      if (filter.athleteId != null && filter.athleteId!.isNotEmpty) {
+        if (r.athleteId != filter.athleteId) return false;
+      }
       if (filter.athleteName != null && filter.athleteName!.isNotEmpty) {
         if (!r.athleteName.contains(filter.athleteName!)) return false;
       }

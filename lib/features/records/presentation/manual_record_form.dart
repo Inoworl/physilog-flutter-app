@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
@@ -25,16 +27,15 @@ class ManualRecordForm extends ConsumerStatefulWidget {
 
 class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   final _formKey = GlobalKey<FormState>();
-  final _athleteNameController = TextEditingController();
   final _eventTypeController = TextEditingController();
   final _timeController = TextEditingController();
   final _memoController = TextEditingController();
   DateTime _measuredDate = DateTime.now();
+  String? _selectedAthleteId;
   bool _isSaving = false;
 
   @override
   void dispose() {
-    _athleteNameController.dispose();
     _eventTypeController.dispose();
     _timeController.dispose();
     _memoController.dispose();
@@ -53,13 +54,31 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     }
   }
 
-  Future<void> _submit() async {
+  Athlete? _findSelectedAthlete(List<Athlete> athletes) {
+    final selectedId = _selectedAthleteId;
+    if (selectedId == null) return null;
+
+    for (final athlete in athletes) {
+      if (athlete.id == selectedId) {
+        return athlete;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _submit(List<Athlete> athletes) async {
     if (!_formKey.currentState!.validate()) return;
     if (_isSaving) return;
 
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final userId = ref.read(currentUserIdProvider) ?? 'local-user';
+    final selectedAthlete = _findSelectedAthlete(athletes);
+    if (selectedAthlete == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('選手を選択してください')));
+      return;
+    }
+
     final seconds = double.parse(
       _timeController.text.trim().replaceAll(',', '.'),
     );
@@ -82,7 +101,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       final record = MeasurementRecord(
         id: const Uuid().v4(),
         userId: userId,
-        athleteName: _athleteNameController.text.trim(),
+        athleteId: selectedAthlete.id,
+        athleteName: selectedAthlete.name,
         eventType: _eventTypeController.text.trim(),
         startMs: 0,
         endMs: durationMs,
@@ -113,6 +133,15 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd');
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final athleteState = ref.watch(athleteListNotifierProvider);
+    final athletes = athleteState.maybeWhen(
+      loaded: (athletes) => athletes,
+      orElse: () => const <Athlete>[],
+    );
+
+    if (_selectedAthleteId == null && athletes.isNotEmpty) {
+      _selectedAthleteId = athletes.first.id;
+    }
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
@@ -147,28 +176,43 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 Text('手動記録', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.xl),
 
-                // 選手名
-                TextFormField(
-                  controller: _athleteNameController,
-                  decoration: const InputDecoration(
-                    labelText: '選手名',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
+                if (athletes.isEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('選手が未登録です。管理タブで選手を登録してください。'),
                   ),
-                  maxLength: AppConstants.maxAthleteNameLength,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '選手名を入力してください';
-                    }
-                    if (value.length > AppConstants.maxAthleteNameLength) {
-                      return '${AppConstants.maxAthleteNameLength}文字以内で入力してください';
-                    }
-                    return null;
-                  },
-                ),
+                ] else ...[
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(_selectedAthleteId),
+                    initialValue: _selectedAthleteId,
+                    decoration: const InputDecoration(
+                      labelText: '選手',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                    items: athletes
+                        .map(
+                          (athlete) => DropdownMenuItem<String>(
+                            value: athlete.id,
+                            child: Text(athlete.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedAthleteId = value);
+                    },
+                    validator: (value) => value == null ? '選手を選択してください' : null,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
 
-                // 種目
                 TextFormField(
                   controller: _eventTypeController,
                   decoration: const InputDecoration(
@@ -187,7 +231,6 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                // タイム
                 TextFormField(
                   controller: _timeController,
                   decoration: const InputDecoration(
@@ -217,7 +260,6 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                // 測定日
                 OutlinedButton.icon(
                   onPressed: _selectDate,
                   icon: const Icon(Icons.calendar_today),
@@ -225,7 +267,6 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                // メモ
                 TextFormField(
                   controller: _memoController,
                   decoration: const InputDecoration(
@@ -245,9 +286,10 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
-                // 記録ボタン
                 FilledButton(
-                  onPressed: _isSaving ? null : _submit,
+                  onPressed: _isSaving || athletes.isEmpty
+                      ? null
+                      : () => _submit(athletes),
                   child: _isSaving
                       ? const SizedBox(
                           height: 20,

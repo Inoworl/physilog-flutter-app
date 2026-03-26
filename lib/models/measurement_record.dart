@@ -11,6 +11,7 @@ class MeasurementRecord with _$MeasurementRecord {
   const factory MeasurementRecord({
     required String id,
     required String userId,
+    String? athleteId,
     required String athleteName,
     required String eventType,
     required int startMs,
