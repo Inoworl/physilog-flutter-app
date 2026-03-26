@@ -1,12 +1,11 @@
-import 'package:physi_log/app/bootstrap.dart';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:physi_log/app/overrides/mock_app_overrides.dart';
+import 'package:physi_log/app/physi_log_root.dart';
 
 Future<void> main() async {
-  await bootstrapApp(
-    AppBootstrapConfig(
-      overrides: mockAppOverrides(),
-      initializeFirebase: false,
-      ensureAnonymousSignIn: false,
-    ),
-  );
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+
+  runApp(PhysiLogRoot(overrides: mockAppOverrides()));
 }
