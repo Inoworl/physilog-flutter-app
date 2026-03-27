@@ -17,11 +17,10 @@ Future<void> main() async {
 Future<void> _initializeFirebase() async {
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: AppFirebaseOptions.currentPlatform,
-      );
+      await Firebase.initializeApp(options: AppFirebaseOptions.currentPlatform);
     }
   } catch (e) {
+    // Firebase 設定がない環境でもローカル保存モードの起動は継続する。
     debugPrint('Firebase初期化をスキップしました: $e');
     return;
   }
