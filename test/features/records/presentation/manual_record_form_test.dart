@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
+import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
@@ -79,8 +81,37 @@ class _FakeAthleteRepository implements AthleteRepository {
   }
 }
 
+class _FakeEventRepository implements EventRepository {
+  _FakeEventRepository(this._events);
+
+  final List<Event> _events;
+
+  @override
+  Future<void> deleteEvent(String id) async {
+    _events.removeWhere((event) => event.id == id);
+  }
+
+  @override
+  Future<List<Event>> getEvents({required String userId}) async {
+    return _events.where((event) => event.userId == userId).toList();
+  }
+
+  @override
+  Future<void> saveEvent(Event event) async {
+    _events.add(event);
+  }
+
+  @override
+  Future<void> updateEvent(Event event) async {
+    final index = _events.indexWhere((item) => item.id == event.id);
+    if (index >= 0) {
+      _events[index] = event;
+    }
+  }
+}
+
 void main() {
-  testWidgets('手動記録フォーム送信で記録が保存される', (tester) async {
+  testWidgets('手動記録フォーム送信で値と単位つきの記録が保存される', (tester) async {
     final fakeRepository = _FakeRecordRepository();
     final fakeAthleteRepository = _FakeAthleteRepository([
       Athlete(
@@ -91,12 +122,22 @@ void main() {
         updatedAt: DateTime(2026, 1, 1),
       ),
     ]);
+    final fakeEventRepository = _FakeEventRepository([
+      Event(
+        id: 'event-1',
+        userId: 'test-user-id',
+        name: '50m走',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ]);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           recordRepositoryProvider.overrideWithValue(fakeRepository),
           athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
+          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
           currentUserIdProvider.overrideWithValue('test-user-id'),
         ],
         child: MaterialApp(
@@ -123,13 +164,12 @@ void main() {
         break;
       }
     }
-    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(2));
 
-    await tester.enterText(find.widgetWithText(TextFormField, '種目'), '50m走');
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'タイム（秒）'),
-      '12.34',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '15');
+    await tester.enterText(find.widgetWithText(TextFormField, '単位'), '回');
+    await tester.drag(find.byType(ListView).last, const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'メモ'), 'テストメモ');
 
     final formList = find.byType(ListView).last;
@@ -149,9 +189,12 @@ void main() {
     expect(saved.athleteId, 'athlete-1');
     expect(saved.athleteName, '山田太郎');
     expect(saved.eventType, '50m走');
-    expect(saved.durationMs, 12340);
+    expect(saved.recordValue, 15);
+    expect(saved.recordUnit, '回');
+    expect(saved.formattedRecordValue, '15回');
+    expect(saved.durationMs, 0);
     expect(saved.startMs, 0);
-    expect(saved.endMs, 12340);
+    expect(saved.endMs, 0);
     expect(saved.memo, 'テストメモ');
   });
 }

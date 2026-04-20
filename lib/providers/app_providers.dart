@@ -2,8 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
 import 'package:physi_log/features/manage/data/firestore_athlete_repository.dart';
+import 'package:physi_log/features/manage/data/firestore_event_repository.dart';
 import 'package:physi_log/features/manage/data/local_athlete_repository.dart';
+import 'package:physi_log/features/manage/data/local_event_repository.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
+import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/records/data/firestore_record_repository.dart';
 import 'package:physi_log/features/records/data/local_record_repository.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
@@ -61,4 +64,11 @@ final athleteRepositoryProvider = Provider<AthleteRepository>((ref) {
     return FirestoreAthleteRepository();
   }
   return LocalAthleteRepository();
+});
+
+final eventRepositoryProvider = Provider<EventRepository>((ref) {
+  if (ref.watch(useFirestoreProvider)) {
+    return FirestoreEventRepository();
+  }
+  return LocalEventRepository();
 });

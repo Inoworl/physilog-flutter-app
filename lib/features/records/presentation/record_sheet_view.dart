@@ -135,7 +135,7 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                             label: Text('種目', style: AppTextStyles.caption),
                           ),
                           DataColumn(
-                            label: Text('タイム', style: AppTextStyles.caption),
+                            label: Text('記録', style: AppTextStyles.caption),
                             numeric: true,
                           ),
                           DataColumn(
@@ -175,7 +175,7 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                               ),
                               DataCell(
                                 Text(
-                                  record.formattedDuration,
+                                  record.formattedRecordValue,
                                   style: AppTextStyles.timeDisplaySmall
                                       .copyWith(
                                         color: theme.colorScheme.primary,

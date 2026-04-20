@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
@@ -65,9 +67,14 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     final videoState = ref.watch(videoPlayerProvider);
     final measureState = ref.watch(measurementProvider);
     final athleteState = ref.watch(athleteListNotifierProvider);
+    final eventState = ref.watch(eventListNotifierProvider);
     final List<Athlete> athletes = athleteState.maybeWhen(
       loaded: (athletes) => athletes,
       orElse: () => const <Athlete>[],
+    );
+    final List<Event> events = eventState.maybeWhen(
+      loaded: (events) => events,
+      orElse: () => const <Event>[],
     );
     final theme = Theme.of(context);
 
@@ -89,6 +96,16 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
         ref
             .read(measurementProvider.notifier)
             .setAthlete(athleteId: selected.id, athleteName: selected.name);
+      });
+    }
+    final selectedEventType =
+        events.any((event) => event.name == measureState.eventType)
+        ? measureState.eventType
+        : null;
+    if (events.isNotEmpty && measureState.eventType.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(measurementProvider.notifier).setEventType(events.first.name);
       });
     }
 
@@ -417,42 +434,43 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                           ),
                         ],
                         const SizedBox(height: AppSpacing.md),
-                        Autocomplete<String>(
-                          optionsBuilder: (textEditingValue) {
-                            if (textEditingValue.text.isEmpty) {
-                              return AppConstants.eventSuggestions;
-                            }
-                            return AppConstants.eventSuggestions.where(
-                              (option) =>
-                                  option.contains(textEditingValue.text),
-                            );
-                          },
-                          onSelected: (selection) {
-                            ref
-                                .read(measurementProvider.notifier)
-                                .setEventType(selection);
-                          },
-                          fieldViewBuilder:
-                              (
-                                context,
-                                controller,
-                                focusNode,
-                                onFieldSubmitted,
-                              ) {
-                                return TextField(
-                                  controller: controller,
-                                  focusNode: focusNode,
-                                  decoration: _filledDecoration(
-                                    '種目',
-                                    icon: Icons.flag,
+                        if (events.isEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '種目が登録されていません。管理タブから種目を追加してください。',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ] else ...[
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(selectedEventType),
+                            initialValue: selectedEventType,
+                            decoration: _filledDecoration(
+                              '種目',
+                              icon: Icons.flag,
+                            ),
+                            items: events
+                                .map(
+                                  (event) => DropdownMenuItem<String>(
+                                    value: event.name,
+                                    child: Text(event.name),
                                   ),
-                                  maxLength: AppConstants.maxEventTypeLength,
-                                  onChanged: (value) => ref
-                                      .read(measurementProvider.notifier)
-                                      .setEventType(value),
-                                );
-                              },
-                        ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              ref
+                                  .read(measurementProvider.notifier)
+                                  .setEventType(value);
+                            },
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.md),
                         TextField(
                           decoration: _filledDecoration(
@@ -496,6 +514,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                       measureState.isSaving ||
                                           measureState.calculatedTime == null ||
                                           athletes.isEmpty ||
+                                          events.isEmpty ||
                                           measureState.athleteId == null ||
                                           measureState.athleteName.isEmpty ||
                                           measureState.eventType.isEmpty

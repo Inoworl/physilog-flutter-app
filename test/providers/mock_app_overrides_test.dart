@@ -4,7 +4,7 @@ import 'package:physi_log/app/overrides/mock_app_overrides.dart';
 import 'package:physi_log/providers/app_providers.dart';
 
 void main() {
-  test('mockAppOverridesはrecord/athlete/currentUserIdを差し替える', () {
+  test('mockAppOverridesはrecord/athlete/event/currentUserIdを差し替える', () {
     final container = ProviderContainer(overrides: mockAppOverrides());
     addTearDown(container.dispose);
 
@@ -16,6 +16,10 @@ void main() {
     expect(
       container.read(athleteRepositoryProvider).runtimeType.toString(),
       'InMemoryAthleteRepository',
+    );
+    expect(
+      container.read(eventRepositoryProvider).runtimeType.toString(),
+      'InMemoryEventRepository',
     );
   });
 }
