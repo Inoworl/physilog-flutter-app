@@ -84,7 +84,7 @@ class RecordListTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        record.formattedDuration,
+                        record.formattedRecordValue,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
@@ -152,7 +152,7 @@ class _RecordSheetPreview extends StatelessWidget {
             ),
             _TableCell(record.athleteName.isEmpty ? '未登録' : record.athleteName),
             _TableCell(
-              record.formattedDuration,
+              record.formattedRecordValue,
               alignRight: true,
               isValue: true,
             ),

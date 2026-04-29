@@ -63,14 +63,14 @@ class RecordDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // タイム表示
+          // 記録表示
           Card(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
                   Text(
-                    record.formattedDuration,
+                    record.formattedRecordValue,
                     style: theme.textTheme.displaySmall?.copyWith(
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.bold,
@@ -129,17 +129,19 @@ class RecordDetailScreen extends ConsumerWidget {
           // ボトムアクション
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.pushNamed(
-                    'measurement',
-                    extra: {'recordId': record.id},
+              if (record.hasVideoReference) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.pushNamed(
+                      'measurement',
+                      extra: {'recordId': record.id},
+                    ),
+                    icon: const Icon(Icons.replay),
+                    label: const Text('再計測'),
                   ),
-                  icon: const Icon(Icons.replay),
-                  label: const Text('再計測'),
                 ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
+              ],
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => context.pushNamed(

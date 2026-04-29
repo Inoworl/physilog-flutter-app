@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
-import 'package:physi_log/features/records/application/record_list_notifier.dart';
-import 'package:physi_log/features/records/presentation/widgets/record_list_tile.dart';
-import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/records/presentation/manual_record_form.dart';
+import 'package:physi_log/models/athlete.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -23,9 +23,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xxl),
               _QuickActionsSection(),
               const SizedBox(height: AppSpacing.xxl),
-              const _RecentRecordsSection(),
-              const SizedBox(height: AppSpacing.xl),
-              const _StatsSection(),
+              const _AthleteSection(),
             ],
           ),
         ),
@@ -77,11 +75,7 @@ class _QuickActionsSection extends StatelessWidget {
           child: _QuickActionCard(
             icon: Icons.edit_note,
             label: '手動記録',
-            onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('準備中')));
-            },
+            onTap: () => ManualRecordForm.show(context),
           ),
         ),
       ],
@@ -129,45 +123,25 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-class _RecentRecordsSection extends ConsumerWidget {
-  const _RecentRecordsSection();
+class _AthleteSection extends ConsumerWidget {
+  const _AthleteSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(recordListNotifierProvider);
+    final athleteState = ref.watch(athleteListNotifierProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text('最新の記録', style: AppTextStyles.sectionTitle),
-            const Spacer(),
-            TextButton(
-              onPressed: () => context.goNamed('recordList'),
-              child: const Text('すべて見る'),
-            ),
-          ],
-        ),
+        Text('選手一覧', style: AppTextStyles.sectionTitle),
         const SizedBox(height: AppSpacing.sm),
-        state.when(
+        athleteState.when(
           loading: () => const Center(
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.xxl),
               child: CircularProgressIndicator(),
             ),
           ),
-          loaded: (records, _, __) {
-            if (records.isEmpty) {
-              return _EmptyRecordsCard();
-            }
-            final recent = records.take(3).toList();
-            return Column(
-              children: recent
-                  .map((record) => RecordListTile(record: record))
-                  .toList(),
-            );
-          },
           error: (message) => Card(
             elevation: 0,
             child: Padding(
@@ -178,13 +152,51 @@ class _RecentRecordsSection extends ConsumerWidget {
               ),
             ),
           ),
+          loaded: (athletes) {
+            if (athletes.isEmpty) {
+              return _EmptyAthleteCard();
+            }
+            return _AthleteListCard(athletes: athletes);
+          },
         ),
       ],
     );
   }
 }
 
-class _EmptyRecordsCard extends StatelessWidget {
+class _AthleteListCard extends StatelessWidget {
+  const _AthleteListCard({required this.athletes});
+
+  final List<Athlete> athletes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < athletes.length; i++) ...[
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: AppColors.primaryLight,
+                foregroundColor: Colors.white,
+                child: Text(athletes[i].name.characters.first),
+              ),
+              title: Text(athletes[i].name),
+            ),
+            if (i < athletes.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyAthleteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -197,88 +209,9 @@ class _EmptyRecordsCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Center(
           child: Text(
-            'まだ記録がありません',
+            'まだ選手が登録されていません',
             style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatsSection extends ConsumerWidget {
-  const _StatsSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(recordListNotifierProvider);
-
-    final records = state.maybeWhen(
-      loaded: (records, _, __) => records,
-      orElse: () => <MeasurementRecord>[],
-    );
-
-    final totalCount = records.length;
-    final athleteCount = records
-        .map((r) => r.athleteName)
-        .where((n) => n.isNotEmpty)
-        .toSet()
-        .length;
-    final eventCount = records
-        .map((r) => r.eventType)
-        .where((e) => e.isNotEmpty)
-        .toSet()
-        .length;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(value: '$totalCount', label: '総記録'),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatCard(value: '$athleteCount', label: '選手数'),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _StatCard(value: '$eventCount', label: '種目数'),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.lg,
-          horizontal: AppSpacing.sm,
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(label, style: AppTextStyles.caption),
-          ],
         ),
       ),
     );

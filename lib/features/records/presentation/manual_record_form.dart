@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
@@ -27,17 +29,18 @@ class ManualRecordForm extends ConsumerStatefulWidget {
 
 class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   final _formKey = GlobalKey<FormState>();
-  final _eventTypeController = TextEditingController();
-  final _timeController = TextEditingController();
+  final _recordValueController = TextEditingController();
+  final _recordUnitController = TextEditingController();
   final _memoController = TextEditingController();
   DateTime _measuredDate = DateTime.now();
   String? _selectedAthleteId;
+  String? _selectedEventName;
   bool _isSaving = false;
 
   @override
   void dispose() {
-    _eventTypeController.dispose();
-    _timeController.dispose();
+    _recordValueController.dispose();
+    _recordUnitController.dispose();
     _memoController.dispose();
     super.dispose();
   }
@@ -85,11 +88,16 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       messenger.showSnackBar(const SnackBar(content: Text('選手を選択してください')));
       return;
     }
+    if (_selectedEventName == null || _selectedEventName!.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('種目を選択してください')));
+      return;
+    }
 
-    final seconds = double.parse(
-      _timeController.text.trim().replaceAll(',', '.'),
+    final recordValue = double.parse(
+      _recordValueController.text.trim().replaceAll(',', '.'),
     );
-    final durationMs = (seconds * 1000).round();
+    final recordUnit = _recordUnitController.text.trim();
+    final durationMs = recordUnit == '秒' ? (recordValue * 1000).round() : 0;
     final now = DateTime.now();
     final measuredAt = DateTime(
       _measuredDate.year,
@@ -110,10 +118,12 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
         userId: userId,
         athleteId: selectedAthlete.id,
         athleteName: selectedAthlete.name,
-        eventType: _eventTypeController.text.trim(),
+        eventType: _selectedEventName!,
         startMs: 0,
         endMs: durationMs,
         durationMs: durationMs,
+        recordValue: recordValue,
+        recordUnit: recordUnit,
         measuredAt: measuredAt,
         memo: _memoController.text.trim(),
         createdAt: now,
@@ -141,13 +151,21 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     final dateFormat = DateFormat('yyyy/MM/dd');
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final athleteState = ref.watch(athleteListNotifierProvider);
+    final eventState = ref.watch(eventListNotifierProvider);
     final athletes = athleteState.maybeWhen(
       loaded: (athletes) => athletes,
       orElse: () => const <Athlete>[],
     );
+    final events = eventState.maybeWhen(
+      loaded: (events) => events,
+      orElse: () => const <Event>[],
+    );
 
     if (_selectedAthleteId == null && athletes.isNotEmpty) {
       _selectedAthleteId = athletes.first.id;
+    }
+    if (_selectedEventName == null && events.isNotEmpty) {
+      _selectedEventName = events.first.name;
     }
 
     return Padding(
@@ -182,7 +200,6 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 Text('手動記録', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: AppSpacing.xl),
-
                 if (athletes.isEmpty) ...[
                   Container(
                     width: double.infinity,
@@ -219,29 +236,46 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.lg),
-
-                TextFormField(
-                  controller: _eventTypeController,
-                  decoration: const InputDecoration(
-                    labelText: '種目',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.sports),
+                if (events.isEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('種目が未登録です。管理タブで種目を登録してください。'),
                   ),
-                  maxLength: AppConstants.maxEventTypeLength,
-                  validator: (value) {
-                    if (value != null &&
-                        value.length > AppConstants.maxEventTypeLength) {
-                      return '${AppConstants.maxEventTypeLength}文字以内で入力してください';
-                    }
-                    return null;
-                  },
-                ),
+                ] else ...[
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(_selectedEventName),
+                    initialValue: _selectedEventName,
+                    decoration: const InputDecoration(
+                      labelText: '種目',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.sports),
+                    ),
+                    items: events
+                        .map(
+                          (event) => DropdownMenuItem<String>(
+                            value: event.name,
+                            child: Text(event.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedEventName = value);
+                    },
+                    validator: (value) => value == null ? '種目を選択してください' : null,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
-
                 TextFormField(
-                  controller: _timeController,
+                  controller: _recordValueController,
                   decoration: const InputDecoration(
-                    labelText: 'タイム（秒）',
+                    labelText: '記録値',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.timer),
                     hintText: '例: 12.34',
@@ -251,29 +285,44 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'タイムを入力してください';
+                      return '記録値を入力してください';
                     }
                     final parsed = double.tryParse(
                       value.trim().replaceAll(',', '.'),
                     );
                     if (parsed == null) {
-                      return 'タイムは数値で入力してください';
+                      return '記録値は数値で入力してください';
                     }
                     if (parsed <= 0) {
-                      return 'タイムは0より大きい値を入力してください';
+                      return '記録値は0より大きい値を入力してください';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
-
+                TextFormField(
+                  controller: _recordUnitController,
+                  decoration: const InputDecoration(
+                    labelText: '単位',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.straighten),
+                    hintText: '例: 秒 / 回 / m / cm / kg',
+                  ),
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '単位を入力してください';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 OutlinedButton.icon(
                   onPressed: _selectDate,
                   icon: const Icon(Icons.calendar_today),
                   label: Text('測定日: ${dateFormat.format(_measuredDate)}'),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-
                 TextFormField(
                   controller: _memoController,
                   decoration: const InputDecoration(
@@ -292,9 +341,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.xl),
-
                 FilledButton(
-                  onPressed: _isSaving || athletes.isEmpty
+                  onPressed: _isSaving || athletes.isEmpty || events.isEmpty
                       ? null
                       : () => _submit(athletes),
                   child: _isSaving

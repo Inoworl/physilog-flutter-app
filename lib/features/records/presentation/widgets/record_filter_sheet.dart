@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_filter_notifier.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
-import 'package:physi_log/shared/constants/app_constants.dart';
+import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
+import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/providers/app_providers.dart';
+
+final _recordFilterSourceProvider = FutureProvider<List<MeasurementRecord>>((
+  ref,
+) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
+    return const <MeasurementRecord>[];
+  }
+  final repository = ref.watch(recordRepositoryProvider);
+  return repository.getRecords(userId: userId, limit: 1000);
+});
 
 class RecordFilterSheet extends ConsumerStatefulWidget {
   const RecordFilterSheet({super.key});
@@ -21,7 +37,7 @@ class RecordFilterSheet extends ConsumerStatefulWidget {
 }
 
 class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
-  late TextEditingController _athleteNameController;
+  String? _selectedAthleteId;
   String? _selectedEventType;
   DateTime? _dateFrom;
   DateTime? _dateTo;
@@ -31,9 +47,7 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
   void initState() {
     super.initState();
     final filter = ref.read(recordFilterNotifierProvider);
-    _athleteNameController = TextEditingController(
-      text: filter.athleteName ?? '',
-    );
+    _selectedAthleteId = filter.athleteId;
     _selectedEventType = filter.eventType;
     _dateFrom = filter.dateFrom;
     _dateTo = filter.dateTo;
@@ -41,14 +55,34 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
   }
 
   @override
-  void dispose() {
-    _athleteNameController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd');
+    final athleteState = ref.watch(athleteListNotifierProvider);
+    final eventState = ref.watch(eventListNotifierProvider);
+    final sourceState = ref.watch(_recordFilterSourceProvider);
+    final athletes = athleteState.maybeWhen(
+      loaded: (athletes) => athletes,
+      orElse: () => const <Athlete>[],
+    );
+    final events = eventState.maybeWhen(
+      loaded: (events) => events,
+      orElse: () => const <Event>[],
+    );
+    final sourceRecords = sourceState.maybeWhen(
+      data: (records) => records,
+      orElse: () => const <MeasurementRecord>[],
+    );
+    final availableEventTypes = _resolveAvailableEventTypes(
+      athletes: athletes,
+      events: events,
+      records: sourceRecords,
+      selectedAthleteId: _selectedAthleteId,
+    );
+
+    if (_selectedEventType != null &&
+        !availableEventTypes.contains(_selectedEventType)) {
+      _selectedEventType = null;
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -61,7 +95,6 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
           child: ListView(
             controller: scrollController,
             children: [
-              // ヘッダー
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -73,19 +106,33 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // 選手名
-              TextField(
-                controller: _athleteNameController,
+              DropdownButtonFormField<String>(
+                initialValue: _selectedAthleteId,
                 decoration: const InputDecoration(
-                  labelText: '選手名',
+                  labelText: '選手',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('すべて'),
+                  ),
+                  ...athletes.map(
+                    (athlete) => DropdownMenuItem<String>(
+                      value: athlete.id,
+                      child: Text(athlete.name),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedAthleteId = value;
+                    _selectedEventType = null;
+                  });
+                },
               ),
               const SizedBox(height: 16),
-
-              // 種目
               DropdownButtonFormField<String>(
                 initialValue: _selectedEventType,
                 decoration: const InputDecoration(
@@ -94,17 +141,21 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                   prefixIcon: Icon(Icons.sports),
                 ),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('すべて')),
-                  ...AppConstants.eventSuggestions.map(
-                    (e) => DropdownMenuItem(value: e, child: Text(e)),
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('すべて'),
+                  ),
+                  ...availableEventTypes.map(
+                    (eventType) => DropdownMenuItem<String>(
+                      value: eventType,
+                      child: Text(eventType),
+                    ),
                   ),
                 ],
                 onChanged: (value) =>
                     setState(() => _selectedEventType = value),
               ),
               const SizedBox(height: 16),
-
-              // 日付範囲
               Row(
                 children: [
                   Expanded(
@@ -134,8 +185,6 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // ソート順
               Text('並び順', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 8),
               Wrap(
@@ -151,14 +200,52 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-
-              // 適用ボタン
               FilledButton(onPressed: _applyFilter, child: const Text('適用')),
             ],
           ),
         );
       },
     );
+  }
+
+  List<String> _resolveAvailableEventTypes({
+    required List<Athlete> athletes,
+    required List<Event> events,
+    required List<MeasurementRecord> records,
+    required String? selectedAthleteId,
+  }) {
+    final allEventTypes = events.map((event) => event.name).toSet().toList()
+      ..sort();
+    if (selectedAthleteId == null) {
+      return allEventTypes;
+    }
+
+    String? athleteName;
+    for (final athlete in athletes) {
+      if (athlete.id == selectedAthleteId) {
+        athleteName = athlete.name;
+        break;
+      }
+    }
+
+    final eventTypes =
+        records
+            .where((record) {
+              if (record.athleteId != null && record.athleteId!.isNotEmpty) {
+                return record.athleteId == selectedAthleteId;
+              }
+              return athleteName != null && record.athleteName == athleteName;
+            })
+            .map((record) => record.eventType)
+            .where((eventType) => eventType.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    if (eventTypes.isEmpty) {
+      return allEventTypes;
+    }
+    return eventTypes;
   }
 
   Future<void> _selectDate({required bool isFrom}) async {
@@ -182,7 +269,7 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
 
   void _resetFilter() {
     setState(() {
-      _athleteNameController.clear();
+      _selectedAthleteId = null;
       _selectedEventType = null;
       _dateFrom = null;
       _dateTo = null;
@@ -192,9 +279,27 @@ class _RecordFilterSheetState extends ConsumerState<RecordFilterSheet> {
 
   void _applyFilter() {
     final notifier = ref.read(recordFilterNotifierProvider.notifier);
-    notifier.setAthleteName(
-      _athleteNameController.text.isEmpty ? null : _athleteNameController.text,
-    );
+    if (_selectedAthleteId == null) {
+      notifier.setAthleteName(null);
+    } else {
+      final athletes = ref
+          .read(athleteListNotifierProvider)
+          .maybeWhen(
+            loaded: (athletes) => athletes,
+            orElse: () => const <Athlete>[],
+          );
+      Athlete? selectedAthlete;
+      for (final athlete in athletes) {
+        if (athlete.id == _selectedAthleteId) {
+          selectedAthlete = athlete;
+          break;
+        }
+      }
+      notifier.setAthlete(
+        athleteId: _selectedAthleteId,
+        athleteName: selectedAthlete?.name,
+      );
+    }
     notifier.setEventType(_selectedEventType);
     notifier.setDateRange(_dateFrom, _dateTo);
     notifier.setSortKey(_sortKey);

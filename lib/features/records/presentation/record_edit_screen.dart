@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/models/event.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
@@ -26,8 +28,10 @@ class RecordEditScreen extends ConsumerStatefulWidget {
 class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _athleteNameController;
-  late TextEditingController _eventTypeController;
+  late TextEditingController _recordValueController;
+  late TextEditingController _recordUnitController;
   late TextEditingController _memoController;
+  String? _selectedEventType;
   bool _initialized = false;
   bool _isSaving = false;
 
@@ -35,7 +39,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   void dispose() {
     if (_initialized) {
       _athleteNameController.dispose();
-      _eventTypeController.dispose();
+      _recordValueController.dispose();
+      _recordUnitController.dispose();
       _memoController.dispose();
     }
     super.dispose();
@@ -44,8 +49,14 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   void _initControllers(MeasurementRecord record) {
     if (!_initialized) {
       _athleteNameController = TextEditingController(text: record.athleteName);
-      _eventTypeController = TextEditingController(text: record.eventType);
+      _recordValueController = TextEditingController(
+        text: record.effectiveRecordValue.toString(),
+      );
+      _recordUnitController = TextEditingController(
+        text: record.effectiveRecordUnit,
+      );
       _memoController = TextEditingController(text: record.memo);
+      _selectedEventType = record.eventType;
       _initialized = true;
     }
   }
@@ -81,13 +92,23 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
             return const ErrorState(message: '記録が見つかりません');
           }
           _initControllers(record);
-          return _buildForm(context);
+          return _buildForm(context, record);
         },
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context) {
+  Widget _buildForm(BuildContext context, MeasurementRecord record) {
+    final eventState = ref.watch(eventListNotifierProvider);
+    final eventOptions = eventState.maybeWhen(
+      loaded: (events) => _buildEventOptions(events, record.eventType),
+      orElse: () => <String>[record.eventType],
+    );
+    if (_selectedEventType != null &&
+        !eventOptions.contains(_selectedEventType)) {
+      _selectedEventType = eventOptions.isEmpty ? null : eventOptions.first;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -95,7 +116,6 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 選手名
             TextFormField(
               controller: _athleteNameController,
               decoration: const InputDecoration(
@@ -115,47 +135,73 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
               },
             ),
             const SizedBox(height: 16),
-
-            // 種目
-            Autocomplete<String>(
-              initialValue: _eventTypeController.value,
-              optionsBuilder: (textEditingValue) {
-                if (textEditingValue.text.isEmpty) {
-                  return AppConstants.eventSuggestions;
-                }
-                return AppConstants.eventSuggestions.where(
-                  (e) => e.contains(textEditingValue.text),
-                );
+            DropdownButtonFormField<String>(
+              key: ValueKey(_selectedEventType),
+              initialValue: _selectedEventType,
+              decoration: const InputDecoration(
+                labelText: '種目',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.sports),
+              ),
+              items: eventOptions
+                  .map(
+                    (eventName) => DropdownMenuItem<String>(
+                      value: eventName,
+                      child: Text(eventName),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() => _selectedEventType = value);
               },
-              fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-                // Sync with our controller
-                controller.addListener(() {
-                  _eventTypeController.text = controller.text;
-                });
-                return TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    labelText: '種目',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.sports),
-                  ),
-                  maxLength: AppConstants.maxEventTypeLength,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '種目を入力してください';
-                    }
-                    return null;
-                  },
-                );
-              },
-              onSelected: (value) {
-                _eventTypeController.text = value;
-              },
+              validator: (value) => value == null ? '種目を選択してください' : null,
             ),
             const SizedBox(height: 16),
-
-            // メモ
+            if (!record.hasVideoReference) ...[
+              TextFormField(
+                controller: _recordValueController,
+                decoration: const InputDecoration(
+                  labelText: '記録値',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.timer),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '記録値を入力してください';
+                  }
+                  final parsed = double.tryParse(
+                    value.trim().replaceAll(',', '.'),
+                  );
+                  if (parsed == null) {
+                    return '記録値は数値で入力してください';
+                  }
+                  if (parsed <= 0) {
+                    return '記録値は0より大きい値を入力してください';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _recordUnitController,
+                decoration: const InputDecoration(
+                  labelText: '単位',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.straighten),
+                ),
+                maxLength: 10,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '単位を入力してください';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
             TextFormField(
               controller: _memoController,
               decoration: const InputDecoration(
@@ -175,17 +221,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
               },
             ),
             const SizedBox(height: 24),
-
-            // 保存ボタン
             FilledButton(
-              onPressed: _isSaving
-                  ? null
-                  : () {
-                      final record = ref
-                          .read(_recordForEditProvider(widget.recordId))
-                          .valueOrNull;
-                      if (record != null) _save(record);
-                    },
+              onPressed: _isSaving ? null : () => _save(record),
               child: _isSaving
                   ? const SizedBox(
                       height: 20,
@@ -200,23 +237,47 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
     );
   }
 
+  List<String> _buildEventOptions(List<Event> events, String currentEventType) {
+    final names = events.map((event) => event.name).toList();
+    if (currentEventType.isNotEmpty && !names.contains(currentEventType)) {
+      return [currentEventType, ...names];
+    }
+    return names;
+  }
+
   Future<void> _save(MeasurementRecord record) async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedEventType == null || _selectedEventType!.isEmpty) return;
 
     setState(() => _isSaving = true);
 
     try {
+      final isManualRecord = !record.hasVideoReference;
+      final recordValue = isManualRecord
+          ? double.parse(
+              _recordValueController.text.trim().replaceAll(',', '.'),
+            )
+          : record.recordValue;
+      final recordUnit = isManualRecord
+          ? _recordUnitController.text.trim()
+          : record.recordUnit;
+      final durationMs = isManualRecord
+          ? (recordUnit == '秒' ? (recordValue! * 1000).round() : 0)
+          : record.durationMs;
       final updated = record.copyWith(
         athleteName: _athleteNameController.text.trim(),
-        eventType: _eventTypeController.text.trim(),
+        eventType: _selectedEventType!,
+        startMs: isManualRecord ? 0 : record.startMs,
+        endMs: isManualRecord ? durationMs : record.endMs,
+        durationMs: isManualRecord ? durationMs : record.durationMs,
+        recordValue: recordValue,
+        recordUnit: recordUnit,
         memo: _memoController.text.trim(),
         updatedAt: DateTime.now(),
       );
 
       final repository = ref.read(recordRepositoryProvider);
       await repository.updateRecord(updated);
-
-      // 一覧をリフレッシュ
       ref.invalidate(recordListNotifierProvider);
 
       if (mounted) {

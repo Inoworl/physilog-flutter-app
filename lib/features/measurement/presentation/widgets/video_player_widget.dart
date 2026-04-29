@@ -38,25 +38,7 @@ class VideoPlayerWidget extends StatelessWidget {
         onTap: onTap,
         child: AspectRatio(
           aspectRatio: controller!.value.aspectRatio,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              VideoPlayer(controller!),
-              if (!isPlaying)
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black26,
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    color: Colors.white,
-                    size: 48,
-                  ),
-                ),
-            ],
-          ),
+          child: VideoPlayer(controller!),
         ),
       ),
     );

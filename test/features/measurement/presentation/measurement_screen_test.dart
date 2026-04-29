@@ -4,12 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
+import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 class _FakeRecordRepository implements RecordRepository {
   @override
@@ -59,6 +62,30 @@ class _FakeAthleteRepository implements AthleteRepository {
   Future<void> updateAthlete(Athlete athlete) async {}
 }
 
+class _FakeEventRepository implements EventRepository {
+  @override
+  Future<void> deleteEvent(String id) async {}
+
+  @override
+  Future<List<Event>> getEvents({required String userId}) async {
+    return [
+      Event(
+        id: 'event-1',
+        userId: userId,
+        name: '50m走',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ];
+  }
+
+  @override
+  Future<void> saveEvent(Event event) async {}
+
+  @override
+  Future<void> updateEvent(Event event) async {}
+}
+
 void main() {
   testWidgets('続けて測定をタップすると動画取り込み画面へ遷移する', (tester) async {
     final notifier = MeasurementNotifier(
@@ -93,6 +120,7 @@ void main() {
         overrides: [
           measurementProvider.overrideWith((ref) => notifier),
           athleteListNotifierProvider.overrideWith((ref) => athleteNotifier),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),

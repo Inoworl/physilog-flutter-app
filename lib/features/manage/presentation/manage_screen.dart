@@ -3,18 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
+import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/manage/presentation/athlete_form_sheet.dart';
 import 'package:physi_log/features/manage/presentation/event_form_sheet.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/event.dart';
 
 class ManageScreen extends ConsumerWidget {
   const ManageScreen({super.key});
 
-  static const _events = ['50m走', '100m走', '立ち幅跳び', '20mシャトルラン'];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final athleteState = ref.watch(athleteListNotifierProvider);
+    final eventState = ref.watch(eventListNotifierProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -56,7 +57,28 @@ class ManageScreen extends ConsumerWidget {
                 onAdd: () => EventFormSheet.show(context),
               ),
               const SizedBox(height: 8),
-              const _EventList(events: _events),
+              eventState.when(
+                loading: () => const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+                error: (message) => Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.error_outline),
+                    title: const Text('種目データの読み込みに失敗しました'),
+                    subtitle: Text(message),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () => ref
+                          .read(eventListNotifierProvider.notifier)
+                          .refresh(),
+                    ),
+                  ),
+                ),
+                loaded: (events) => _EventList(events: events),
+              ),
             ],
           ),
         ),
@@ -129,25 +151,33 @@ class _AthleteList extends StatelessWidget {
 class _EventList extends StatelessWidget {
   const _EventList({required this.events});
 
-  final List<String> events;
+  final List<Event> events;
 
   @override
   Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return const Card(
+        child: ListTile(
+          leading: Icon(Icons.info_outline),
+          title: Text('種目データはまだありません'),
+          subtitle: Text('右上の「追加」から種目を登録できます'),
+        ),
+      );
+    }
+
     return Card(
       child: Column(
         children: [
           for (int i = 0; i < events.length; i++) ...[
             ListTile(
               leading: const Icon(Icons.directions_run),
-              title: Text(events[i], style: AppTextStyles.cardTitle),
+              title: Text(events[i].name, style: AppTextStyles.cardTitle),
               trailing: PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'edit') {
-                    EventFormSheet.show(context, name: events[i]);
+                    EventFormSheet.show(context, event: events[i]);
                   } else if (value == 'delete') {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('この機能は準備中です')));
+                    EventFormSheet.show(context, event: events[i]);
                   }
                 },
                 itemBuilder: (_) => const [
