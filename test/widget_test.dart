@@ -1,30 +1,15 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:physi_log/app/app.dart';
+import 'package:physi_log/app/overrides/mock_app_overrides.dart';
 
 void main() {
-  late Directory tempDir;
-
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    tempDir = await Directory.systemTemp.createTemp('physilog_widget_test_');
-    Hive.init(tempDir.path);
-  });
-
-  tearDownAll(() async {
-    await Hive.close();
-    if (tempDir.existsSync()) {
-      tempDir.deleteSync(recursive: true);
-    }
-  });
+  TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: App()));
+    await tester.pumpWidget(ProviderScope(overrides: mockAppOverrides(), child: const App()));
     await tester.pump();
 
     expect(find.byType(NavigationBar), findsOneWidget);

@@ -60,6 +60,7 @@ dev_dependencies:
 
   # テスト
   mocktail: ^1.0.4
+  patrol: ^4.5.0
 
 flutter:
   uses-material-design: true
