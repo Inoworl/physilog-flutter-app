@@ -10,7 +10,7 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(dataStoreModeProvider).name;
+    final mode = ref.watch(dataStoreModeProvider);
     final userId = ref.watch(currentUserIdProvider) ?? 'null';
 
     return MaterialApp.router(

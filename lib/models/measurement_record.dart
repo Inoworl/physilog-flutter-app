@@ -45,6 +45,7 @@ class MeasurementRecord with _$MeasurementRecord {
 
   Map<String, dynamic> toFirestore() {
     final json = toJson()..remove('id');
+    json.removeWhere((key, value) => value == null);
     json['measuredAt'] = Timestamp.fromDate(measuredAt);
     json['createdAt'] = Timestamp.fromDate(createdAt);
     json['updatedAt'] = Timestamp.fromDate(updatedAt);
