@@ -60,6 +60,11 @@ dev_dependencies:
 
   # テスト
   mocktail: ^1.0.4
+  image: ^4.8.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/icons/generated/
