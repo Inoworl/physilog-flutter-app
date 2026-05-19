@@ -12,14 +12,30 @@ import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
 
 class RecordSheetView extends ConsumerStatefulWidget {
-  const RecordSheetView({super.key});
+  const RecordSheetView({super.key, this.initialAthleteId});
+
+  final String? initialAthleteId;
 
   @override
   ConsumerState<RecordSheetView> createState() => _RecordSheetViewState();
 }
 
 class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
-  String? _selectedAthleteId;
+  late String? _selectedAthleteId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedAthleteId = widget.initialAthleteId;
+  }
+
+  @override
+  void didUpdateWidget(covariant RecordSheetView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialAthleteId != oldWidget.initialAthleteId) {
+      _selectedAthleteId = widget.initialAthleteId;
+    }
+  }
 
   List<MeasurementRecord> _recordsForAthlete({
     required List<MeasurementRecord> records,
@@ -40,10 +56,12 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
 
     return athleteState.when(
       loading: () => const LoadingState(message: '選手データを読み込み中...'),
-      error: (message) => ErrorState(
-        message: message,
-        onRetry: () => ref.read(athleteListNotifierProvider.notifier).refresh(),
-      ),
+      error:
+          (message) => ErrorState(
+            message: message,
+            onRetry:
+                () => ref.read(athleteListNotifierProvider.notifier).refresh(),
+          ),
       loaded: (athletes) {
         if (athletes.isEmpty) {
           return const EmptyState(
@@ -79,19 +97,23 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                     },
                   );
                 },
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: AppSpacing.sm),
+                separatorBuilder:
+                    (_, __) => const SizedBox(width: AppSpacing.sm),
                 itemCount: athletes.length,
               ),
             ),
             Expanded(
               child: recordState.when(
                 loading: () => const LoadingState(message: '記録を読み込み中...'),
-                error: (message) => ErrorState(
-                  message: message,
-                  onRetry: () =>
-                      ref.read(recordListNotifierProvider.notifier).refresh(),
-                ),
+                error:
+                    (message) => ErrorState(
+                      message: message,
+                      onRetry:
+                          () =>
+                              ref
+                                  .read(recordListNotifierProvider.notifier)
+                                  .refresh(),
+                    ),
                 loaded: (records, hasMore, isLoadingMore) {
                   final targetRecords = _recordsForAthlete(
                     records: records,
@@ -119,9 +141,8 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                         dataRowColor: WidgetStateProperty.resolveWith<Color?>((
                           states,
                         ) {
-                          final index = states.contains(WidgetState.selected)
-                              ? 0
-                              : -1;
+                          final index =
+                              states.contains(WidgetState.selected) ? 0 : -1;
                           return index >= 0 ? AppColors.tableStripe : null;
                         }),
                         columns: const [

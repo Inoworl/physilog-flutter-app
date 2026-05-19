@@ -136,22 +136,24 @@ class _AthleteSection extends ConsumerWidget {
         Text('選手一覧', style: AppTextStyles.sectionTitle),
         const SizedBox(height: AppSpacing.sm),
         athleteState.when(
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.xxl),
-              child: CircularProgressIndicator(),
-            ),
-          ),
-          error: (message) => Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Text(
-                message,
-                style: AppTextStyles.body.copyWith(color: AppColors.error),
+          loading:
+              () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.xxl),
+                  child: CircularProgressIndicator(),
+                ),
               ),
-            ),
-          ),
+          error:
+              (message) => Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Text(
+                    message,
+                    style: AppTextStyles.body.copyWith(color: AppColors.error),
+                  ),
+                ),
+              ),
           loaded: (athletes) {
             if (athletes.isEmpty) {
               return _EmptyAthleteCard();
@@ -187,6 +189,15 @@ class _AthleteListCard extends StatelessWidget {
                 child: Text(athletes[i].name.characters.first),
               ),
               title: Text(athletes[i].name),
+              trailing: const Icon(Icons.chevron_right),
+              onTap:
+                  () => context.goNamed(
+                    'recordList',
+                    queryParameters: {
+                      'view': 'sheet',
+                      'athleteId': athletes[i].id,
+                    },
+                  ),
             ),
             if (i < athletes.length - 1) const Divider(height: 1),
           ],

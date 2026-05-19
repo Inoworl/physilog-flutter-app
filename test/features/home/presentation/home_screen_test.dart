@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
+import 'package:physi_log/features/records/presentation/records_tab_screen.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
@@ -158,5 +160,75 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('手動記録'), findsAtLeastNWidgets(2));
+  });
+
+  testWidgets('Homeの選手名をタップすると対象選手の記録シートへ遷移する', (tester) async {
+    final athletes = [
+      Athlete(
+        id: 'athlete-1',
+        userId: 'test-user',
+        name: '田中太郎',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+      Athlete(
+        id: 'athlete-2',
+        userId: 'test-user',
+        name: '佐藤花子',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ];
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const HomeScreen(),
+          routes: [
+            GoRoute(
+              path: 'records',
+              name: 'recordList',
+              builder: (context, state) {
+                final view = state.uri.queryParameters['view'];
+                final initialViewMode =
+                    view == 'sheet'
+                        ? RecordsViewMode.sheet
+                        : RecordsViewMode.list;
+
+                return RecordsTabScreen(
+                  initialViewMode: initialViewMode,
+                  initialAthleteId: state.uri.queryParameters['athleteId'],
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(athletes),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('佐藤花子'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('記録'), findsOneWidget);
+    expect(find.text('シート'), findsOneWidget);
+    expect(find.text('佐藤花子の記録はまだありません'), findsOneWidget);
   });
 }
