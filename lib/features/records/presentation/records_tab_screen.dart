@@ -14,14 +14,36 @@ import 'package:physi_log/shared/widgets/loading_state.dart';
 enum RecordsViewMode { list, sheet }
 
 class RecordsTabScreen extends ConsumerStatefulWidget {
-  const RecordsTabScreen({super.key});
+  const RecordsTabScreen({
+    super.key,
+    this.initialViewMode = RecordsViewMode.list,
+    this.initialAthleteId,
+  });
+
+  final RecordsViewMode initialViewMode;
+  final String? initialAthleteId;
 
   @override
   ConsumerState<RecordsTabScreen> createState() => _RecordsTabScreenState();
 }
 
 class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
-  RecordsViewMode _viewMode = RecordsViewMode.list;
+  late RecordsViewMode _viewMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewMode = widget.initialViewMode;
+  }
+
+  @override
+  void didUpdateWidget(covariant RecordsTabScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialViewMode != oldWidget.initialViewMode ||
+        widget.initialAthleteId != oldWidget.initialAthleteId) {
+      _viewMode = widget.initialViewMode;
+    }
+  }
 
   Future<void> _refresh() async {
     await ref.read(recordListNotifierProvider.notifier).refresh();
@@ -76,12 +98,18 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _viewMode == RecordsViewMode.list
-                  ? _RecordListContent(
-                      key: const ValueKey(RecordsViewMode.list),
-                      onRefresh: _refresh,
-                    )
-                  : const RecordSheetView(key: ValueKey(RecordsViewMode.sheet)),
+              child:
+                  _viewMode == RecordsViewMode.list
+                      ? _RecordListContent(
+                        key: const ValueKey(RecordsViewMode.list),
+                        onRefresh: _refresh,
+                      )
+                      : RecordSheetView(
+                        key: ValueKey(
+                          '${RecordsViewMode.sheet.name}-${widget.initialAthleteId ?? ''}',
+                        ),
+                        initialAthleteId: widget.initialAthleteId,
+                      ),
             ),
           ),
         ],
@@ -144,8 +172,11 @@ class _RecordListContent extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.error,
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                confirmDismiss: (_) =>
-                    DeleteConfirmationDialog.show(context, record.athleteName),
+                confirmDismiss:
+                    (_) => DeleteConfirmationDialog.show(
+                      context,
+                      record.athleteName,
+                    ),
                 onDismissed: (_) {
                   ref
                       .read(recordListNotifierProvider.notifier)
