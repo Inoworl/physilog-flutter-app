@@ -35,6 +35,7 @@ platform :ios do
     tester_email = ENV["DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL"].to_s.strip
     tester_first_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME", "Test").to_s.strip
     tester_last_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME", "User").to_s.strip
+    uses_non_exempt_encryption = false
 
     if profile_base64.empty? || profile_name.empty?
       UI.user_error!("DEV_PROVISIONING_PROFILE_BASE64 and DEV_PROVISIONING_PROFILE_SPECIFIER are required")
@@ -164,7 +165,7 @@ platform :ios do
             }
           },
           changelog: localized_whats_new_ja,
-          uses_non_exempt_encryption: false,
+          uses_non_exempt_encryption: uses_non_exempt_encryption,
           skip_waiting_for_build_processing: false,
           skip_submission: false
         )
@@ -192,6 +193,7 @@ platform :ios do
           api_key: api_key,
           ipa: "./build/PhysiLog-Dev.ipa",
           app_identifier: app_identifier,
+          uses_non_exempt_encryption: uses_non_exempt_encryption,
           skip_waiting_for_build_processing: true,
           skip_submission: true
         )
