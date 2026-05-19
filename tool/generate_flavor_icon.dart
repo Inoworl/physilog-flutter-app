@@ -8,9 +8,9 @@ const _generatedIconDir = 'assets/icons/generated';
 const _badgeAlpha = 230;
 const _badgeLowerDiagonalRatio = 0.329;
 const _badgeUpperDiagonalRatio = 0.635;
-const _badgeLabelHeightRatio = 0.095;
+const _badgeLabelHeightRatio = 0.114;
 const _badgeLabelCenterXRatio = 0.79;
-const _badgeLabelCenterYRatio = 0.27;
+const _badgeLabelCenterYRatio = 0.308;
 
 const _flavors = {
   'dev': _FlavorIconConfig(label: 'DEV', color: [210, 45, 55]),
