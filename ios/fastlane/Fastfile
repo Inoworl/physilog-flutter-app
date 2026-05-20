@@ -1,5 +1,54 @@
 default_platform(:ios)
 
+def truthy_env?(name)
+  ["1", "true", "yes", "y", "on"].include?(ENV.fetch(name, "").to_s.strip.downcase)
+end
+
+def attach_build_to_edit_app_store_version(app_identifier:, build_number:, asc_key_id:, asc_issuer_id:, api_key_path:)
+  require "spaceship"
+
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+    key_id: asc_key_id,
+    issuer_id: asc_issuer_id,
+    filepath: File.expand_path(api_key_path),
+    in_house: false
+  )
+
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("App not found in App Store Connect: #{app_identifier}") unless app
+
+  app_store_version = app.get_edit_app_store_version(
+    platform: Spaceship::ConnectAPI::Platform::IOS,
+    includes: "build"
+  )
+  UI.user_error!("Editable iOS App Store version was not found for #{app_identifier}") unless app_store_version
+
+  builds = Spaceship::ConnectAPI::Build.all(
+    app_id: app.id,
+    build_number: build_number,
+    platform: Spaceship::ConnectAPI::Platform::IOS,
+    processing_states: "VALID",
+    sort: "-uploadedDate",
+    limit: 10
+  )
+  build = builds.first
+  UI.user_error!("Valid App Store candidate build #{build_number} was not found") unless build
+
+  current_build = begin
+    app_store_version.get_build
+  rescue
+    nil
+  end
+
+  if current_build&.id == build.id
+    UI.message("App Store version #{app_store_version.version_string} already uses build #{build_number}")
+    return
+  end
+
+  app_store_version.select_build(build_id: build.id)
+  UI.message("Attached build #{build_number} to App Store version #{app_store_version.version_string}")
+end
+
 platform :ios do
   ENV["FASTLANE_DISABLE_PTY"] = "1"
   ENV["FASTLANE_EXPLICIT_OPEN3"] = "1"
@@ -35,6 +84,7 @@ platform :ios do
     tester_email = ENV["DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL"].to_s.strip
     tester_first_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME", "Test").to_s.strip
     tester_last_name = ENV.fetch("DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME", "User").to_s.strip
+    attach_build_to_app_store_version = truthy_env?("DEV_ATTACH_BUILD_TO_APP_STORE_VERSION")
     uses_non_exempt_encryption = false
 
     if profile_base64.empty? || profile_name.empty?
@@ -194,8 +244,18 @@ platform :ios do
           ipa: "./build/PhysiLog-Dev.ipa",
           app_identifier: app_identifier,
           uses_non_exempt_encryption: uses_non_exempt_encryption,
-          skip_waiting_for_build_processing: true,
+          skip_waiting_for_build_processing: !attach_build_to_app_store_version,
           skip_submission: true
+        )
+      end
+
+      if attach_build_to_app_store_version
+        attach_build_to_edit_app_store_version(
+          app_identifier: app_identifier,
+          build_number: build_number,
+          asc_key_id: asc_key_id,
+          asc_issuer_id: asc_issuer_id,
+          api_key_path: api_key_path
         )
       end
     ensure

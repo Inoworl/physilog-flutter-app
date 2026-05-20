@@ -32,6 +32,11 @@ jobs:
             echo "DEV_GOOGLESERVICE_INFO_PLIST_BASE64 is empty; skip restore."
           fi
 
+      - name: Generate dev launcher icons
+        run: |
+          dart run tool/generate_flavor_icon.dart dev
+          dart run flutter_launcher_icons -f flutter_launcher_icons-dev.yaml
+
       - name: Import Code Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2
         with:
@@ -68,6 +73,7 @@ jobs:
           DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_EMAIL }}
           DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_FIRST_NAME }}
           DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME: ${{ secrets.DEV_TESTFLIGHT_EXTERNAL_TESTER_LAST_NAME }}
+          DEV_ATTACH_BUILD_TO_APP_STORE_VERSION: ${{ vars.DEV_ATTACH_BUILD_TO_APP_STORE_VERSION }}
           FASTLANE_DISABLE_PTY: 1
           FASTLANE_EXPLICIT_OPEN3: 1
           FASTLANE_DISABLE_COLORS: 1
