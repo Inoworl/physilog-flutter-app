@@ -26,6 +26,29 @@ void main() {
       }
     });
 
+    test('workflow表示名はiOSとAndroidでRelease表記に揃える', () {
+      final workflowNames = {
+        'dev iOS': '[Release] Dev iOS',
+        'dev Android': '[Release] Dev Android',
+        'prod iOS': '[Release] Prod iOS',
+        'prod Android': '[Release] Prod Android',
+      };
+
+      for (final entry in workflowNames.entries) {
+        final path =
+            entry.key == 'dev iOS'
+                ? '.github/workflows/deploy_dev_ios.yml'
+                : entry.key == 'dev Android'
+                ? '.github/workflows/deploy_dev_android.yml'
+                : entry.key == 'prod iOS'
+                ? '.github/workflows/deploy_prod_ios.yml'
+                : '.github/workflows/deploy_prod_android.yml';
+
+        final yaml = File(path).readAsStringSync();
+        expect(yaml, contains('name: "${entry.value}"'));
+      }
+    });
+
     test('Android workflowは対象flavorをビルドしてPlay internalへアップロードする', () {
       final dev =
           File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
