@@ -79,8 +79,9 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
 
     final records = await _loadAllRecords();
     if (records.isEmpty) {
-      final sorted = athletesById.values.toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
+      final sorted =
+          athletesById.values.toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
       return sorted;
     }
 
@@ -101,18 +102,6 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
           final sameNameAthlete = athletesByName[normalizedName];
           if (sameNameAthlete != null) {
             resolvedAthlete = sameNameAthlete;
-          } else {
-            final now = DateTime.now();
-            resolvedAthlete = Athlete(
-              id: recordAthleteId,
-              userId: _userId,
-              name: name,
-              createdAt: now,
-              updatedAt: now,
-            );
-            athletesById[resolvedAthlete.id] = resolvedAthlete;
-            athletesByName[normalizedName] = resolvedAthlete;
-            athletesToSave.add(resolvedAthlete);
           }
         }
       } else if (normalizedName.isNotEmpty) {
@@ -150,8 +139,8 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
       await _recordRepository.updateRecord(updatedRecord);
     }
 
-    final sorted = athletesById.values.toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final sorted =
+        athletesById.values.toList()..sort((a, b) => a.name.compareTo(b.name));
     return sorted;
   }
 

@@ -99,4 +99,54 @@ void main() {
     expect(records.single.athleteId, isNotNull);
     expect(records.single.athleteId, athletes.single.id);
   });
+
+  test('記録が紐づく選手を削除しても記録を残し一覧へ復元しない', () async {
+    final athleteRepository = LocalAthleteRepository();
+    final recordRepository = LocalRecordRepository();
+    final now = DateTime.now();
+    final athlete = Athlete(
+      id: 'athlete-1',
+      userId: 'local-user',
+      name: '花子',
+      createdAt: now,
+      updatedAt: now,
+    );
+    await athleteRepository.saveAthlete(athlete);
+    await recordRepository.saveRecord(
+      MeasurementRecord(
+        id: 'record-1',
+        userId: 'local-user',
+        athleteId: athlete.id,
+        athleteName: athlete.name,
+        eventType: '50m走',
+        startMs: 1000,
+        endMs: 2300,
+        durationMs: 1300,
+        measuredAt: now,
+        memo: '',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    final notifier = AthleteListNotifier(
+      repository: athleteRepository,
+      recordRepository: recordRepository,
+      userId: 'local-user',
+    );
+    await notifier.refresh();
+
+    await notifier.deleteAthlete(athlete.id);
+
+    final athletes = notifier.state.maybeWhen(
+      loaded: (athletes) => athletes,
+      orElse: () => <Athlete>[],
+    );
+    expect(athletes, isEmpty);
+
+    final records = await recordRepository.getRecords(userId: 'local-user');
+    expect(records, hasLength(1));
+    expect(records.single.athleteId, athlete.id);
+    expect(records.single.athleteName, athlete.name);
+  });
 }
