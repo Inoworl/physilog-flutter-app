@@ -40,38 +40,45 @@ void main() {
       }
     });
 
-    test('Android workflowは対象flavorをビルドしてFirebase App Distributionへアップロードする', () {
-      final dev =
-          File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
-      final prod =
-          File('.github/workflows/deploy_prod_android.yml').readAsStringSync();
+    test(
+      'Android workflowは対象flavorをビルドしてFirebase App Distributionへアップロードする',
+      () {
+        final dev = File(
+          '.github/workflows/deploy_dev_android.yml',
+        ).readAsStringSync();
+        final prod = File(
+          '.github/workflows/deploy_prod_android.yml',
+        ).readAsStringSync();
 
-      _expectAndroidWorkflow(
-        yaml: dev,
-        environment: 'dev',
-        flavor: 'dev',
-        firebaseConfigPath: 'android/app/src/dev/google-services.json',
-        packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
-        firebaseProjectSecret: 'DEV_FIREBASE_PROJECT_ID',
-        firebaseAppIdSecret: 'DEV_FIREBASE_ANDROID_APP_ID',
-        firebaseServiceAccountSecret: 'DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
-      );
-      _expectAndroidWorkflow(
-        yaml: prod,
-        environment: 'prod',
-        flavor: 'prod',
-        firebaseConfigPath: 'android/app/src/prod/google-services.json',
-        packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
-        firebaseProjectSecret: 'PROD_FIREBASE_PROJECT_ID',
-        firebaseAppIdSecret: 'PROD_FIREBASE_ANDROID_APP_ID',
-        firebaseServiceAccountSecret:
-            'PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
-      );
-    });
+        _expectAndroidWorkflow(
+          yaml: dev,
+          environment: 'dev',
+          flavor: 'dev',
+          firebaseConfigPath: 'android/app/src/dev/google-services.json',
+          packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
+          firebaseProjectSecret: 'DEV_FIREBASE_PROJECT_ID',
+          firebaseAppIdSecret: 'DEV_FIREBASE_ANDROID_APP_ID',
+          firebaseServiceAccountSecret:
+              'DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
+        );
+        _expectAndroidWorkflow(
+          yaml: prod,
+          environment: 'prod',
+          flavor: 'prod',
+          firebaseConfigPath: 'android/app/src/prod/google-services.json',
+          packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
+          firebaseProjectSecret: 'PROD_FIREBASE_PROJECT_ID',
+          firebaseAppIdSecret: 'PROD_FIREBASE_ANDROID_APP_ID',
+          firebaseServiceAccountSecret:
+              'PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
+        );
+      },
+    );
 
     test('本番iOS workflowは本番Secretsとfastlane prodを使う', () {
-      final yaml =
-          File('.github/workflows/deploy_prod_ios.yml').readAsStringSync();
+      final yaml = File(
+        '.github/workflows/deploy_prod_ios.yml',
+      ).readAsStringSync();
 
       expect(yaml, contains('environment: prod'));
       expect(yaml, contains('PROD_GOOGLESERVICE_INFO_PLIST_BASE64'));

@@ -192,10 +192,9 @@ void main() {
               name: 'recordList',
               builder: (context, state) {
                 final view = state.uri.queryParameters['view'];
-                final initialViewMode =
-                    view == 'sheet'
-                        ? RecordsViewMode.sheet
-                        : RecordsViewMode.list;
+                final initialViewMode = view == 'sheet'
+                    ? RecordsViewMode.sheet
+                    : RecordsViewMode.list;
 
                 return RecordsTabScreen(
                   initialViewMode: initialViewMode,

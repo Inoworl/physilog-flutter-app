@@ -98,18 +98,17 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child:
-                  _viewMode == RecordsViewMode.list
-                      ? _RecordListContent(
-                        key: const ValueKey(RecordsViewMode.list),
-                        onRefresh: _refresh,
-                      )
-                      : RecordSheetView(
-                        key: ValueKey(
-                          '${RecordsViewMode.sheet.name}-${widget.initialAthleteId ?? ''}',
-                        ),
-                        initialAthleteId: widget.initialAthleteId,
+              child: _viewMode == RecordsViewMode.list
+                  ? _RecordListContent(
+                      key: const ValueKey(RecordsViewMode.list),
+                      onRefresh: _refresh,
+                    )
+                  : RecordSheetView(
+                      key: ValueKey(
+                        '${RecordsViewMode.sheet.name}-${widget.initialAthleteId ?? ''}',
                       ),
+                      initialAthleteId: widget.initialAthleteId,
+                    ),
             ),
           ),
         ],
@@ -172,11 +171,8 @@ class _RecordListContent extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.error,
                   child: const Icon(Icons.delete, color: Colors.white),
                 ),
-                confirmDismiss:
-                    (_) => DeleteConfirmationDialog.show(
-                      context,
-                      record.athleteName,
-                    ),
+                confirmDismiss: (_) =>
+                    DeleteConfirmationDialog.show(context, record.athleteName),
                 onDismissed: (_) {
                   ref
                       .read(recordListNotifierProvider.notifier)

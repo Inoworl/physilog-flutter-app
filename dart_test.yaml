@@ -1,0 +1,16 @@
+# Dart テスト設定ファイル
+
+# デフォルトのテストタイムアウト
+timeout: 2m
+
+# CI環境での並行実行を制限
+concurrency: 4
+
+# カバレッジ設定
+coverage:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/firebase_options*.dart"
+    - "test/integration/**"
+    - "integration_test/**"
