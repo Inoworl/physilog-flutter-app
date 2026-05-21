@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('release workflows', () {
+  group('リリースworkflow', () {
     test('すべてのリリースworkflowを手動実行できる', () {
       final workflows = {
         'dev iOS': File('.github/workflows/deploy_dev_ios.yml'),
@@ -16,7 +16,7 @@ void main() {
         expect(
           entry.value.existsSync(),
           isTrue,
-          reason: '${entry.key} workflow is required',
+          reason: '${entry.key} workflowが必要です',
         );
 
         final yaml = entry.value.readAsStringSync();
