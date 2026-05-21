@@ -60,6 +60,7 @@ void main() {
           firebaseAppIdSecret: 'DEV_FIREBASE_ANDROID_APP_ID',
           firebaseServiceAccountSecret:
               'DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
+          uploadsToPlayStoreInternal: true,
         );
         _expectAndroidWorkflow(
           yaml: prod,
@@ -71,6 +72,7 @@ void main() {
           firebaseAppIdSecret: 'PROD_FIREBASE_ANDROID_APP_ID',
           firebaseServiceAccountSecret:
               'PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
+          uploadsToPlayStoreInternal: false,
         );
       },
     );
@@ -113,6 +115,7 @@ void _expectAndroidWorkflow({
   required String firebaseProjectSecret,
   required String firebaseAppIdSecret,
   required String firebaseServiceAccountSecret,
+  required bool uploadsToPlayStoreInternal,
 }) {
   expect(yaml, contains('environment: $environment'));
   expect(yaml, contains('--flavor $flavor'));
@@ -135,7 +138,23 @@ void _expectAndroidWorkflow({
   expect(yaml, contains('firebase appdistribution:distribute'));
   expect(yaml, isNot(contains('upload_to_play')));
   expect(yaml, isNot(contains('inputs.upload_to_play')));
-  expect(yaml, isNot(contains('r0adkll/upload-google-play@v1')));
-  expect(yaml, isNot(contains('track: internal')));
-  expect(yaml, isNot(contains('status: completed')));
+  if (uploadsToPlayStoreInternal) {
+    expect(yaml, contains('r0adkll/upload-google-play@v1'));
+    expect(
+      yaml,
+      contains('GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64'),
+    );
+    expect(
+      yaml,
+      contains(
+        'releaseFiles: build/app/outputs/bundle/devRelease/app-dev-release.aab',
+      ),
+    );
+    expect(yaml, contains('track: internal'));
+    expect(yaml, contains('status: completed'));
+  } else {
+    expect(yaml, isNot(contains('r0adkll/upload-google-play@v1')));
+    expect(yaml, isNot(contains('track: internal')));
+    expect(yaml, isNot(contains('status: completed')));
+  }
 }
