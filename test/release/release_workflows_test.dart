@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('release workflows', () {
-    test('all release workflows are available as manual jobs', () {
+  group('リリースworkflow', () {
+    test('すべてのリリースworkflowを手動実行できる', () {
       final workflows = {
         'dev iOS': File('.github/workflows/deploy_dev_ios.yml'),
         'dev Android': File('.github/workflows/deploy_dev_android.yml'),
@@ -16,7 +16,7 @@ void main() {
         expect(
           entry.value.existsSync(),
           isTrue,
-          reason: '${entry.key} workflow is required',
+          reason: '${entry.key} workflowが必要です',
         );
 
         final yaml = entry.value.readAsStringSync();
@@ -26,34 +26,29 @@ void main() {
       }
     });
 
-    test(
-      'Android workflows build the expected flavors and gate Play upload',
-      () {
-        final dev =
-            File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
-        final prod =
-            File(
-              '.github/workflows/deploy_prod_android.yml',
-            ).readAsStringSync();
+    test('Android workflowは対象flavorをビルドしてPlay internalへアップロードする', () {
+      final dev =
+          File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
+      final prod =
+          File('.github/workflows/deploy_prod_android.yml').readAsStringSync();
 
-        _expectAndroidWorkflow(
-          yaml: dev,
-          environment: 'dev',
-          flavor: 'dev',
-          firebaseConfigPath: 'android/app/src/dev/google-services.json',
-          packageName: 'com.physilog.physi_log.dev',
-        );
-        _expectAndroidWorkflow(
-          yaml: prod,
-          environment: 'prod',
-          flavor: 'prod',
-          firebaseConfigPath: 'android/app/src/prod/google-services.json',
-          packageName: 'com.physilog.physi_log',
-        );
-      },
-    );
+      _expectAndroidWorkflow(
+        yaml: dev,
+        environment: 'dev',
+        flavor: 'dev',
+        firebaseConfigPath: 'android/app/src/dev/google-services.json',
+        packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
+      );
+      _expectAndroidWorkflow(
+        yaml: prod,
+        environment: 'prod',
+        flavor: 'prod',
+        firebaseConfigPath: 'android/app/src/prod/google-services.json',
+        packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
+      );
+    });
 
-    test('prod iOS workflow uses prod secrets and fastlane prod', () {
+    test('本番iOS workflowは本番Secretsとfastlane prodを使う', () {
       final yaml =
           File('.github/workflows/deploy_prod_ios.yml').readAsStringSync();
 
@@ -68,7 +63,7 @@ void main() {
       expect(yaml, contains('ios-prod-ipa-'));
     });
 
-    test('Fastfile has a prod TestFlight lane', () {
+    test('Fastfileに本番TestFlight laneがある', () {
       final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(fastfile, contains('lane :prod do'));
@@ -86,12 +81,22 @@ void _expectAndroidWorkflow({
   required String environment,
   required String flavor,
   required String firebaseConfigPath,
-  required String packageName,
+  required String packageNameSecret,
 }) {
   expect(yaml, contains('environment: $environment'));
   expect(yaml, contains('--flavor $flavor'));
+  expect(
+    yaml,
+    contains('--target-platform android-arm,android-arm64,android-x64'),
+  );
+  expect(
+    yaml,
+    contains(
+      '--build-number="\${{ steps.calculate_build_number.outputs.build_number }}"',
+    ),
+  );
   expect(yaml, contains(firebaseConfigPath));
-  expect(yaml, contains(packageName));
+  expect(yaml, contains(packageNameSecret));
   expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
   expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
   expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
@@ -100,6 +105,9 @@ void _expectAndroidWorkflow({
     yaml,
     contains('GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64'),
   );
-  expect(yaml, contains("inputs.upload_to_play == 'true'"));
-  expect(yaml, contains('status: draft'));
+  expect(yaml, isNot(contains('upload_to_play')));
+  expect(yaml, isNot(contains('inputs.upload_to_play')));
+  expect(yaml, contains('r0adkll/upload-google-play@v1'));
+  expect(yaml, contains('track: internal'));
+  expect(yaml, contains('status: completed'));
 }
