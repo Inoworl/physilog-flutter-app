@@ -30,3 +30,17 @@ firebase-debug.log
 
 # AI planning artifacts (moved to symlinked external workspace)
 .ai
+
+# Local agent/browser artifacts
+.playwright-mcp/
+.serena/
+tmp/
+
+# Console verification screenshots and temporary API dumps
+apple-developer-account*.png
+asc-agreements-check.png
+asc-build-candidates-*.json
+asc-version-builds-*.json
+lakiite-build-*.png
+tax-form-current.png
+us-tax-form-detail.png
