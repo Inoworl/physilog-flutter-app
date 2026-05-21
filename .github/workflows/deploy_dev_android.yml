@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       upload_to_play:
-        description: "Upload the AAB to Google Play internal track as draft"
+        description: "人間承認後のみ true。AAB を Google Play internal track に draft としてアップロードする"
         required: true
         default: "false"
         type: choice
@@ -77,8 +77,19 @@ jobs:
       - name: Generate code (freezed/json/riverpod)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
+      - name: Calculate build number
+        id: calculate_build_number
+        run: |
+          build_number=$(date +%s)
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+
       - name: Build dev Android App Bundle
-        run: flutter build appbundle --release --flavor dev --dart-define-from-file=dart_define/dev_dart_define.json
+        run: |
+          flutter build appbundle --release \
+            --flavor dev \
+            --target-platform android-arm,android-arm64,android-x64 \
+            --dart-define-from-file=dart_define/dev_dart_define.json \
+            --build-number="${{ steps.calculate_build_number.outputs.build_number }}"
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
@@ -104,7 +115,7 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: /tmp/google_play_service_account.json
-          packageName: com.physilog.physi_log.dev
+          packageName: ${{ secrets.DEV_ANDROID_PACKAGE_NAME }}
           releaseFiles: build/app/outputs/bundle/devRelease/*.aab
           track: internal
           status: draft
