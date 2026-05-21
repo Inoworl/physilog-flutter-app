@@ -1,6 +1,6 @@
 # 署名とSecretsの一覧
 
-Issue: #26
+対象Issue: #26
 
 この一覧は、リリース署名に必要な資材と GitHub Secrets 名を記録するためのものです。
 Secret の値、秘密鍵、keystore、Provisioning Profile、p12 ファイル、p8 ファイル、サービスアカウント JSON は、この文書に貼り付けないでください。
@@ -51,7 +51,7 @@ App Store Connect 共通で必要な Secrets:
 - `PROD_PROVISIONING_PROFILE_BASE64`
 - `PROD_PROVISIONING_PROFILE_SPECIFIER`
 
-## GitHub Environments
+## GitHub Environment設定
 
 - `dev`: 作成済み。現在の iOS dev 署名 Secrets が登録されています。
 - `prod`: prod iOS または prod Android CI を実行する前に作成が必要です。
