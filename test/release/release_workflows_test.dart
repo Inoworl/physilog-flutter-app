@@ -41,14 +41,14 @@ void main() {
           environment: 'dev',
           flavor: 'dev',
           firebaseConfigPath: 'android/app/src/dev/google-services.json',
-          packageName: 'com.physilog.physi_log.dev',
+          packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
         );
         _expectAndroidWorkflow(
           yaml: prod,
           environment: 'prod',
           flavor: 'prod',
           firebaseConfigPath: 'android/app/src/prod/google-services.json',
-          packageName: 'com.physilog.physi_log',
+          packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
         );
       },
     );
@@ -86,12 +86,22 @@ void _expectAndroidWorkflow({
   required String environment,
   required String flavor,
   required String firebaseConfigPath,
-  required String packageName,
+  required String packageNameSecret,
 }) {
   expect(yaml, contains('environment: $environment'));
   expect(yaml, contains('--flavor $flavor'));
+  expect(
+    yaml,
+    contains('--target-platform android-arm,android-arm64,android-x64'),
+  );
+  expect(
+    yaml,
+    contains(
+      '--build-number="\${{ steps.calculate_build_number.outputs.build_number }}"',
+    ),
+  );
   expect(yaml, contains(firebaseConfigPath));
-  expect(yaml, contains(packageName));
+  expect(yaml, contains(packageNameSecret));
   expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
   expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
   expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
@@ -100,6 +110,7 @@ void _expectAndroidWorkflow({
     yaml,
     contains('GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64'),
   );
+  expect(yaml, contains('人間承認後のみ true'));
   expect(yaml, contains("inputs.upload_to_play == 'true'"));
   expect(yaml, contains('status: draft'));
 }
