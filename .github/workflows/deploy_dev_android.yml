@@ -59,6 +59,16 @@ jobs:
         id: calculate_build_number
         run: echo "build_number=$(date +%s)" >> "$GITHUB_OUTPUT"
 
+      - name: Build Android App Bundle
+        run: |
+          flutter build appbundle --release \
+            --flavor dev \
+            --target-platform android-arm,android-arm64,android-x64 \
+            --dart-define=FLAVOR=dev \
+            -t lib/main.dart \
+            --build-name="$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)" \
+            --build-number="${{ steps.calculate_build_number.outputs.build_number }}"
+
       - name: Build Android APK
         run: |
           flutter build apk --release \
@@ -80,6 +90,18 @@ jobs:
 
       - name: Collect release notes
         run: echo "LATEST_COMMIT_MESSAGES=$(git log -n 10 --pretty=format:'%s' | tr '\n' '; ')" >> "$GITHUB_ENV"
+
+      - name: Decode Google Play Console API Service Account Key
+        run: echo "${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/google-play-service-account.json"
+
+      - name: Deploy to Play Store Internal
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/google-play-service-account.json
+          packageName: ${{ secrets.DEV_ANDROID_PACKAGE_NAME }}
+          releaseFiles: build/app/outputs/bundle/devRelease/app-dev-release.aab
+          track: internal
+          status: completed
 
       - name: Deploy to Firebase App Distribution
         env:
