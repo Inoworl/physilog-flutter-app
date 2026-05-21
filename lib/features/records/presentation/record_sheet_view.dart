@@ -56,12 +56,10 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
 
     return athleteState.when(
       loading: () => const LoadingState(message: '選手データを読み込み中...'),
-      error:
-          (message) => ErrorState(
-            message: message,
-            onRetry:
-                () => ref.read(athleteListNotifierProvider.notifier).refresh(),
-          ),
+      error: (message) => ErrorState(
+        message: message,
+        onRetry: () => ref.read(athleteListNotifierProvider.notifier).refresh(),
+      ),
       loaded: (athletes) {
         if (athletes.isEmpty) {
           return const EmptyState(
@@ -97,23 +95,19 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                     },
                   );
                 },
-                separatorBuilder:
-                    (_, __) => const SizedBox(width: AppSpacing.sm),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.sm),
                 itemCount: athletes.length,
               ),
             ),
             Expanded(
               child: recordState.when(
                 loading: () => const LoadingState(message: '記録を読み込み中...'),
-                error:
-                    (message) => ErrorState(
-                      message: message,
-                      onRetry:
-                          () =>
-                              ref
-                                  .read(recordListNotifierProvider.notifier)
-                                  .refresh(),
-                    ),
+                error: (message) => ErrorState(
+                  message: message,
+                  onRetry: () =>
+                      ref.read(recordListNotifierProvider.notifier).refresh(),
+                ),
                 loaded: (records, hasMore, isLoadingMore) {
                   final targetRecords = _recordsForAthlete(
                     records: records,
@@ -141,8 +135,9 @@ class _RecordSheetViewState extends ConsumerState<RecordSheetView> {
                         dataRowColor: WidgetStateProperty.resolveWith<Color?>((
                           states,
                         ) {
-                          final index =
-                              states.contains(WidgetState.selected) ? 0 : -1;
+                          final index = states.contains(WidgetState.selected)
+                              ? 0
+                              : -1;
                           return index >= 0 ? AppColors.tableStripe : null;
                         }),
                         columns: const [

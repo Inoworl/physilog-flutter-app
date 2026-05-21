@@ -9,6 +9,18 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # Firebase設定ファイル（環境ごとの生成物を解析対象から外す）
+    - lib/firebase_options.dart
+    - lib/firebase_options_dev.dart
+    - lib/firebase_options_prod.dart
+    # 生成されたファイル
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    # Scripts（開発用ツール）
+    - scripts/
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
@@ -21,8 +33,39 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # 基本的なコード品質
+    prefer_single_quotes: true
+    avoid_print: false # デバッグ用にprintを許可
+
+    # 文字列とパス関連（GoRouterのパス設定エラーを防ぐ）
+    prefer_interpolation_to_compose_strings: true
+    use_string_buffers: true
+
+    # 型安全性の向上
+    always_declare_return_types: true
+    always_specify_types: false # 型推論を活用
+    avoid_dynamic_calls: true
+
+    # パフォーマンス
+    avoid_function_literals_in_foreach_calls: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+
+    # 可読性
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    sort_constructors_first: true
+    sort_unnamed_constructors_first: true
+
+    # エラー防止
+    avoid_empty_else: true
+    avoid_slow_async_io: true
+    cancel_subscriptions: true
+    close_sinks: true
+
+    # ドキュメント
+    public_member_api_docs: false # 大規模プロジェクトでは無効化
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

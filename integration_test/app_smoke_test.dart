@@ -7,9 +7,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Mock差し替えでアプリを起動できる', (tester) async {
-    await tester.pumpWidget(
-      PhysiLogRoot(overrides: mockAppOverrides()),
-    );
+    await tester.pumpWidget(PhysiLogRoot(overrides: mockAppOverrides()));
     await tester.pumpAndSettle();
 
     expect(find.text('動画計測'), findsOneWidget);
