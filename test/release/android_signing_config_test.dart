@@ -5,15 +5,21 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final gradleFile = File('android/app/build.gradle.kts');
 
-  test('release builds use the release signing config', () {
+  test('リリースビルドはrelease署名設定を使う', () {
     final content = gradleFile.readAsStringSync();
 
     expect(content, contains('create("release")'));
-    expect(content, contains('signingConfig = signingConfigs.getByName("release")'));
-    expect(content, isNot(contains('signingConfig = signingConfigs.getByName("debug")')));
+    expect(
+      content,
+      contains('signingConfig = signingConfigs.getByName("release")'),
+    );
+    expect(
+      content,
+      isNot(contains('signingConfig = signingConfigs.getByName("debug")')),
+    );
   });
 
-  test('release signing can be supplied from CI environment variables', () {
+  test('リリース署名はCI環境変数から渡せる', () {
     final content = gradleFile.readAsStringSync();
 
     expect(content, contains('ANDROID_UPLOAD_KEYSTORE_PATH'));
@@ -22,7 +28,7 @@ void main() {
     expect(content, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
   });
 
-  test('release signing can fall back to local key.properties', () {
+  test('リリース署名はローカルkey.propertiesへフォールバックできる', () {
     final content = gradleFile.readAsStringSync();
 
     expect(content, contains('key.properties'));

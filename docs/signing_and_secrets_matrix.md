@@ -1,19 +1,17 @@
-# Signing And Secrets Matrix
+# 署名とSecretsの一覧
 
 Issue: #26
 
-This matrix records required release signing assets and GitHub secret names.
-Never paste secret values, private keys, keystores, provisioning profiles, p12
-files, p8 files, or service account JSON into this document.
+この一覧は、リリース署名に必要な資材と GitHub Secrets 名を記録するためのものです。
+Secret の値、秘密鍵、keystore、Provisioning Profile、p12 ファイル、p8 ファイル、サービスアカウント JSON は、この文書に貼り付けないでください。
 
 ## Android
 
-Release signing is configured in `android/app/build.gradle.kts`.
+リリース署名は `android/app/build.gradle.kts` で設定します。
 
-The release signing config accepts CI environment variables first and falls back
-to local `android/key.properties`.
+リリース署名設定は、まず CI の環境変数を読み、未指定の場合はローカルの `android/key.properties` にフォールバックします。
 
-Expected GitHub secrets:
+必要な GitHub Secrets:
 
 - `ANDROID_UPLOAD_KEYSTORE_JKS_BASE64`
 - `ANDROID_UPLOAD_KEYSTORE_PASSWORD`
@@ -21,12 +19,12 @@ Expected GitHub secrets:
 - `ANDROID_UPLOAD_KEY_PASSWORD`
 - `GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64`
 
-Expected CI restore files:
+CI で復元するファイル:
 
 - `android/upload-keystore.jks`
 - `android/key.properties`
 
-`android/key.properties` should contain:
+`android/key.properties` には以下を設定します。
 
 ```properties
 storePassword=<secret>
@@ -37,13 +35,13 @@ storeFile=../upload-keystore.jks
 
 ## iOS
 
-Expected shared App Store Connect secrets:
+App Store Connect 共通で必要な Secrets:
 
 - `ASC_KEY_ID`
 - `ASC_ISSUER_ID`
 - `ASC_API_KEY_BASE64`
 
-Expected signing secrets:
+署名に必要な Secrets:
 
 - `IOS_CERTIFICATES_P12_BASE64`
 - `IOS_CERTIFICATES_P12_PASSWORD`
@@ -55,14 +53,14 @@ Expected signing secrets:
 
 ## GitHub Environments
 
-- `dev`: exists and has current iOS dev signing secrets.
-- `prod`: must be created before prod iOS or prod Android CI can run.
+- `dev`: 作成済み。現在の iOS dev 署名 Secrets が登録されています。
+- `prod`: prod iOS または prod Android CI を実行する前に作成が必要です。
 
-## Validation Gate
+## 検証ゲート
 
-- [ ] Android release signing does not use the debug signing config
-- [ ] Android upload key is available outside the repository
-- [ ] iOS dev provisioning profile matches `com.physilog.physiLog.dev`
-- [ ] iOS prod provisioning profile matches `com.physilog.physiLog`
-- [ ] GitHub secrets exist in the intended environment
-- [ ] No private signing asset is committed
+- [ ] Android リリース署名が debug signing config を使っていない
+- [ ] Android upload key がリポジトリ外で管理されている
+- [ ] iOS dev Provisioning Profile が `com.physilog.physiLog.dev` と一致している
+- [ ] iOS prod Provisioning Profile が `com.physilog.physiLog` と一致している
+- [ ] 必要な GitHub Secrets が対象 Environment に存在する
+- [ ] 秘密の署名資材がコミットされていない
