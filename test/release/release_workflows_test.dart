@@ -27,7 +27,7 @@ void main() {
     });
 
     test(
-      'Android workflows build the expected flavors and gate Play upload',
+      'Android workflows build the expected flavors and upload to Play internal',
       () {
         final dev =
             File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
@@ -110,7 +110,9 @@ void _expectAndroidWorkflow({
     yaml,
     contains('GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64'),
   );
-  expect(yaml, contains('人間承認後のみ true'));
-  expect(yaml, contains("inputs.upload_to_play == 'true'"));
-  expect(yaml, contains('status: draft'));
+  expect(yaml, isNot(contains('upload_to_play')));
+  expect(yaml, isNot(contains('inputs.upload_to_play')));
+  expect(yaml, contains('r0adkll/upload-google-play@v1'));
+  expect(yaml, contains('track: internal'));
+  expect(yaml, contains('status: completed'));
 }
