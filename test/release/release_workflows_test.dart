@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('release workflows', () {
-    test('all release workflows are available as manual jobs', () {
+    test('すべてのリリースworkflowを手動実行できる', () {
       final workflows = {
         'dev iOS': File('.github/workflows/deploy_dev_ios.yml'),
         'dev Android': File('.github/workflows/deploy_dev_android.yml'),
@@ -26,34 +26,29 @@ void main() {
       }
     });
 
-    test(
-      'Android workflows build the expected flavors and upload to Play internal',
-      () {
-        final dev =
-            File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
-        final prod =
-            File(
-              '.github/workflows/deploy_prod_android.yml',
-            ).readAsStringSync();
+    test('Android workflowは対象flavorをビルドしてPlay internalへアップロードする', () {
+      final dev =
+          File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
+      final prod =
+          File('.github/workflows/deploy_prod_android.yml').readAsStringSync();
 
-        _expectAndroidWorkflow(
-          yaml: dev,
-          environment: 'dev',
-          flavor: 'dev',
-          firebaseConfigPath: 'android/app/src/dev/google-services.json',
-          packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
-        );
-        _expectAndroidWorkflow(
-          yaml: prod,
-          environment: 'prod',
-          flavor: 'prod',
-          firebaseConfigPath: 'android/app/src/prod/google-services.json',
-          packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
-        );
-      },
-    );
+      _expectAndroidWorkflow(
+        yaml: dev,
+        environment: 'dev',
+        flavor: 'dev',
+        firebaseConfigPath: 'android/app/src/dev/google-services.json',
+        packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
+      );
+      _expectAndroidWorkflow(
+        yaml: prod,
+        environment: 'prod',
+        flavor: 'prod',
+        firebaseConfigPath: 'android/app/src/prod/google-services.json',
+        packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
+      );
+    });
 
-    test('prod iOS workflow uses prod secrets and fastlane prod', () {
+    test('本番iOS workflowは本番Secretsとfastlane prodを使う', () {
       final yaml =
           File('.github/workflows/deploy_prod_ios.yml').readAsStringSync();
 
@@ -68,7 +63,7 @@ void main() {
       expect(yaml, contains('ios-prod-ipa-'));
     });
 
-    test('Fastfile has a prod TestFlight lane', () {
+    test('Fastfileに本番TestFlight laneがある', () {
       final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(fastfile, contains('lane :prod do'));
