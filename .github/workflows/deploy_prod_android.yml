@@ -1,4 +1,4 @@
-name: "[リリース] 本番 Android"
+name: "[Release] Prod Android"
 
 on:
   workflow_dispatch:
@@ -18,27 +18,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: CIをセットアップ
+      - name: Setup CI
         uses: ./.github/actions/setup
 
-      - name: Javaをセットアップ
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Firebase設定を復元
+      - name: Restore Firebase config
         env:
           PROD_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.PROD_GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
           if [ -z "$PROD_GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "PROD_GOOGLE_SERVICES_JSON_BASE64 が必要です" >&2
+            echo "PROD_GOOGLE_SERVICES_JSON_BASE64 is required" >&2
             exit 1
           fi
           mkdir -p android/app/src/prod
           echo "$PROD_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/src/prod/google-services.json
 
-      - name: dart-define設定を復元
+      - name: Restore dart defines
         env:
           PROD_DART_DEFINE_JSON_BASE64: ${{ secrets.PROD_DART_DEFINE_JSON_BASE64 }}
         run: |
@@ -46,7 +46,7 @@ jobs:
             echo "$PROD_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/prod_dart_define.json
           fi
 
-      - name: Androidアップロード署名を復元
+      - name: Restore Android upload signing
         env:
           ANDROID_UPLOAD_KEYSTORE_JKS_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_JKS_BASE64 }}
           ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
@@ -54,7 +54,7 @@ jobs:
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_UPLOAD_KEYSTORE_JKS_BASE64" ] || [ -z "$ANDROID_UPLOAD_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_UPLOAD_KEY_ALIAS" ] || [ -z "$ANDROID_UPLOAD_KEY_PASSWORD" ]; then
-            echo "Androidアップロード署名のSecretsが必要です" >&2
+            echo "Android upload signing secrets are required" >&2
             exit 1
           fi
           echo "$ANDROID_UPLOAD_KEYSTORE_JKS_BASE64" | base64 --decode > android/upload-keystore.jks
@@ -65,17 +65,17 @@ jobs:
             echo "keyPassword=$ANDROID_UPLOAD_KEY_PASSWORD"
           } > android/key.properties
 
-      - name: コード生成（freezed/json/riverpod）
+      - name: Generate code (freezed/json/riverpod)
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
-      - name: ビルド番号を計算
+      - name: Calculate build number
         id: calculate_build_number
         run: |
           total_commits=$(git rev-list --count HEAD)
           build_number=$((total_commits + 10000))
           echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
 
-      - name: 本番Android App Bundleをビルド
+      - name: Build prod Android App Bundle
         run: |
           flutter build appbundle --release \
             --flavor prod \
@@ -83,7 +83,7 @@ jobs:
             --dart-define-from-file=dart_define/prod_dart_define.json \
             --build-number="${{ steps.calculate_build_number.outputs.build_number }}"
 
-      - name: AAB成果物をアップロード
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-prod-aab-${{ github.run_id }}
@@ -91,17 +91,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Google Playサービスアカウントを復元
+      - name: Restore Google Play service account
         env:
           GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}
         run: |
           if [ -z "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" ]; then
-            echo "GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 が必要です" >&2
+            echo "GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 is required" >&2
             exit 1
           fi
           echo "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" | base64 --decode > /tmp/google_play_service_account.json
 
-      - name: 本番AABをGoogle Play internal trackへアップロード
+      - name: Upload prod AAB to Google Play internal track
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: /tmp/google_play_service_account.json
