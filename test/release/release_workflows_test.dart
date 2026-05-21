@@ -40,7 +40,7 @@ void main() {
       }
     });
 
-    test('Android workflowは対象flavorをビルドしてPlay internalへアップロードする', () {
+    test('Android workflowは対象flavorをビルドしてFirebase App Distributionへアップロードする', () {
       final dev =
           File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
       final prod =
@@ -52,6 +52,9 @@ void main() {
         flavor: 'dev',
         firebaseConfigPath: 'android/app/src/dev/google-services.json',
         packageNameSecret: 'DEV_ANDROID_PACKAGE_NAME',
+        firebaseProjectSecret: 'DEV_FIREBASE_PROJECT_ID',
+        firebaseAppIdSecret: 'DEV_FIREBASE_ANDROID_APP_ID',
+        firebaseServiceAccountSecret: 'DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
       );
       _expectAndroidWorkflow(
         yaml: prod,
@@ -59,6 +62,10 @@ void main() {
         flavor: 'prod',
         firebaseConfigPath: 'android/app/src/prod/google-services.json',
         packageNameSecret: 'PROD_ANDROID_PACKAGE_NAME',
+        firebaseProjectSecret: 'PROD_FIREBASE_PROJECT_ID',
+        firebaseAppIdSecret: 'PROD_FIREBASE_ANDROID_APP_ID',
+        firebaseServiceAccountSecret:
+            'PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
       );
     });
 
@@ -96,6 +103,9 @@ void _expectAndroidWorkflow({
   required String flavor,
   required String firebaseConfigPath,
   required String packageNameSecret,
+  required String firebaseProjectSecret,
+  required String firebaseAppIdSecret,
+  required String firebaseServiceAccountSecret,
 }) {
   expect(yaml, contains('environment: $environment'));
   expect(yaml, contains('--flavor $flavor'));
@@ -111,17 +121,14 @@ void _expectAndroidWorkflow({
   );
   expect(yaml, contains(firebaseConfigPath));
   expect(yaml, contains(packageNameSecret));
-  expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
-  expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
-  expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
-  expect(yaml, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
-  expect(
-    yaml,
-    contains('GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64'),
-  );
+  expect(yaml, contains(firebaseProjectSecret));
+  expect(yaml, contains(firebaseAppIdSecret));
+  expect(yaml, contains(firebaseServiceAccountSecret));
+  expect(yaml, contains('firebase apps:sdkconfig ANDROID'));
+  expect(yaml, contains('firebase appdistribution:distribute'));
   expect(yaml, isNot(contains('upload_to_play')));
   expect(yaml, isNot(contains('inputs.upload_to_play')));
-  expect(yaml, contains('r0adkll/upload-google-play@v1'));
-  expect(yaml, contains('track: internal'));
-  expect(yaml, contains('status: completed'));
+  expect(yaml, isNot(contains('r0adkll/upload-google-play@v1')));
+  expect(yaml, isNot(contains('track: internal')));
+  expect(yaml, isNot(contains('status: completed')));
 }

@@ -24,88 +24,75 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: zulu
           java-version: "17"
 
-      - name: Restore Firebase config
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+
+      - name: Restore Firebase Android config
         env:
-          PROD_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.PROD_GOOGLE_SERVICES_JSON_BASE64 }}
+          PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: ${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 }}
+          PROD_FIREBASE_PROJECT_ID: ${{ secrets.PROD_FIREBASE_PROJECT_ID }}
+          PROD_FIREBASE_ANDROID_APP_ID: ${{ secrets.PROD_FIREBASE_ANDROID_APP_ID }}
         run: |
-          if [ -z "$PROD_GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "PROD_GOOGLE_SERVICES_JSON_BASE64 is required" >&2
-            exit 1
-          fi
+          set -euo pipefail
           mkdir -p android/app/src/prod
-          echo "$PROD_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/src/prod/google-services.json
+          echo "$PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/firebase-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+          firebase apps:sdkconfig ANDROID "$PROD_FIREBASE_ANDROID_APP_ID" \
+            --project "$PROD_FIREBASE_PROJECT_ID" \
+            --out android/app/src/prod/google-services.json
 
-      - name: Restore dart defines
-        env:
-          PROD_DART_DEFINE_JSON_BASE64: ${{ secrets.PROD_DART_DEFINE_JSON_BASE64 }}
+      - name: Generate prod launcher icons
         run: |
-          if [ -n "$PROD_DART_DEFINE_JSON_BASE64" ]; then
-            echo "$PROD_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/prod_dart_define.json
-          fi
+          dart run tool/generate_flavor_icon.dart prod
+          dart run flutter_launcher_icons -f flutter_launcher_icons-prod.yaml
 
-      - name: Restore Android upload signing
-        env:
-          ANDROID_UPLOAD_KEYSTORE_JKS_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_JKS_BASE64 }}
-          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
-          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
-          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-        run: |
-          if [ -z "$ANDROID_UPLOAD_KEYSTORE_JKS_BASE64" ] || [ -z "$ANDROID_UPLOAD_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_UPLOAD_KEY_ALIAS" ] || [ -z "$ANDROID_UPLOAD_KEY_PASSWORD" ]; then
-            echo "Android upload signing secrets are required" >&2
-            exit 1
-          fi
-          echo "$ANDROID_UPLOAD_KEYSTORE_JKS_BASE64" | base64 --decode > android/upload-keystore.jks
-          {
-            echo "storeFile=upload-keystore.jks"
-            echo "storePassword=$ANDROID_UPLOAD_KEYSTORE_PASSWORD"
-            echo "keyAlias=$ANDROID_UPLOAD_KEY_ALIAS"
-            echo "keyPassword=$ANDROID_UPLOAD_KEY_PASSWORD"
-          } > android/key.properties
-
-      - name: Generate code (freezed/json/riverpod)
+      - name: Generate code
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Calculate build number
         id: calculate_build_number
-        run: |
-          total_commits=$(git rev-list --count HEAD)
-          build_number=$((total_commits + 10000))
-          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+        run: echo "build_number=$(date +%s)" >> "$GITHUB_OUTPUT"
 
-      - name: Build prod Android App Bundle
+      - name: Build Android APK
         run: |
-          flutter build appbundle --release \
+          flutter build apk --release \
             --flavor prod \
             --target-platform android-arm,android-arm64,android-x64 \
-            --dart-define-from-file=dart_define/prod_dart_define.json \
+            --dart-define=FLAVOR=prod \
+            -t lib/main.dart \
+            --build-name="$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)" \
             --build-number="${{ steps.calculate_build_number.outputs.build_number }}"
 
-      - name: Upload AAB artifact
+      - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-prod-aab-${{ github.run_id }}
-          path: build/app/outputs/bundle/prodRelease/*.aab
+          name: android-prod-apk-${{ github.run_id }}
+          path: build/app/outputs/flutter-apk/app-prod-release.apk
           if-no-files-found: error
           retention-days: 7
 
-      - name: Restore Google Play service account
-        env:
-          GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}
-        run: |
-          if [ -z "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" ]; then
-            echo "GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 is required" >&2
-            exit 1
-          fi
-          echo "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" | base64 --decode > /tmp/google_play_service_account.json
+      - name: Collect release notes
+        run: echo "LATEST_COMMIT_MESSAGES=$(git log -n 10 --pretty=format:'%s' | tr '\n' '; ')" >> "$GITHUB_ENV"
 
-      - name: Upload prod AAB to Google Play internal track
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJson: /tmp/google_play_service_account.json
-          packageName: ${{ secrets.PROD_ANDROID_PACKAGE_NAME }}
-          releaseFiles: build/app/outputs/bundle/prodRelease/*.aab
-          track: internal
-          status: completed
+      - name: Deploy to Firebase App Distribution
+        env:
+          PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: ${{ secrets.PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 }}
+          PROD_FIREBASE_PROJECT_ID: ${{ secrets.PROD_FIREBASE_PROJECT_ID }}
+          PROD_FIREBASE_ANDROID_APP_ID: ${{ secrets.PROD_FIREBASE_ANDROID_APP_ID }}
+          PROD_ANDROID_PACKAGE_NAME: ${{ secrets.PROD_ANDROID_PACKAGE_NAME }}
+        run: |
+          set -euo pipefail
+          echo "$PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/firebase-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+          firebase use --project "$PROD_FIREBASE_PROJECT_ID"
+          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-prod-release.apk \
+            --app "$PROD_FIREBASE_ANDROID_APP_ID" \
+            --groups internal-testers \
+            --release-notes "${LATEST_COMMIT_MESSAGES}"
