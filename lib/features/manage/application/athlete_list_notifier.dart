@@ -208,7 +208,8 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
   }
 
   Future<void> deleteAthlete(String athleteId) async {
-    await _repository.deleteAthlete(athleteId);
+    if (_userId == null) return;
+    await _repository.deleteAthlete(userId: _userId, id: athleteId);
     await loadAthletes();
   }
 }

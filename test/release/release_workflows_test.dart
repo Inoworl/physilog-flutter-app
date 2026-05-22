@@ -103,6 +103,30 @@ void main() {
       expect(fastfile, contains('PROD_PROVISIONING_PROFILE_BASE64'));
       expect(fastfile, contains('PROD_TESTFLIGHT_WHATS_NEW_JA'));
     });
+
+    test('リリースビルドはFirestore保存モードを有効にする', () {
+      final devAndroid = File(
+        '.github/workflows/deploy_dev_android.yml',
+      ).readAsStringSync();
+      final prodAndroid = File(
+        '.github/workflows/deploy_prod_android.yml',
+      ).readAsStringSync();
+      final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
+      final prodDartDefine = File(
+        'dart_define/prod_dart_define.json',
+      ).readAsStringSync();
+
+      expect(
+        devAndroid,
+        contains('--dart-define-from-file=dart_define/dev_dart_define.json'),
+      );
+      expect(
+        prodAndroid,
+        contains('--dart-define-from-file=dart_define/prod_dart_define.json'),
+      );
+      expect(fastfile, contains('"DATA_STORE_MODE" => "firestore"'));
+      expect(prodDartDefine, contains('"DATA_STORE_MODE": "firestore"'));
+    });
   });
 }
 

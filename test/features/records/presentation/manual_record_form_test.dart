@@ -15,12 +15,18 @@ class _FakeRecordRepository implements RecordRepository {
   final List<MeasurementRecord> savedRecords = [];
 
   @override
-  Future<void> deleteRecord(String id) async {
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {
     savedRecords.removeWhere((record) => record.id == id);
   }
 
   @override
-  Future<MeasurementRecord?> getRecord(String id) async {
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async {
     try {
       return savedRecords.firstWhere((record) => record.id == id);
     } catch (_) {
@@ -58,7 +64,10 @@ class _FakeAthleteRepository implements AthleteRepository {
   final List<Athlete> _athletes;
 
   @override
-  Future<void> deleteAthlete(String id) async {
+  Future<void> deleteAthlete({
+    required String userId,
+    required String id,
+  }) async {
     _athletes.removeWhere((athlete) => athlete.id == id);
   }
 
@@ -87,7 +96,7 @@ class _FakeEventRepository implements EventRepository {
   final List<Event> _events;
 
   @override
-  Future<void> deleteEvent(String id) async {
+  Future<void> deleteEvent({required String userId, required String id}) async {
     _events.removeWhere((event) => event.id == id);
   }
 

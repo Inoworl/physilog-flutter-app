@@ -4,6 +4,7 @@
   "ANDROID_APP_ID": "com.physilog.physi_log",
   "APP_NAME": "PhysiLog",
   "FIREBASE_OPTIONS_CLASS": "DefaultFirebaseOptions",
+  "DATA_STORE_MODE": "firestore",
   "ADMOB_IOS_APP_ID": "",
   "ADMOB_ANDROID_APP_ID": "",
   "ADMOB_IOS_BANNER_ID": "",

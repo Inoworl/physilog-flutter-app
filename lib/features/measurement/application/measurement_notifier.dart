@@ -61,6 +61,10 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
     state = state.copyWith(eventType: type);
   }
 
+  void setEvent({required String eventId, required String eventName}) {
+    state = state.copyWith(eventId: eventId, eventType: eventName);
+  }
+
   void setMemo(String memo) {
     state = state.copyWith(memo: memo);
   }
@@ -95,6 +99,7 @@ class MeasurementNotifier extends StateNotifier<MeasurementState> {
         id: const Uuid().v4(),
         userId: resolvedUserId,
         athleteId: state.athleteId,
+        eventId: state.eventId ?? state.eventType,
         athleteName: state.athleteName,
         eventType: state.eventType,
         startMs: start.inMilliseconds,

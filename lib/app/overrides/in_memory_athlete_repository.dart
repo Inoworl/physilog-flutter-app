@@ -8,7 +8,10 @@ class InMemoryAthleteRepository implements AthleteRepository {
   final List<Athlete> _athletes;
 
   @override
-  Future<void> deleteAthlete(String id) async {
+  Future<void> deleteAthlete({
+    required String userId,
+    required String id,
+  }) async {
     _athletes.removeWhere((athlete) => athlete.id == id);
   }
 

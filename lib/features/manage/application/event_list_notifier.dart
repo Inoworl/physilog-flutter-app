@@ -96,7 +96,8 @@ class EventListNotifier extends StateNotifier<EventListState> {
   }
 
   Future<void> deleteEvent(String eventId) async {
-    await _repository.deleteEvent(eventId);
+    if (_userId == null) return;
+    await _repository.deleteEvent(userId: _userId, id: eventId);
     await loadEvents();
   }
 }

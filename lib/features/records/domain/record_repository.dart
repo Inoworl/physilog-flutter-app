@@ -10,11 +10,14 @@ abstract class RecordRepository {
     MeasurementRecord? lastRecord,
   });
 
-  Future<MeasurementRecord?> getRecord(String id);
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  });
 
   Future<void> saveRecord(MeasurementRecord record);
 
   Future<void> updateRecord(MeasurementRecord record);
 
-  Future<void> deleteRecord(String id);
+  Future<void> deleteRecord({required String userId, required String id});
 }
