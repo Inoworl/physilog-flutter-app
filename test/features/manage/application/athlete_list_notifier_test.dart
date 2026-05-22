@@ -59,6 +59,29 @@ void main() {
     expect(loaded.single.userId, 'local-user');
   });
 
+  test('選手を追加すると年齢も保持される', () async {
+    final athleteRepository = LocalAthleteRepository();
+    final recordRepository = LocalRecordRepository();
+    final notifier = AthleteListNotifier(
+      repository: athleteRepository,
+      recordRepository: recordRepository,
+      userId: 'local-user',
+    );
+
+    await notifier.addAthlete('太郎', age: 12);
+
+    final loaded = notifier.state.maybeWhen(
+      loaded: (athletes) => athletes,
+      orElse: () => null,
+    );
+
+    expect(loaded, isNotNull);
+    expect(loaded!.single.age, 12);
+
+    final saved = await athleteRepository.getAthletes(userId: 'local-user');
+    expect(saved.single.age, 12);
+  });
+
   test('既存記録から選手一覧を自動補完しathleteIdを補完する', () async {
     final athleteRepository = LocalAthleteRepository();
     final recordRepository = LocalRecordRepository();

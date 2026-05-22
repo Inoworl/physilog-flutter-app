@@ -35,7 +35,9 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.athlete?.name);
-    _ageController = TextEditingController();
+    _ageController = TextEditingController(
+      text: widget.athlete?.age?.toString(),
+    );
   }
 
   @override
@@ -51,6 +53,8 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final name = _nameController.text.trim();
+    final ageText = _ageController.text.trim();
+    final age = ageText.isEmpty ? null : int.tryParse(ageText);
 
     if (name.isEmpty) {
       messenger.showSnackBar(const SnackBar(content: Text('選手名を入力してください')));
@@ -58,10 +62,14 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
     }
     if (name.length > AppConstants.maxAthleteNameLength) {
       messenger.showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('${AppConstants.maxAthleteNameLength}文字以内で入力してください'),
         ),
       );
+      return;
+    }
+    if (ageText.isNotEmpty && age == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('年齢は数値で入力してください')));
       return;
     }
 
@@ -71,9 +79,11 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
       if (_isEditing) {
         await ref
             .read(athleteListNotifierProvider.notifier)
-            .updateAthlete(athleteId: widget.athlete!.id, name: name);
+            .updateAthlete(athleteId: widget.athlete!.id, name: name, age: age);
       } else {
-        await ref.read(athleteListNotifierProvider.notifier).addAthlete(name);
+        await ref
+            .read(athleteListNotifierProvider.notifier)
+            .addAthlete(name, age: age);
       }
       ref.invalidate(recordListNotifierProvider);
       if (!mounted) return;

@@ -32,14 +32,20 @@ void main() {
       id: 'athlete-1',
       userId: 'user-1',
       name: '山田太郎',
+      age: 12,
       createdAt: now,
       updatedAt: now,
     );
 
     final data = athlete.toFirestore();
 
-    expect(data.keys, unorderedEquals(['name', 'createdAt', 'updatedAt']));
+    expect(
+      data.keys,
+      unorderedEquals(['name', 'age', 'deletedAt', 'createdAt', 'updatedAt']),
+    );
     expect(data['name'], '山田太郎');
+    expect(data['age'], 12);
+    expect(data['deletedAt'], isNull);
     expect(data['createdAt'], isA<Timestamp>());
     expect(data['updatedAt'], isA<Timestamp>());
   });
