@@ -162,6 +162,19 @@ void main() {
       expect(yaml, contains('android/upload-keystore.jks'));
       expect(yaml, contains('storeFile=../upload-keystore.jks'));
     });
+
+    test('PRテンプレートはmerge前の実機確認を要求する', () {
+      final template = File('.github/PULL_REQUEST_TEMPLATE.md');
+
+      expect(template.existsSync(), isTrue);
+
+      final markdown = template.readAsStringSync();
+      expect(markdown, contains('実機確認'));
+      expect(markdown, contains('Firebase App Distribution'));
+      expect(markdown, contains('Play Store Internal'));
+      expect(markdown, contains('選手一覧'));
+      expect(markdown, contains('Firestore index'));
+    });
   });
 }
 
