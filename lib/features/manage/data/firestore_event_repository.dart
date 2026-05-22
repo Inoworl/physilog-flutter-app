@@ -9,7 +9,7 @@ class FirestoreEventRepository implements EventRepository {
   final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> _collection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('種目');
+    return _firestore.collection('users').doc(userId).collection('events');
   }
 
   @override

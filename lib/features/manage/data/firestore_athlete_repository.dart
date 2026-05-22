@@ -9,7 +9,7 @@ class FirestoreAthleteRepository implements AthleteRepository {
   final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> _collection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('選手');
+    return _firestore.collection('users').doc(userId).collection('athletes');
   }
 
   @override
