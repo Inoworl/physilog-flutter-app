@@ -58,11 +58,19 @@ void main() {
 
     expect(
       data.keys,
-      unorderedEquals(['name', 'unit', 'sortOrder', 'createdAt', 'updatedAt']),
+      unorderedEquals([
+        'name',
+        'unit',
+        'sortOrder',
+        'deletedAt',
+        'createdAt',
+        'updatedAt',
+      ]),
     );
     expect(data['name'], '100m');
     expect(data['unit'], '秒');
     expect(data['sortOrder'], 0);
+    expect(data['deletedAt'], isNull);
   });
 
   test('記録は日付・選手・種目を参照しsnapshotを持つ形でFirestoreへ保存する', () {
