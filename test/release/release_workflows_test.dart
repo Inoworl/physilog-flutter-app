@@ -127,6 +127,41 @@ void main() {
       expect(fastfile, contains('"DATA_STORE_MODE" => "firestore"'));
       expect(prodDartDefine, contains('"DATA_STORE_MODE": "firestore"'));
     });
+
+    test('Android releaseビルドはdebug署名ではなくupload key署名を使う', () {
+      final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+
+      expect(gradle, contains('create("release")'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEYSTORE_PATH'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEY_ALIAS'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
+      expect(
+        gradle,
+        contains('signingConfig = signingConfigs.getByName("release")'),
+      );
+      expect(
+        gradle,
+        isNot(contains('signingConfig = signingConfigs.getByName("debug")')),
+      );
+    });
+
+    test('dev Android workflowはupload keyを復元してAABとAPKを署名する', () {
+      final yaml = File(
+        '.github/workflows/deploy_dev_android.yml',
+      ).readAsStringSync();
+
+      expect(yaml, contains('Validate Android signing secrets'));
+      expect(yaml, contains('Restore Android signing keystore'));
+      expect(yaml, contains('Create Android key.properties'));
+      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
+      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
+      expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
+      expect(yaml, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
+      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PATH'));
+      expect(yaml, contains('android/upload-keystore.jks'));
+      expect(yaml, contains('storeFile=../upload-keystore.jks'));
+    });
   });
 }
 
