@@ -9,12 +9,14 @@ class FirestoreAthleteRepository implements AthleteRepository {
   final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> _collection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('athletes');
+    return _firestore.collection('users').doc(userId).collection('選手');
   }
 
   @override
   Future<List<Athlete>> getAthletes({required String userId}) async {
-    final snapshot = await _collection(userId).orderBy('name').get();
+    final snapshot = await _collection(
+      userId,
+    ).where('deletedAt', isNull: true).orderBy('name').get();
     return snapshot.docs.map((doc) => Athlete.fromFirestore(doc)).toList();
   }
 
@@ -33,15 +35,13 @@ class FirestoreAthleteRepository implements AthleteRepository {
   }
 
   @override
-  Future<void> deleteAthlete(String id) async {
-    final snapshot = await _firestore
-        .collectionGroup('athletes')
-        .where(FieldPath.documentId, isEqualTo: id)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) {
-      return;
-    }
-    await snapshot.docs.first.reference.delete();
+  Future<void> deleteAthlete({
+    required String userId,
+    required String id,
+  }) async {
+    await _collection(userId).doc(id).update({
+      'deletedAt': Timestamp.fromDate(DateTime.now()),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
   }
 }

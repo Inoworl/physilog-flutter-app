@@ -34,7 +34,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   final _memoController = TextEditingController();
   DateTime _measuredDate = DateTime.now();
   String? _selectedAthleteId;
-  String? _selectedEventName;
+  String? _selectedEventId;
   bool _isSaving = false;
 
   @override
@@ -69,7 +69,19 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     return null;
   }
 
-  Future<void> _submit(List<Athlete> athletes) async {
+  Event? _findSelectedEvent(List<Event> events) {
+    final selectedId = _selectedEventId;
+    if (selectedId == null) return null;
+
+    for (final event in events) {
+      if (event.id == selectedId) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _submit(List<Athlete> athletes, List<Event> events) async {
     if (!_formKey.currentState!.validate()) return;
     if (_isSaving) return;
 
@@ -88,7 +100,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       messenger.showSnackBar(const SnackBar(content: Text('選手を選択してください')));
       return;
     }
-    if (_selectedEventName == null || _selectedEventName!.isEmpty) {
+    final selectedEvent = _findSelectedEvent(events);
+    if (selectedEvent == null) {
       messenger.showSnackBar(const SnackBar(content: Text('種目を選択してください')));
       return;
     }
@@ -117,8 +130,9 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
         id: const Uuid().v4(),
         userId: userId,
         athleteId: selectedAthlete.id,
+        eventId: selectedEvent.id,
         athleteName: selectedAthlete.name,
-        eventType: _selectedEventName!,
+        eventType: selectedEvent.name,
         startMs: 0,
         endMs: durationMs,
         durationMs: durationMs,
@@ -164,8 +178,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     if (_selectedAthleteId == null && athletes.isNotEmpty) {
       _selectedAthleteId = athletes.first.id;
     }
-    if (_selectedEventName == null && events.isNotEmpty) {
-      _selectedEventName = events.first.name;
+    if (_selectedEventId == null && events.isNotEmpty) {
+      _selectedEventId = events.first.id;
     }
 
     return Padding(
@@ -250,8 +264,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   ),
                 ] else ...[
                   DropdownButtonFormField<String>(
-                    key: ValueKey(_selectedEventName),
-                    initialValue: _selectedEventName,
+                    key: ValueKey(_selectedEventId),
+                    initialValue: _selectedEventId,
                     decoration: const InputDecoration(
                       labelText: '種目',
                       border: OutlineInputBorder(),
@@ -260,13 +274,13 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                     items: events
                         .map(
                           (event) => DropdownMenuItem<String>(
-                            value: event.name,
+                            value: event.id,
                             child: Text(event.name),
                           ),
                         )
                         .toList(),
                     onChanged: (value) {
-                      setState(() => _selectedEventName = value);
+                      setState(() => _selectedEventId = value);
                     },
                     validator: (value) => value == null ? '種目を選択してください' : null,
                   ),
@@ -344,7 +358,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 FilledButton(
                   onPressed: _isSaving || athletes.isEmpty || events.isEmpty
                       ? null
-                      : () => _submit(athletes),
+                      : () => _submit(athletes, events),
                   child: _isSaving
                       ? const SizedBox(
                           height: 20,

@@ -11,6 +11,7 @@ class MeasurementState with _$MeasurementState {
     @Default(60.0) double fps,
     String? athleteId,
     @Default('') String athleteName,
+    String? eventId,
     @Default('') String eventType,
     @Default('') String memo,
     @Default(false) bool isSaving,

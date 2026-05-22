@@ -42,11 +42,16 @@ class LocalRecordRepository implements RecordRepository {
   }
 
   @override
-  Future<MeasurementRecord?> getRecord(String id) async {
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async {
     final b = await box;
     final data = b.get(id);
     if (data == null) return null;
-    return MeasurementRecord.fromJson(Map<String, dynamic>.from(data));
+    final record = MeasurementRecord.fromJson(Map<String, dynamic>.from(data));
+    if (record.userId != userId) return null;
+    return record;
   }
 
   @override
@@ -62,7 +67,10 @@ class LocalRecordRepository implements RecordRepository {
   }
 
   @override
-  Future<void> deleteRecord(String id) async {
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {
     final b = await box;
     await b.delete(id);
   }

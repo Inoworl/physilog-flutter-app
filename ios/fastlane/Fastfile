@@ -1,5 +1,12 @@
 default_platform(:ios)
 
+def flutter_dart_defines(values)
+  require "base64"
+  values.map do |key, value|
+    Base64.strict_encode64("#{key}=#{value}")
+  end.join(",")
+end
+
 platform :ios do
   ENV["FASTLANE_DISABLE_PTY"] = "1"
   ENV["FASTLANE_EXPLICIT_OPEN3"] = "1"
@@ -107,6 +114,10 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
+      dart_defines = flutter_dart_defines({
+        "FLAVOR" => "development",
+        "DATA_STORE_MODE" => "firestore"
+      })
 
       sh "cd .. && flutter pub get"
       sh "pod install"
@@ -122,7 +133,7 @@ platform :ios do
         suppress_xcode_output: false,
         buildlog_path: "./build/logs",
         clean: true,
-        xcargs: "DEVELOPMENT_TEAM=#{team_id} FLUTTER_BUILD_NUMBER=#{build_number}",
+        xcargs: "DEVELOPMENT_TEAM=#{team_id} FLUTTER_BUILD_NUMBER=#{build_number} DART_DEFINES=#{dart_defines}",
         export_options: {
           method: "app-store",
           teamID: team_id,
@@ -265,6 +276,10 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
+      dart_defines = flutter_dart_defines({
+        "FLAVOR" => "production",
+        "DATA_STORE_MODE" => "firestore"
+      })
 
       sh "cd .. && flutter pub get"
       sh "pod install"
@@ -280,7 +295,7 @@ platform :ios do
         suppress_xcode_output: false,
         buildlog_path: "./build/logs",
         clean: true,
-        xcargs: "DEVELOPMENT_TEAM=#{team_id} FLUTTER_BUILD_NUMBER=#{build_number}",
+        xcargs: "DEVELOPMENT_TEAM=#{team_id} FLUTTER_BUILD_NUMBER=#{build_number} DART_DEFINES=#{dart_defines}",
         export_options: {
           method: "app-store",
           teamID: team_id,

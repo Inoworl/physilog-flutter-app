@@ -64,7 +64,7 @@ jobs:
           flutter build apk --release \
             --flavor prod \
             --target-platform android-arm,android-arm64,android-x64 \
-            --dart-define=FLAVOR=prod \
+            --dart-define-from-file=dart_define/prod_dart_define.json \
             -t lib/main.dart \
             --build-name="$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)" \
             --build-number="${{ steps.calculate_build_number.outputs.build_number }}"

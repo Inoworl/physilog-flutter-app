@@ -35,7 +35,7 @@ class LocalEventRepository implements EventRepository {
   }
 
   @override
-  Future<void> deleteEvent(String id) async {
+  Future<void> deleteEvent({required String userId, required String id}) async {
     final b = await box;
     await b.delete(id);
   }

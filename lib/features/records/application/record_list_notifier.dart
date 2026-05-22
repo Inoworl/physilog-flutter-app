@@ -90,8 +90,9 @@ class RecordListNotifier extends StateNotifier<RecordListState> {
   }
 
   Future<void> deleteRecord(String id) async {
+    if (_userId == null) return;
     try {
-      await _repository.deleteRecord(id);
+      await _repository.deleteRecord(userId: _userId, id: id);
       final current = state;
       if (current is _Loaded) {
         final updated = current.records.where((r) => r.id != id).toList();

@@ -35,7 +35,10 @@ class LocalAthleteRepository implements AthleteRepository {
   }
 
   @override
-  Future<void> deleteAthlete(String id) async {
+  Future<void> deleteAthlete({
+    required String userId,
+    required String id,
+  }) async {
     final b = await box;
     await b.delete(id);
   }
