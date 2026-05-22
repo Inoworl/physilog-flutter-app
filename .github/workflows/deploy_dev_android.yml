@@ -92,7 +92,15 @@ jobs:
         run: echo "LATEST_COMMIT_MESSAGES=$(git log -n 10 --pretty=format:'%s' | tr '\n' '; ')" >> "$GITHUB_ENV"
 
       - name: Decode Google Play Console API Service Account Key
-        run: echo "${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/google-play-service-account.json"
+        env:
+          GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64: ${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" ]; then
+            echo "Google Play Console API Service Account Key is required for dev Android Play Store deployment." >&2
+            exit 1
+          fi
+          echo "$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/google-play-service-account.json"
 
       - name: Deploy to Play Store Internal
         uses: r0adkll/upload-google-play@v1

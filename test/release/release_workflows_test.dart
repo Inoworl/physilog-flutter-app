@@ -171,6 +171,23 @@ void _expectAndroidWorkflow({
     expect(
       yaml,
       contains(
+        'GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64: '
+        '\${{ secrets.GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64 }}',
+      ),
+    );
+    expect(
+      yaml,
+      contains(
+        'if [ -z "\$GOOGLE_PLAY_CONSOLE_API_SERVICE_ACCOUNT_KEY_JSON_BASE64" ]; then',
+      ),
+    );
+    expect(
+      yaml,
+      contains('Google Play Console API Service Account Key is required'),
+    );
+    expect(
+      yaml,
+      contains(
         'releaseFiles: build/app/outputs/bundle/devRelease/app-dev-release.aab',
       ),
     );
