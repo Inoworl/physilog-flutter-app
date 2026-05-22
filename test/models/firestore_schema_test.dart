@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/models/athlete.dart';
@@ -5,6 +7,25 @@ import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 
 void main() {
+  test('Firestore repositoryは英語collection名を使う', () {
+    final athleteRepository = File(
+      'lib/features/manage/data/firestore_athlete_repository.dart',
+    ).readAsStringSync();
+    final eventRepository = File(
+      'lib/features/manage/data/firestore_event_repository.dart',
+    ).readAsStringSync();
+    final recordRepository = File(
+      'lib/features/records/data/firestore_record_repository.dart',
+    ).readAsStringSync();
+
+    expect(athleteRepository, contains("collection('athletes')"));
+    expect(eventRepository, contains("collection('events')"));
+    expect(recordRepository, contains("collection('records')"));
+    expect(athleteRepository, isNot(contains("collection('選手')")));
+    expect(eventRepository, isNot(contains("collection('種目')")));
+    expect(recordRepository, isNot(contains("collection('記録')")));
+  });
+
   test('選手はusers/{uid}/選手配下のRulesに合う形でFirestoreへ保存する', () {
     final now = DateTime(2026, 5, 22, 10);
     final athlete = Athlete(

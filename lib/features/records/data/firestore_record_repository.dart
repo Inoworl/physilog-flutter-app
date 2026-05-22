@@ -10,7 +10,7 @@ class FirestoreRecordRepository implements RecordRepository {
   final FirebaseFirestore _firestore;
 
   CollectionReference<Map<String, dynamic>> _collection(String userId) {
-    return _firestore.collection('users').doc(userId).collection('記録');
+    return _firestore.collection('users').doc(userId).collection('records');
   }
 
   @override
