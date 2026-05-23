@@ -10,6 +10,7 @@ class Athlete with _$Athlete {
     required String id,
     required String userId,
     required String name,
+    int? age,
     String? note,
     DateTime? deletedAt,
     required DateTime createdAt,
@@ -39,8 +40,9 @@ class Athlete with _$Athlete {
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
+      if (age != null) 'age': age,
       if (note != null) 'note': note,
-      if (deletedAt != null) 'deletedAt': Timestamp.fromDate(deletedAt!),
+      'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
