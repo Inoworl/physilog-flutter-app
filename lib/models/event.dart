@@ -41,7 +41,7 @@ class Event with _$Event {
       'name': name,
       'unit': unit,
       'sortOrder': sortOrder,
-      if (deletedAt != null) 'deletedAt': Timestamp.fromDate(deletedAt!),
+      'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
