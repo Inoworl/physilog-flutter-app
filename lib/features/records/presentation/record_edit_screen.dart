@@ -6,6 +6,7 @@ import 'package:physi_log/features/records/application/record_list_notifier.dart
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/models/record_value_input.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
@@ -31,7 +32,6 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _athleteNameController;
   late TextEditingController _recordValueController;
-  late TextEditingController _recordUnitController;
   late TextEditingController _memoController;
   String? _selectedEventType;
   bool _initialized = false;
@@ -42,7 +42,6 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
     if (_initialized) {
       _athleteNameController.dispose();
       _recordValueController.dispose();
-      _recordUnitController.dispose();
       _memoController.dispose();
     }
     super.dispose();
@@ -52,10 +51,7 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
     if (!_initialized) {
       _athleteNameController = TextEditingController(text: record.athleteName);
       _recordValueController = TextEditingController(
-        text: record.effectiveRecordValue.toString(),
-      );
-      _recordUnitController = TextEditingController(
-        text: record.effectiveRecordUnit,
+        text: record.recordValueInputText,
       );
       _memoController = TextEditingController(text: record.memo);
       _selectedEventType = record.eventType;
@@ -166,40 +162,19 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
                   labelText: '記録値',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.timer),
+                  hintText: '例: 12.34秒 / 15回 / 5m',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+                keyboardType: TextInputType.text,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '記録値を入力してください';
+                  final parsed = RecordValueInput.parse(value ?? '');
+                  switch (parsed) {
+                    case EmptyRecordValueInput():
+                      return '記録値を入力してください';
+                    case InvalidRecordValueInput():
+                      return parsed.validationMessage;
+                    case ValidRecordValueInput():
+                      return null;
                   }
-                  final parsed = double.tryParse(
-                    value.trim().replaceAll(',', '.'),
-                  );
-                  if (parsed == null) {
-                    return '記録値は数値で入力してください';
-                  }
-                  if (parsed <= 0) {
-                    return '記録値は0より大きい値を入力してください';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _recordUnitController,
-                decoration: const InputDecoration(
-                  labelText: '単位',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.straighten),
-                ),
-                maxLength: 10,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '単位を入力してください';
-                  }
-                  return null;
                 },
               ),
               const SizedBox(height: 16),
@@ -255,13 +230,17 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
 
     try {
       final isManualRecord = !record.hasVideoReference;
+      final parsedRecordValue = isManualRecord
+          ? RecordValueInput.parse(_recordValueController.text)
+          : null;
+      if (isManualRecord && parsedRecordValue is! ValidRecordValueInput) {
+        return;
+      }
       final recordValue = isManualRecord
-          ? double.parse(
-              _recordValueController.text.trim().replaceAll(',', '.'),
-            )
+          ? parsedRecordValue!.recordValue
           : record.recordValue;
       final recordUnit = isManualRecord
-          ? _recordUnitController.text.trim()
+          ? parsedRecordValue!.recordUnit
           : record.recordUnit;
       final durationMs = isManualRecord
           ? (recordUnit == '秒' ? (recordValue! * 1000).round() : 0)

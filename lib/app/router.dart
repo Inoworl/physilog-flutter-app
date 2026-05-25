@@ -6,6 +6,8 @@ import 'package:physi_log/features/measurement/presentation/measurement_screen.d
 import 'package:physi_log/features/records/presentation/record_detail_screen.dart';
 import 'package:physi_log/features/records/presentation/record_edit_screen.dart';
 import 'package:physi_log/features/records/presentation/records_tab_screen.dart';
+import 'package:physi_log/features/settings/presentation/settings_screen.dart';
+import 'package:physi_log/features/settings/presentation/settings_web_view_screen.dart';
 import 'package:physi_log/features/video_import/presentation/video_import_screen.dart';
 import 'package:physi_log/shared/widgets/app_bottom_nav_shell.dart';
 
@@ -46,17 +48,7 @@ final router = GoRouter(
             ),
           ],
         ),
-        // Branch 1: 計測（動画取り込み）
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/import',
-              name: 'videoImport',
-              builder: (context, state) => const VideoImportScreen(),
-            ),
-          ],
-        ),
-        // Branch 2: 記録
+        // Branch 1: 記録
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -76,7 +68,7 @@ final router = GoRouter(
             ),
           ],
         ),
-        // Branch 3: 管理
+        // Branch 2: 管理
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -90,6 +82,20 @@ final router = GoRouter(
     ),
     // タブ外のルート（フルスクリーン遷移・スライドアニメーション）
     GoRoute(
+      path: '/import',
+      name: 'videoImport',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const VideoImportScreen(),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+    ),
+    GoRoute(
       path: '/measure',
       name: 'measurement',
       parentNavigatorKey: _rootNavigatorKey,
@@ -100,6 +106,37 @@ final router = GoRouter(
           child: MeasurementScreen(
             videoPath: extra?['videoPath'] as String?,
             existingRecordId: extra?['recordId'] as String?,
+          ),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/settings/help',
+      name: 'settingsHelp',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: SettingsWebViewScreen(
+            title: state.uri.queryParameters['title'] ?? 'ヘルプ',
+            url: state.uri.queryParameters['url'] ?? 'https://example.com',
           ),
           transitionsBuilder: _slideFromRight,
           transitionDuration: const Duration(milliseconds: 300),

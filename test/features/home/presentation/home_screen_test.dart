@@ -125,7 +125,7 @@ class _FakeRecordRepository implements RecordRepository {
 }
 
 void main() {
-  testWidgets('Homeは選手一覧を表示し手動記録を開ける', (tester) async {
+  testWidgets('Homeは選手一覧を表示し手入力で記録追加を開ける', (tester) async {
     final athletes = [
       Athlete(
         id: 'athlete-1',
@@ -165,10 +165,89 @@ void main() {
     expect(find.text('最新の記録'), findsNothing);
     expect(find.text('総記録'), findsNothing);
 
-    await tester.tap(find.text('手動記録'));
+    expect(find.text('動画から計測を開始'), findsOneWidget);
+    expect(find.text('手入力で追加'), findsOneWidget);
+    expect(find.byTooltip('設定'), findsOneWidget);
+
+    await tester.tap(find.text('手入力で追加'));
     await tester.pumpAndSettle();
 
-    expect(find.text('手動記録'), findsAtLeastNWidgets(2));
+    expect(find.text('手動記録'), findsOneWidget);
+  });
+
+  testWidgets('Homeの設定ボタンから設定画面へ遷移できる', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const HomeScreen(),
+          routes: [
+            GoRoute(
+              path: 'settings',
+              name: 'settings',
+              builder: (context, state) => const Scaffold(body: Text('設定画面')),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('設定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('設定画面'), findsOneWidget);
+  });
+
+  testWidgets('Homeの動画開始ボタンから動画取り込み画面へ遷移できる', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/import',
+          name: 'videoImport',
+          builder: (context, state) => const Scaffold(body: Text('動画取り込み画面')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('動画から計測を開始'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('動画取り込み画面'), findsOneWidget);
   });
 
   testWidgets('Homeの選手名をタップすると対象選手の記録シートへ遷移する', (tester) async {

@@ -58,7 +58,7 @@ class MeasurementRecord with _$MeasurementRecord {
 
   Map<String, dynamic> toFirestore() {
     final value = effectiveRecordValue;
-    final unit = effectiveRecordUnit;
+    final unit = hasRecordValue ? recordUnit?.trim() : effectiveRecordUnit;
     return {
       'athleteId': athleteId ?? '',
       'eventId': eventId ?? eventType,
@@ -81,10 +81,7 @@ class MeasurementRecord with _$MeasurementRecord {
 
   bool get hasVideoReference => videoRef != null && videoRef!.trim().isNotEmpty;
 
-  bool get hasRecordValue =>
-      recordValue != null &&
-      recordUnit != null &&
-      recordUnit!.trim().isNotEmpty;
+  bool get hasRecordValue => recordValue != null;
 
   double get effectiveRecordValue {
     if (hasRecordValue) {
@@ -95,7 +92,7 @@ class MeasurementRecord with _$MeasurementRecord {
 
   String get effectiveRecordUnit {
     if (hasRecordValue) {
-      return recordUnit!.trim();
+      return recordUnit?.trim() ?? '';
     }
     return '秒';
   }
@@ -106,6 +103,11 @@ class MeasurementRecord with _$MeasurementRecord {
         ? value.toStringAsFixed(0)
         : value.toStringAsFixed(2);
     return '$display$effectiveRecordUnit';
+  }
+
+  String get recordValueInputText {
+    if (!hasRecordValue) return '';
+    return formattedRecordValue;
   }
 
   String get formattedDuration {

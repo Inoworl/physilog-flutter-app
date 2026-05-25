@@ -8,6 +8,7 @@ import 'package:physi_log/features/records/application/record_list_notifier.dart
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/models/record_value_input.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
@@ -30,7 +31,6 @@ class ManualRecordForm extends ConsumerStatefulWidget {
 class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   final _formKey = GlobalKey<FormState>();
   final _recordValueController = TextEditingController();
-  final _recordUnitController = TextEditingController();
   final _memoController = TextEditingController();
   DateTime _measuredDate = DateTime.now();
   String? _selectedAthleteId;
@@ -40,7 +40,6 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   @override
   void dispose() {
     _recordValueController.dispose();
-    _recordUnitController.dispose();
     _memoController.dispose();
     super.dispose();
   }
@@ -106,11 +105,13 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       return;
     }
 
-    final recordValue = double.parse(
-      _recordValueController.text.trim().replaceAll(',', '.'),
+    final parsedRecordValue = RecordValueInput.parse(
+      _recordValueController.text,
     );
-    final recordUnit = _recordUnitController.text.trim();
-    final durationMs = recordUnit == '秒' ? (recordValue * 1000).round() : 0;
+    if (parsedRecordValue is! ValidRecordValueInput) return;
+    final durationMs = parsedRecordValue.recordUnit == '秒'
+        ? (parsedRecordValue.recordValue * 1000).round()
+        : 0;
     final now = DateTime.now();
     final measuredAt = DateTime(
       _measuredDate.year,
@@ -136,8 +137,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
         startMs: 0,
         endMs: durationMs,
         durationMs: durationMs,
-        recordValue: recordValue,
-        recordUnit: recordUnit,
+        recordValue: parsedRecordValue.recordValue,
+        recordUnit: parsedRecordValue.recordUnit,
         measuredAt: measuredAt,
         memo: _memoController.text.trim(),
         createdAt: now,
@@ -292,42 +293,19 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                     labelText: '記録値',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.timer),
-                    hintText: '例: 12.34',
+                    hintText: '例: 12.34秒 / 15回 / 5m',
                   ),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  keyboardType: TextInputType.text,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '記録値を入力してください';
+                    final parsed = RecordValueInput.parse(value ?? '');
+                    switch (parsed) {
+                      case EmptyRecordValueInput():
+                        return '記録値を入力してください';
+                      case InvalidRecordValueInput():
+                        return parsed.validationMessage;
+                      case ValidRecordValueInput():
+                        return null;
                     }
-                    final parsed = double.tryParse(
-                      value.trim().replaceAll(',', '.'),
-                    );
-                    if (parsed == null) {
-                      return '記録値は数値で入力してください';
-                    }
-                    if (parsed <= 0) {
-                      return '記録値は0より大きい値を入力してください';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _recordUnitController,
-                  decoration: const InputDecoration(
-                    labelText: '単位',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.straighten),
-                    hintText: '例: 秒 / 回 / m / cm / kg',
-                  ),
-                  maxLength: 10,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '単位を入力してください';
-                    }
-                    return null;
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
