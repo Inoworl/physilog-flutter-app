@@ -192,6 +192,7 @@ void main() {
       expect(yaml, contains('pages: write'));
       expect(yaml, contains('id-token: write'));
       expect(yaml, contains('actions/configure-pages@v5'));
+      expect(yaml, contains('enablement: true'));
       expect(yaml, contains('actions/upload-pages-artifact@v3'));
       expect(yaml, contains('actions/deploy-pages@v4'));
       expect(yaml, contains('path: docs/pages'));
