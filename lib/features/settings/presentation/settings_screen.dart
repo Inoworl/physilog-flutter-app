@@ -3,9 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 
-const _transferGuideUrl = 'https://example.com/physilog/transfer';
-const _usageGuideUrl = 'https://example.com/physilog/help';
-const _measurementTipsUrl = 'https://example.com/physilog/measurement-tips';
+const _docsBaseUrl = 'https://keishimizu26629.github.io/PhysiLog';
+const _privacyPolicyUrl = '$_docsBaseUrl/privacy.html';
+const _termsUrl = '$_docsBaseUrl/terms.html';
+const _usageGuideUrl = '$_docsBaseUrl/usage.html';
+const _transferGuideUrl = '$_docsBaseUrl/transfer.html';
+const _accountDeletionUrl = '$_docsBaseUrl/account-deletion.html';
+const _measurementTipsUrl = '$_docsBaseUrl/measurement-tips.html';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -31,6 +35,30 @@ class SettingsScreen extends StatelessWidget {
                   title: 'メールアドレス登録',
                   subtitle: '端末引き継ぎに使う連絡先を登録',
                   onTap: () => _showEmailRegistrationSheet(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            _SettingsSection(
+              title: '規約・ポリシー',
+              children: [
+                _SettingsTile(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'プライバシーポリシー',
+                  subtitle: '個人情報とデータの取り扱い',
+                  onTap: () => _openHelp(
+                    context,
+                    title: 'プライバシーポリシー',
+                    url: _privacyPolicyUrl,
+                  ),
+                ),
+                const Divider(height: 1),
+                _SettingsTile(
+                  icon: Icons.description_outlined,
+                  title: '利用規約',
+                  subtitle: 'アプリの利用条件',
+                  onTap: () =>
+                      _openHelp(context, title: '利用規約', url: _termsUrl),
                 ),
               ],
             ),
@@ -70,6 +98,17 @@ class SettingsScreen extends StatelessWidget {
                     context,
                     title: '計測のコツ',
                     url: _measurementTipsUrl,
+                  ),
+                ),
+                const Divider(height: 1),
+                _SettingsTile(
+                  icon: Icons.delete_outline,
+                  title: 'アカウント削除方法',
+                  subtitle: '削除対象データと手順',
+                  onTap: () => _openHelp(
+                    context,
+                    title: 'アカウント削除方法',
+                    url: _accountDeletionUrl,
                   ),
                 ),
               ],
