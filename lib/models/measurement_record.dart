@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:physi_log/models/record_value_input.dart';
 
 part 'measurement_record.freezed.dart';
 part 'measurement_record.g.dart';
@@ -97,11 +98,10 @@ class MeasurementRecord with _$MeasurementRecord {
   }
 
   String get formattedRecordValue {
-    final value = effectiveRecordValue;
-    final display = value == value.roundToDouble()
-        ? value.toStringAsFixed(0)
-        : value.toStringAsFixed(2);
-    return '$display$effectiveRecordUnit';
+    return RecordValueInput.formatDisplay(
+      recordValue: effectiveRecordValue,
+      recordUnit: effectiveRecordUnit,
+    );
   }
 
   String get recordValueInputText {
