@@ -81,4 +81,30 @@ void main() {
     expect(record.formattedRecordValue, '1時間02分03秒');
     expect(record.recordValueInputText, '1時間02分03秒');
   });
+
+  test('過去にコロンが単位として保存された記録はそのまま表示できる', () {
+    final halfWidthColonRecord = MeasurementRecord(
+      id: 'record-1',
+      userId: 'user-1',
+      athleteName: '山田太郎',
+      eventType: '50m',
+      startMs: 0,
+      endMs: 0,
+      durationMs: 0,
+      measuredAt: DateTime(2026, 4, 20),
+      recordValue: 7,
+      recordUnit: ':25',
+      createdAt: DateTime(2026, 4, 20),
+      updatedAt: DateTime(2026, 4, 20),
+    );
+    final fullWidthColonRecord = halfWidthColonRecord.copyWith(
+      id: 'record-2',
+      recordUnit: '：25',
+    );
+
+    expect(halfWidthColonRecord.formattedRecordValue, '7:25');
+    expect(halfWidthColonRecord.recordValueInputText, '7:25');
+    expect(fullWidthColonRecord.formattedRecordValue, '7：25');
+    expect(fullWidthColonRecord.recordValueInputText, '7：25');
+  });
 }
