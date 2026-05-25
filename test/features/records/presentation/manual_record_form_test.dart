@@ -278,4 +278,79 @@ void main() {
 
     expect(fakeRepository.savedRecords, isEmpty);
   });
+
+  testWidgets('手動記録フォームは単位なしの記録値を保存できる', (tester) async {
+    final fakeRepository = _FakeRecordRepository();
+    final fakeAthleteRepository = _FakeAthleteRepository([
+      Athlete(
+        id: 'athlete-1',
+        userId: 'test-user-id',
+        name: '山田太郎',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ]);
+    final fakeEventRepository = _FakeEventRepository([
+      Event(
+        id: 'event-1',
+        userId: 'test-user-id',
+        name: '50m走',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          recordRepositoryProvider.overrideWithValue(fakeRepository),
+          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
+          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
+          currentUserIdProvider.overrideWithValue('test-user-id'),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: FilledButton(
+                  onPressed: () => ManualRecordForm.show(context),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '15');
+
+    final formList = find.byType(ListView).last;
+    for (var i = 0; i < 8; i++) {
+      await tester.drag(formList, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(
+      find.widgetWithText(FilledButton, '記録する'),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+
+    expect(fakeRepository.savedRecords, hasLength(1));
+    final saved = fakeRepository.savedRecords.single;
+    expect(saved.recordValue, 15);
+    expect(saved.recordUnit, isNull);
+    expect(saved.formattedRecordValue, '15');
+  });
 }

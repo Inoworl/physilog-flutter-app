@@ -67,7 +67,6 @@ class MeasurementRecord with _$MeasurementRecord {
       'unit': unit,
       'athleteNameSnapshot': athleteName,
       'eventNameSnapshot': eventType,
-      'eventUnitSnapshot': unit,
       if (memo.isNotEmpty) 'note': memo,
       'startMs': startMs,
       'endMs': endMs,

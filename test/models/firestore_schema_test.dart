@@ -110,7 +110,7 @@ void main() {
     expect(data['unit'], '秒');
     expect(data['athleteNameSnapshot'], '山田太郎');
     expect(data['eventNameSnapshot'], '100m');
-    expect(data['eventUnitSnapshot'], '秒');
+    expect(data, isNot(contains('eventUnitSnapshot')));
     expect(data['note'], '追い風');
     expect(data['startMs'], 1000);
     expect(data['endMs'], 2234);
@@ -145,6 +145,6 @@ void main() {
 
     expect(data['value'], 15);
     expect(data['unit'], isNull);
-    expect(data['eventUnitSnapshot'], isNull);
+    expect(data, isNot(contains('eventUnitSnapshot')));
   });
 }
