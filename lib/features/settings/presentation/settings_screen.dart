@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 
-const _docsBaseUrl = 'https://keishimizu26629.github.io/PhysiLog';
+const _docsBaseUrl = String.fromEnvironment(
+  'DOCS_BASE_URL',
+  defaultValue: 'https://physilog-dev.web.app',
+);
 const _privacyPolicyUrl = '$_docsBaseUrl/privacy.html';
 const _termsUrl = '$_docsBaseUrl/terms.html';
 const _usageGuideUrl = '$_docsBaseUrl/usage.html';

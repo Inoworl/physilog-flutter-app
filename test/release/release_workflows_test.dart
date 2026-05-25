@@ -179,6 +179,31 @@ void main() {
     test('GitHub Pages workflowは使わない', () {
       expect(File('.github/workflows/deploy_pages.yml').existsSync(), isFalse);
     });
+
+    test('Firebase Hosting workflowはdevを自動、prodを手動でデプロイする', () {
+      final dev = File('.github/workflows/deploy_dev_hosting.yml');
+      final prod = File('.github/workflows/deploy_prod_hosting.yml');
+
+      expect(dev.existsSync(), isTrue);
+      expect(prod.existsSync(), isTrue);
+
+      final devYaml = dev.readAsStringSync();
+      expect(devYaml, contains('name: "[Release] Dev Hosting"'));
+      expect(devYaml, contains('branches: [dev]'));
+      expect(devYaml, contains('docs/pages/**'));
+      expect(devYaml, contains('firebase.json'));
+      expect(devYaml, contains('DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64'));
+      expect(devYaml, contains('DEV_FIREBASE_PROJECT_ID'));
+      expect(devYaml, contains('firebase deploy --only hosting'));
+
+      final prodYaml = prod.readAsStringSync();
+      expect(prodYaml, contains('name: "[Release] Prod Hosting"'));
+      expect(prodYaml, contains('workflow_dispatch:'));
+      expect(prodYaml, isNot(contains('branches: [main]')));
+      expect(prodYaml, contains('PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64'));
+      expect(prodYaml, contains('PROD_FIREBASE_PROJECT_ID'));
+      expect(prodYaml, contains('firebase deploy --only hosting'));
+    });
   });
 }
 
