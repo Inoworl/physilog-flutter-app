@@ -19,7 +19,17 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _GreetingSection(),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(child: _GreetingSection()),
+                  IconButton(
+                    tooltip: '設定',
+                    onPressed: () => context.pushNamed('settings'),
+                    icon: const Icon(Icons.settings_outlined),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpacing.xxl),
               _QuickActionsSection(),
               const SizedBox(height: AppSpacing.xxl),
@@ -66,15 +76,15 @@ class _QuickActionsSection extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: Icons.videocam,
-            label: '動画計測',
-            onTap: () => context.goNamed('videoImport'),
+            label: '動画から計測を開始',
+            onTap: () => context.pushNamed('videoImport'),
           ),
         ),
         const SizedBox(width: AppSpacing.lg),
         Expanded(
           child: _QuickActionCard(
             icon: Icons.edit_note,
-            label: '手動記録',
+            label: '手入力で追加',
             onTap: () => ManualRecordForm.show(context),
           ),
         ),
@@ -133,7 +143,7 @@ class _AthleteSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('選手一覧', style: AppTextStyles.sectionTitle),
+        const Text('選手一覧', style: AppTextStyles.sectionTitle),
         const SizedBox(height: AppSpacing.sm),
         athleteState.when(
           loading: () => const Center(

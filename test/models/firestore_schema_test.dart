@@ -124,4 +124,27 @@ void main() {
     expect(data, isNot(contains('eventType')));
     expect(data, isNot(contains('memo')));
   });
+
+  test('単位なしの手動記録はunitをnullとしてFirestoreへ保存する', () {
+    final now = DateTime(2026, 5, 22, 10);
+    final record = MeasurementRecord(
+      id: 'record-1',
+      userId: 'user-1',
+      athleteName: '山田太郎',
+      eventType: '腕立て伏せ',
+      startMs: 0,
+      endMs: 0,
+      durationMs: 0,
+      recordValue: 15,
+      measuredAt: now,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final data = record.toFirestore();
+
+    expect(data['value'], 15);
+    expect(data['unit'], isNull);
+    expect(data['eventUnitSnapshot'], isNull);
+  });
 }
