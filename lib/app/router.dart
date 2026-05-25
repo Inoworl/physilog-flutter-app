@@ -11,7 +11,10 @@ import 'package:physi_log/features/settings/presentation/settings_web_view_scree
 import 'package:physi_log/features/video_import/presentation/video_import_screen.dart';
 import 'package:physi_log/shared/widgets/app_bottom_nav_shell.dart';
 
-const _defaultSettingsHelpUrl = 'https://keishimizu26629.github.io/PhysiLog/';
+const _defaultSettingsHelpUrl = String.fromEnvironment(
+  'DOCS_BASE_URL',
+  defaultValue: 'https://physilog-dev.web.app',
+);
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 

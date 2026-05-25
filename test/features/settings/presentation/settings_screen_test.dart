@@ -93,7 +93,7 @@ Widget _settingsAppWithHelpRoute() {
   return MaterialApp.router(routerConfig: router);
 }
 
-const _docsBaseUrl = 'https://keishimizu26629.github.io/PhysiLog';
+const _docsBaseUrl = 'https://physilog-dev.web.app';
 
 const _helpDestinations = [
   _HelpDestination(
