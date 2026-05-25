@@ -176,26 +176,8 @@ void main() {
       expect(markdown, contains('Firestore index'));
     });
 
-    test('GitHub Pages workflowはdocs pages変更時だけmainから自動デプロイする', () {
-      final workflow = File('.github/workflows/deploy_pages.yml');
-
-      expect(workflow.existsSync(), isTrue);
-
-      final yaml = workflow.readAsStringSync();
-      expect(yaml, contains('name: Deploy GitHub Pages'));
-      expect(yaml, contains('push:'));
-      expect(yaml, contains('branches: [main]'));
-      expect(yaml, contains('paths:'));
-      expect(yaml, contains('docs/pages/**'));
-      expect(yaml, contains('.github/workflows/deploy_pages.yml'));
-      expect(yaml, contains('workflow_dispatch:'));
-      expect(yaml, contains('pages: write'));
-      expect(yaml, contains('id-token: write'));
-      expect(yaml, contains('actions/configure-pages@v5'));
-      expect(yaml, isNot(contains('enablement: true')));
-      expect(yaml, contains('actions/upload-pages-artifact@v3'));
-      expect(yaml, contains('actions/deploy-pages@v4'));
-      expect(yaml, contains('path: docs/pages'));
+    test('GitHub Pages workflowは使わない', () {
+      expect(File('.github/workflows/deploy_pages.yml').existsSync(), isFalse);
     });
   });
 }
