@@ -108,10 +108,10 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     final parsedRecordValue = RecordValueInput.parse(
       _recordValueController.text,
     );
-    if (parsedRecordValue is! ValidRecordValueInput) return;
-    final durationMs = parsedRecordValue.recordUnit == '秒'
-        ? (parsedRecordValue.recordValue * 1000).round()
-        : 0;
+    final recordValue = parsedRecordValue.recordValue;
+    final recordUnit = parsedRecordValue.recordUnit;
+    if (recordValue == null) return;
+    final durationMs = recordUnit == '秒' ? (recordValue * 1000).round() : 0;
     final now = DateTime.now();
     final measuredAt = DateTime(
       _measuredDate.year,
@@ -137,8 +137,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
         startMs: 0,
         endMs: durationMs,
         durationMs: durationMs,
-        recordValue: parsedRecordValue.recordValue,
-        recordUnit: parsedRecordValue.recordUnit,
+        recordValue: recordValue,
+        recordUnit: recordUnit,
         measuredAt: measuredAt,
         memo: _memoController.text.trim(),
         createdAt: now,
@@ -304,6 +304,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                       case InvalidRecordValueInput():
                         return parsed.validationMessage;
                       case ValidRecordValueInput():
+                        return null;
+                      case TimeRecordValueInput():
                         return null;
                     }
                   },

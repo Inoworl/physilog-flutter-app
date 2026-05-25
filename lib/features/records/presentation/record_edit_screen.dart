@@ -174,6 +174,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
                       return parsed.validationMessage;
                     case ValidRecordValueInput():
                       return null;
+                    case TimeRecordValueInput():
+                      return null;
                   }
                 },
               ),
@@ -233,11 +235,11 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
       final parsedRecordValue = isManualRecord
           ? RecordValueInput.parse(_recordValueController.text)
           : null;
-      if (isManualRecord && parsedRecordValue is! ValidRecordValueInput) {
+      if (isManualRecord && parsedRecordValue?.recordValue == null) {
         return;
       }
       final recordValue = isManualRecord
-          ? parsedRecordValue!.recordValue
+          ? parsedRecordValue!.recordValue!
           : record.recordValue;
       final recordUnit = isManualRecord
           ? parsedRecordValue!.recordUnit
