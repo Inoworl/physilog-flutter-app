@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
+import 'package:physi_log/features/entitlements/data/firestore_entitlement_repository.dart';
+import 'package:physi_log/features/entitlements/data/no_entitlement_repository.dart';
+import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
 import 'package:physi_log/features/manage/data/firestore_athlete_repository.dart';
 import 'package:physi_log/features/manage/data/firestore_event_repository.dart';
 import 'package:physi_log/features/manage/data/local_athlete_repository.dart';
@@ -10,6 +13,7 @@ import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/records/data/firestore_record_repository.dart';
 import 'package:physi_log/features/records/data/local_record_repository.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
+import 'package:physi_log/models/entitlement.dart';
 
 enum DataStoreMode { local, firestore }
 
@@ -71,4 +75,29 @@ final eventRepositoryProvider = Provider<EventRepository>((ref) {
     return FirestoreEventRepository();
   }
   return LocalEventRepository();
+});
+
+final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
+  if (ref.watch(useFirestoreProvider)) {
+    return FirestoreEntitlementRepository();
+  }
+  return const NoEntitlementRepository();
+});
+
+final currentEntitlementProvider = FutureProvider<Entitlement?>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) {
+    return null;
+  }
+  return ref
+      .watch(entitlementRepositoryProvider)
+      .getCurrentEntitlement(userId: userId);
+});
+
+final isPremiumEnabledProvider = Provider<bool>((ref) {
+  final entitlement = ref.watch(currentEntitlementProvider);
+  return entitlement.maybeWhen(
+    data: (value) => value?.isActiveAt(DateTime.now()) ?? false,
+    orElse: () => false,
+  );
 });

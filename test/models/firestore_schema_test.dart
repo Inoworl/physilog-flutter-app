@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/models/entitlement.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 
@@ -17,13 +18,18 @@ void main() {
     final recordRepository = File(
       'lib/features/records/data/firestore_record_repository.dart',
     ).readAsStringSync();
+    final entitlementRepository = File(
+      'lib/features/entitlements/data/firestore_entitlement_repository.dart',
+    ).readAsStringSync();
 
     expect(athleteRepository, contains("collection('athletes')"));
     expect(eventRepository, contains("collection('events')"));
     expect(recordRepository, contains("collection('records')"));
+    expect(entitlementRepository, contains("collection('entitlements')"));
     expect(athleteRepository, isNot(contains("collection('選手')")));
     expect(eventRepository, isNot(contains("collection('種目')")));
     expect(recordRepository, isNot(contains("collection('記録')")));
+    expect(entitlementRepository, isNot(contains("collection('権限')")));
   });
 
   test('選手はusers/{uid}/選手配下のRulesに合う形でFirestoreへ保存する', () {
@@ -146,5 +152,30 @@ void main() {
     expect(data['value'], 15);
     expect(data['unit'], isNull);
     expect(data, isNot(contains('eventUnitSnapshot')));
+  });
+
+  test('entitlementはusers/{uid}/entitlements/currentへ保存する', () {
+    final now = DateTime(2026, 5, 27, 10);
+    final entitlement = Entitlement(
+      id: 'current',
+      userId: 'user-1',
+      plan: EntitlementPlans.monitorLifetime,
+      source: EntitlementSources.manual,
+      status: EntitlementStatuses.active,
+      grantedAt: now,
+      updatedAt: now,
+    );
+
+    final data = entitlement.toFirestore();
+
+    expect(
+      data.keys,
+      unorderedEquals(['plan', 'source', 'status', 'grantedAt', 'updatedAt']),
+    );
+    expect(data['plan'], EntitlementPlans.monitorLifetime);
+    expect(data['source'], EntitlementSources.manual);
+    expect(data['status'], EntitlementStatuses.active);
+    expect(data['grantedAt'], isA<Timestamp>());
+    expect(data['updatedAt'], isA<Timestamp>());
   });
 }
