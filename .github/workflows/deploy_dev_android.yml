@@ -33,19 +33,27 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
-      - name: Restore Firebase Android config
+      - name: Restore Firebase config files
         env:
-          DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64: ${{ secrets.DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 }}
-          DEV_FIREBASE_PROJECT_ID: ${{ secrets.DEV_FIREBASE_PROJECT_ID }}
-          DEV_FIREBASE_ANDROID_APP_ID: ${{ secrets.DEV_FIREBASE_ANDROID_APP_ID }}
+          DEV_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.DEV_GOOGLE_SERVICES_JSON_BASE64 }}
+          DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_DART_DEFINE_JSON_BASE64: ${{ secrets.DEV_DART_DEFINE_JSON_BASE64 }}
         run: |
           set -euo pipefail
-          mkdir -p android/app/src/dev
-          echo "$DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/firebase-service-account.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
-          firebase apps:sdkconfig ANDROID "$DEV_FIREBASE_ANDROID_APP_ID" \
-            --project "$DEV_FIREBASE_PROJECT_ID" \
-            --out android/app/src/dev/google-services.json
+          missing=0
+          for name in DEV_GOOGLE_SERVICES_JSON_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 DEV_DART_DEFINE_JSON_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error ::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          mkdir -p android/app/src/dev dart_define
+          echo "$DEV_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/src/dev/google-services.json
+          echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          echo "$DEV_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/dev_dart_define.json
 
       - name: Generate dev launcher icons
         run: |
