@@ -23,6 +23,10 @@ build/
 
 # Firebase
 firebase-debug.log
+lib/firebase_options*.dart
+android/app/src/*/google-services.json
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # 環境変数
 .env
