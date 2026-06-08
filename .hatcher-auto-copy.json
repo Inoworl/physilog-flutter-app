@@ -1,0 +1,66 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "path": "AGENTS.md",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": ".ai/",
+      "directory": true,
+      "recursive": true,
+      "rootOnly": true
+    },
+    {
+      "path": ".hatcher-auto-copy.json",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "dart_define/dev_dart_define.json",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "dart_define/prod_dart_define.json",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "lib/firebase_options.dart",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "lib/firebase_options_dev.dart",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "lib/firebase_options_prod.dart",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "ios/Runner/GoogleService-Info.plist",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "android/app/src/dev/google-services.json",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "android/app/src/prod/google-services.json",
+      "autoDetect": true,
+      "rootOnly": true
+    },
+    {
+      "path": "android/app/google-services.json",
+      "autoDetect": true,
+      "rootOnly": true
+    }
+  ]
+}
