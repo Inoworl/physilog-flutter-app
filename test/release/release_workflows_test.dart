@@ -43,12 +43,12 @@ void main() {
     test(
       'Android workflowは対象flavorをビルドしてFirebase App Distributionへアップロードする',
       () {
-        final dev =
-            File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
-        final prod =
-            File(
-              '.github/workflows/deploy_prod_android.yml',
-            ).readAsStringSync();
+        final dev = File(
+          '.github/workflows/deploy_dev_android.yml',
+        ).readAsStringSync();
+        final prod = File(
+          '.github/workflows/deploy_prod_android.yml',
+        ).readAsStringSync();
 
         _expectAndroidWorkflow(
           yaml: dev,
@@ -84,8 +84,9 @@ void main() {
     });
 
     test('本番iOS workflowは本番Secretsとfastlane prodを使う', () {
-      final yaml =
-          File('.github/workflows/deploy_prod_ios.yml').readAsStringSync();
+      final yaml = File(
+        '.github/workflows/deploy_prod_ios.yml',
+      ).readAsStringSync();
 
       expect(yaml, contains('environment: prod'));
       expect(yaml, contains('PROD_GOOGLESERVICE_INFO_PLIST_BASE64'));
@@ -116,14 +117,18 @@ void main() {
     });
 
     test('リリースビルドはFirestore保存モードを有効にする', () {
-      final devAndroid =
-          File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
-      final prodAndroid =
-          File('.github/workflows/deploy_prod_android.yml').readAsStringSync();
-      final devIos =
-          File('.github/workflows/deploy_dev_ios.yml').readAsStringSync();
-      final prodIos =
-          File('.github/workflows/deploy_prod_ios.yml').readAsStringSync();
+      final devAndroid = File(
+        '.github/workflows/deploy_dev_android.yml',
+      ).readAsStringSync();
+      final prodAndroid = File(
+        '.github/workflows/deploy_prod_android.yml',
+      ).readAsStringSync();
+      final devIos = File(
+        '.github/workflows/deploy_dev_ios.yml',
+      ).readAsStringSync();
+      final prodIos = File(
+        '.github/workflows/deploy_prod_ios.yml',
+      ).readAsStringSync();
       final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(
@@ -172,8 +177,9 @@ void main() {
     });
 
     test('dev Android workflowはupload keyを復元してAABとAPKを署名する', () {
-      final yaml =
-          File('.github/workflows/deploy_dev_android.yml').readAsStringSync();
+      final yaml = File(
+        '.github/workflows/deploy_dev_android.yml',
+      ).readAsStringSync();
 
       expect(yaml, contains('Validate Android signing secrets'));
       expect(yaml, contains('Restore Android signing keystore'));
