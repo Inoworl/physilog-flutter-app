@@ -16,7 +16,9 @@ PhysiLogのAndroid/iOS dev/prodリリースは、Firebase設定・Dart define・
 
 共通:
 
-- `DEV_FIREBASE_OPTIONS_DART_BASE64` as a repository secret for PR CI
+- `APP_FIREBASE_OPTIONS_DART_BASE64` as a repository secret for PR CI and release builds
+- `DEV_FIREBASE_OPTIONS_DART_BASE64` as a repository secret for PR CI and release builds
+- `PROD_FIREBASE_OPTIONS_DART_BASE64` as a repository secret for PR CI and release builds
 - `ANDROID_UPLOAD_KEYSTORE_JKS_BASE64`
 - `ANDROID_UPLOAD_KEYSTORE_PASSWORD`
 - `ANDROID_UPLOAD_KEY_ALIAS`
@@ -83,6 +85,7 @@ base64 -i android/app/src/dev/google-services.json | gh secret set DEV_GOOGLE_SE
 base64 -i android/app/src/prod/google-services.json | gh secret set PROD_GOOGLE_SERVICES_JSON_BASE64
 base64 -i ios/Runner/Firebase/Dev/GoogleService-Info.plist | gh secret set DEV_GOOGLESERVICE_INFO_PLIST_BASE64
 base64 -i ios/Runner/Firebase/Prod/GoogleService-Info.plist | gh secret set PROD_GOOGLESERVICE_INFO_PLIST_BASE64
+base64 -i lib/firebase_options.dart | gh secret set APP_FIREBASE_OPTIONS_DART_BASE64
 base64 -i lib/firebase_options_dev.dart | gh secret set DEV_FIREBASE_OPTIONS_DART_BASE64
 base64 -i lib/firebase_options_prod.dart | gh secret set PROD_FIREBASE_OPTIONS_DART_BASE64
 base64 -i dart_define/dev_dart_define.json | gh secret set DEV_DART_DEFINE_JSON_BASE64
