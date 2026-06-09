@@ -1,21 +1,25 @@
 {
   "hosting": {
     "public": "docs/pages",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   },
   "flutter": {
     "platforms": {
       "android": {
         "default": {
-          "projectId": "physilog-dev",
-          "appId": "1:294569277060:android:dadf06a7213d84bdb5f4d1",
+          "projectId": "physilog-cb6cd",
+          "appId": "1:1052025618670:android:aff3732373dd17cfd5b3ff",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "physilog-dev",
-          "appId": "1:294569277060:ios:733903353ceebff2b5f4d1",
+          "projectId": "physilog-cb6cd",
+          "appId": "1:1052025618670:ios:975fa8cf3dad9773d5b3ff",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
@@ -24,15 +28,15 @@
         "lib/firebase_options_dev.dart": {
           "projectId": "physilog-dev",
           "configurations": {
-            "android": "1:294569277060:android:4db6f11835f4fd9db5f4d1",
-            "ios": "1:294569277060:ios:b1b61dd5fa739ba8b5f4d1"
+            "android": "1:294569277060:android:390d67129850795bb5f4d1",
+            "ios": "1:294569277060:ios:35416b20e608bb4fb5f4d1"
           }
         },
         "lib/firebase_options_prod.dart": {
-          "projectId": "physilog-dev",
+          "projectId": "physilog-cb6cd",
           "configurations": {
-            "android": "1:294569277060:android:dadf06a7213d84bdb5f4d1",
-            "ios": "1:294569277060:ios:733903353ceebff2b5f4d1"
+            "android": "1:1052025618670:android:aff3732373dd17cfd5b3ff",
+            "ios": "1:1052025618670:ios:975fa8cf3dad9773d5b3ff"
           }
         }
       }

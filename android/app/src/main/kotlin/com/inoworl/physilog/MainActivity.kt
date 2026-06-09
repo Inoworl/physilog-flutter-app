@@ -1,4 +1,4 @@
-package com.physilog.physi_log
+package com.inoworl.physilog
 
 import io.flutter.embedding.android.FlutterActivity
 

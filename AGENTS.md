@@ -108,7 +108,7 @@ adb -s <device-id> exec-out cat /sdcard/window.xml | tr '>' '\n' | rg '<確認�
 - dev アプリを停止する場合は、dev package を対象にする。
 
 ```bash
-adb -s <device-id> shell am force-stop com.physilog.physi_log.dev
+adb -s <device-id> shell am force-stop com.inoworl.physilog.dev
 ```
 
 - 実機ログは `flutter run` の出力、`adb logcat`、アプリ内の debug log を合わせて見る。

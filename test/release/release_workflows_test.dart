@@ -72,10 +72,16 @@ void main() {
           firebaseAppIdSecret: 'PROD_FIREBASE_ANDROID_APP_ID',
           firebaseServiceAccountSecret:
               'PROD_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64',
-          uploadsToPlayStoreInternal: false,
+          uploadsToPlayStoreInternal: true,
         );
       },
     );
+
+    test('初回リリースversionは1.0.0を使う', () {
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+
+      expect(pubspec, contains('version: 1.0.0+1'));
+    });
 
     test('本番iOS workflowは本番Secretsとfastlane prodを使う', () {
       final yaml = File(
@@ -84,6 +90,12 @@ void main() {
 
       expect(yaml, contains('environment: prod'));
       expect(yaml, contains('PROD_GOOGLESERVICE_INFO_PLIST_BASE64'));
+      expect(yaml, contains('PROD_FIREBASE_OPTIONS_DART_BASE64'));
+      expect(yaml, contains('PROD_DART_DEFINE_JSON_BASE64'));
+      expect(
+        yaml,
+        contains('ios/Runner/Firebase/Prod/GoogleService-Info.plist'),
+      );
       expect(yaml, contains('PROD_PROVISIONING_PROFILE_BASE64'));
       expect(yaml, contains('PROD_PROVISIONING_PROFILE_SPECIFIER'));
       expect(yaml, contains('ASC_KEY_ID'));
@@ -97,7 +109,7 @@ void main() {
       final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(fastfile, contains('lane :prod do'));
-      expect(fastfile, contains('com.physilog.physiLog"'));
+      expect(fastfile, contains('com.inoworl.physilog"'));
       expect(fastfile, contains('Release-prod'));
       expect(fastfile, contains('PhysiLog-Prod.ipa'));
       expect(fastfile, contains('PROD_PROVISIONING_PROFILE_BASE64'));
@@ -111,10 +123,13 @@ void main() {
       final prodAndroid = File(
         '.github/workflows/deploy_prod_android.yml',
       ).readAsStringSync();
-      final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
-      final prodDartDefine = File(
-        'dart_define/prod_dart_define.json',
+      final devIos = File(
+        '.github/workflows/deploy_dev_ios.yml',
       ).readAsStringSync();
+      final prodIos = File(
+        '.github/workflows/deploy_prod_ios.yml',
+      ).readAsStringSync();
+      final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(
         devAndroid,
@@ -124,8 +139,23 @@ void main() {
         prodAndroid,
         contains('--dart-define-from-file=dart_define/prod_dart_define.json'),
       );
+      expect(devAndroid, contains('DEV_DART_DEFINE_JSON_BASE64'));
+      expect(prodAndroid, contains('PROD_DART_DEFINE_JSON_BASE64'));
+      expect(devIos, contains('DEV_DART_DEFINE_JSON_BASE64'));
+      expect(prodIos, contains('PROD_DART_DEFINE_JSON_BASE64'));
+      expect(
+        fastfile,
+        contains(
+          'flutter_dart_defines_from_file("../dart_define/dev_dart_define.json"',
+        ),
+      );
+      expect(
+        fastfile,
+        contains(
+          'flutter_dart_defines_from_file("../dart_define/prod_dart_define.json"',
+        ),
+      );
       expect(fastfile, contains('"DATA_STORE_MODE" => "firestore"'));
-      expect(prodDartDefine, contains('"DATA_STORE_MODE": "firestore"'));
     });
 
     test('Android releaseビルドはdebug署名ではなくupload key署名を使う', () {
@@ -231,11 +261,23 @@ void _expectAndroidWorkflow({
     ),
   );
   expect(yaml, contains(firebaseConfigPath));
+  expect(
+    yaml,
+    contains('${environment.toUpperCase()}_GOOGLE_SERVICES_JSON_BASE64'),
+  );
+  expect(
+    yaml,
+    contains('${environment.toUpperCase()}_FIREBASE_OPTIONS_DART_BASE64'),
+  );
+  expect(
+    yaml,
+    contains('${environment.toUpperCase()}_DART_DEFINE_JSON_BASE64'),
+  );
   expect(yaml, contains(packageNameSecret));
   expect(yaml, contains(firebaseProjectSecret));
   expect(yaml, contains(firebaseAppIdSecret));
   expect(yaml, contains(firebaseServiceAccountSecret));
-  expect(yaml, contains('firebase apps:sdkconfig ANDROID'));
+  expect(yaml, isNot(contains('firebase apps:sdkconfig ANDROID')));
   expect(yaml, contains('firebase appdistribution:distribute'));
   expect(yaml, isNot(contains('upload_to_play')));
   expect(yaml, isNot(contains('inputs.upload_to_play')));
@@ -265,7 +307,7 @@ void _expectAndroidWorkflow({
     expect(
       yaml,
       contains(
-        'releaseFiles: build/app/outputs/bundle/devRelease/app-dev-release.aab',
+        'releaseFiles: build/app/outputs/bundle/${flavor}Release/app-$flavor-release.aab',
       ),
     );
     expect(yaml, contains('track: internal'));

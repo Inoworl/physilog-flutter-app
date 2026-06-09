@@ -7,6 +7,12 @@ def flutter_dart_defines(values)
   end.join(",")
 end
 
+def flutter_dart_defines_from_file(path, fallback_values)
+  require "json"
+  values = File.exist?(path) ? JSON.parse(File.read(path)) : fallback_values
+  flutter_dart_defines(values)
+end
+
 platform :ios do
   ENV["FASTLANE_DISABLE_PTY"] = "1"
   ENV["FASTLANE_EXPLICIT_OPEN3"] = "1"
@@ -19,7 +25,7 @@ platform :ios do
     require "fileutils"
     require "securerandom"
 
-    app_identifier = "com.physilog.physiLog.dev"
+    app_identifier = "com.inoworl.physilog.dev"
     profile_base64 = ENV["DEV_PROVISIONING_PROFILE_BASE64"].to_s
     profile_name = ENV["DEV_PROVISIONING_PROFILE_SPECIFIER"].to_s
     team_id = ENV["DEVELOPMENT_TEAM_ID"].to_s
@@ -114,7 +120,7 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines({
+      dart_defines = flutter_dart_defines_from_file("../dart_define/dev_dart_define.json", {
         "FLAVOR" => "development",
         "DATA_STORE_MODE" => "firestore"
       })
@@ -139,7 +145,7 @@ platform :ios do
           teamID: team_id,
           signingStyle: "manual",
           provisioningProfiles: {
-            "com.physilog.physiLog.dev" => profile_name
+            "com.inoworl.physilog.dev" => profile_name
           },
           uploadBitcode: false,
           compileBitcode: false,
@@ -225,7 +231,7 @@ platform :ios do
     require "fileutils"
     require "securerandom"
 
-    app_identifier = "com.physilog.physiLog"
+    app_identifier = "com.inoworl.physilog"
     profile_base64 = ENV["PROD_PROVISIONING_PROFILE_BASE64"].to_s
     profile_name = ENV["PROD_PROVISIONING_PROFILE_SPECIFIER"].to_s
     team_id = ENV["DEVELOPMENT_TEAM_ID"].to_s
@@ -276,7 +282,7 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines({
+      dart_defines = flutter_dart_defines_from_file("../dart_define/prod_dart_define.json", {
         "FLAVOR" => "production",
         "DATA_STORE_MODE" => "firestore"
       })
@@ -301,7 +307,7 @@ platform :ios do
           teamID: team_id,
           signingStyle: "manual",
           provisioningProfiles: {
-            "com.physilog.physiLog" => profile_name
+            "com.inoworl.physilog" => profile_name
           },
           uploadBitcode: false,
           compileBitcode: false,
