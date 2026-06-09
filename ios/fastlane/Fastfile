@@ -7,9 +7,27 @@ def flutter_dart_defines(values)
   end.join(",")
 end
 
-def flutter_dart_defines_from_file(path)
+def flutter_dart_defines_from_file(path, fallback_values = nil)
   require "json"
-  flutter_dart_defines(JSON.parse(File.read(path)))
+  candidates = [
+    path,
+    File.expand_path(path, Dir.pwd),
+    File.expand_path(path, __dir__),
+    File.expand_path("../#{path}", __dir__)
+  ].uniq
+  resolved_path = candidates.find { |candidate| File.exist?(candidate) }
+
+  values =
+    if resolved_path
+      JSON.parse(File.read(resolved_path))
+    elsif fallback_values
+      UI.important("Dart define file not found at #{path}; using fallback values.")
+      fallback_values
+    else
+      UI.user_error!("Dart define file not found: #{path}")
+    end
+
+  flutter_dart_defines(values)
 end
 
 platform :ios do
@@ -119,7 +137,10 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines_from_file("../dart_define/dev_dart_define.json")
+      dart_defines = flutter_dart_defines_from_file("../dart_define/dev_dart_define.json", {
+        "FLAVOR" => "development",
+        "DATA_STORE_MODE" => "firestore"
+      })
 
       sh "cd .. && flutter pub get"
       sh "pod install"
@@ -278,7 +299,10 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines_from_file("../dart_define/prod_dart_define.json")
+      dart_defines = flutter_dart_defines_from_file("../dart_define/prod_dart_define.json", {
+        "FLAVOR" => "production",
+        "DATA_STORE_MODE" => "firestore"
+      })
 
       sh "cd .. && flutter pub get"
       sh "pod install"

@@ -130,16 +130,13 @@ void main() {
       );
       expect(
         fastfile,
-        contains(
-          'flutter_dart_defines_from_file("../dart_define/dev_dart_define.json")',
-        ),
+        contains('../dart_define/dev_dart_define.json'),
       );
       expect(
         fastfile,
-        contains(
-          'flutter_dart_defines_from_file("../dart_define/prod_dart_define.json")',
-        ),
+        contains('../dart_define/prod_dart_define.json'),
       );
+      expect(fastfile, contains('"DATA_STORE_MODE" => "firestore"'));
       expect(prodDartDefine, contains('"DATA_STORE_MODE": "firestore"'));
     });
 
