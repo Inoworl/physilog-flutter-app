@@ -64,6 +64,46 @@ void main() {
     ).called(1);
   });
 
+  test('changeEmailは現在パスワードで再認証して確認メール付きメール変更を実行する', () async {
+    final auth = _MockFirebaseAuth();
+    final user = _MockUser();
+    final credential = _MockUserCredential();
+    when(() => auth.currentUser).thenReturn(user);
+    when(() => user.email).thenReturn('old@example.com');
+    when(
+      () => user.reauthenticateWithCredential(any()),
+    ).thenAnswer((_) async => credential);
+    when(() => user.verifyBeforeUpdateEmail(any())).thenAnswer((_) async {});
+
+    await AuthService(auth: auth).changeEmail(
+      currentPassword: 'password123',
+      newEmail: ' new@example.com ',
+    );
+
+    verify(() => user.reauthenticateWithCredential(any())).called(1);
+    verify(() => user.verifyBeforeUpdateEmail('new@example.com')).called(1);
+  });
+
+  test('changePasswordは現在パスワードで再認証してパスワードを更新する', () async {
+    final auth = _MockFirebaseAuth();
+    final user = _MockUser();
+    final credential = _MockUserCredential();
+    when(() => auth.currentUser).thenReturn(user);
+    when(() => user.email).thenReturn('old@example.com');
+    when(
+      () => user.reauthenticateWithCredential(any()),
+    ).thenAnswer((_) async => credential);
+    when(() => user.updatePassword(any())).thenAnswer((_) async {});
+
+    await AuthService(auth: auth).changePassword(
+      currentPassword: 'password123',
+      newPassword: 'newPassword123',
+    );
+
+    verify(() => user.reauthenticateWithCredential(any())).called(1);
+    verify(() => user.updatePassword('newPassword123')).called(1);
+  });
+
   test('messageForAuthErrorは登録済みメールをログイン誘導に変換する', () {
     final message = AuthService().messageForAuthError(
       FirebaseAuthException(code: 'email-already-in-use'),
