@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 const _docsBaseUrl = String.fromEnvironment(
   'DOCS_BASE_URL',
@@ -151,33 +153,13 @@ class SettingsScreen extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) {
+      isScrollControlled: true,
+      builder: (_) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.md,
-            AppSpacing.xl,
-            AppSpacing.xxl,
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('メールアドレス登録', style: AppTextStyles.sectionTitle),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                '端末引き継ぎに使うメールアドレス登録は次のステップで有効化します。',
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('閉じる'),
-              ),
-            ],
-          ),
+          child: const _EmailRegistrationSheet(),
         );
       },
     );
@@ -209,6 +191,137 @@ class SettingsScreen extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       messenger.showSnackBar(const SnackBar(content: Text('アカウント削除は準備中です')));
+    }
+  }
+}
+
+class _EmailRegistrationSheet extends ConsumerStatefulWidget {
+  const _EmailRegistrationSheet();
+
+  @override
+  ConsumerState<_EmailRegistrationSheet> createState() =>
+      _EmailRegistrationSheetState();
+}
+
+class _EmailRegistrationSheetState
+    extends ConsumerState<_EmailRegistrationSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoginMode = false;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _isLoginMode ? 'ログイン' : 'メールアドレス登録';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.md,
+        AppSpacing.xl,
+        AppSpacing.xxl,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AppTextStyles.sectionTitle),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              _isLoginMode
+                  ? '登録済みのメールアドレスでログインすると、別端末でも同じ記録を読み込めます。'
+                  : '現在の匿名アカウントにメールアドレスを登録すると、別端末へ記録を引き継げます。',
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'メールアドレス'),
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              enabled: !_isSubmitting,
+              validator: (value) {
+                final email = value?.trim() ?? '';
+                if (email.isEmpty) return 'メールアドレスを入力してください';
+                if (!email.contains('@')) return 'メールアドレスの形式が正しくありません';
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'パスワード'),
+              obscureText: true,
+              enabled: !_isSubmitting,
+              validator: (value) {
+                if ((value ?? '').length < 6) {
+                  return 'パスワードは6文字以上で入力してください';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: Text(_isLoginMode ? 'ログインする' : '登録する'),
+            ),
+            TextButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () => setState(() => _isLoginMode = !_isLoginMode),
+              child: Text(_isLoginMode ? 'メールアドレス登録' : 'ログイン'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final authService = ref.read(authServiceProvider);
+    try {
+      if (_isLoginMode) {
+        await authService.signInWithEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } else {
+        await authService.linkEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
+
+      if (!mounted) return;
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text(_isLoginMode ? 'ログインしました' : 'メールアドレスを登録しました')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(authService.messageForAuthError(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 }

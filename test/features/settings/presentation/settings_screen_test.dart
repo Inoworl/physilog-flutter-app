@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:physi_log/features/auth/application/auth_service.dart';
 import 'package:physi_log/features/settings/presentation/settings_screen.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 void main() {
   testWidgets('設定画面はアカウント・規約・ヘルプ・危険な操作を表示する', (tester) async {
@@ -62,6 +66,66 @@ void main() {
     expect(find.text('アカウントを削除しますか？'), findsOneWidget);
     expect(find.text('削除する'), findsOneWidget);
     expect(find.text('キャンセル'), findsOneWidget);
+  });
+
+  testWidgets('メールアドレス登録は匿名アカウントに認証情報をリンクする', (tester) async {
+    final authService = _FakeAuthService();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authServiceProvider.overrideWithValue(authService)],
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+
+    await tester.tap(find.text('メールアドレス登録'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'メールアドレス'),
+      'coach@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'パスワード'),
+      'password123',
+    );
+    await tester.tap(find.text('登録する'));
+    await tester.pumpAndSettle();
+
+    expect(authService.linkedEmail, 'coach@example.com');
+    expect(authService.linkedPassword, 'password123');
+    expect(find.text('メールアドレスを登録しました'), findsOneWidget);
+  });
+
+  testWidgets('ログインは登録済みメールで別端末のデータを読み込む', (tester) async {
+    final authService = _FakeAuthService();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authServiceProvider.overrideWithValue(authService)],
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+
+    await tester.tap(find.text('メールアドレス登録'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ログイン'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'メールアドレス'),
+      'coach@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'パスワード'),
+      'password123',
+    );
+    await tester.tap(find.text('ログインする'));
+    await tester.pumpAndSettle();
+
+    expect(authService.signedInEmail, 'coach@example.com');
+    expect(authService.signedInPassword, 'password123');
+    expect(find.text('ログインしました'), findsOneWidget);
   });
 }
 
@@ -133,4 +197,33 @@ class _HelpDestination {
   final String label;
   final String title;
   final String url;
+}
+
+class _FakeAuthService extends AuthService {
+  _FakeAuthService() : super(auth: null);
+
+  String? linkedEmail;
+  String? linkedPassword;
+  String? signedInEmail;
+  String? signedInPassword;
+
+  @override
+  Future<User?> linkEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    linkedEmail = email;
+    linkedPassword = password;
+    return null;
+  }
+
+  @override
+  Future<User?> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    signedInEmail = email;
+    signedInPassword = password;
+    return null;
+  }
 }
