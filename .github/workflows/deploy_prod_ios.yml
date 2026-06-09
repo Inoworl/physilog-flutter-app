@@ -29,7 +29,8 @@ jobs:
             echo "PROD_GOOGLESERVICE_INFO_PLIST_BASE64 is required" >&2
             exit 1
           fi
-          echo "$PROD_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          mkdir -p ios/Runner/Firebase/prod
+          echo "$PROD_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/Firebase/prod/GoogleService-Info.plist
 
       - name: Import Code Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2

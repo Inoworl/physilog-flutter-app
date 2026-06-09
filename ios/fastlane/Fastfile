@@ -7,6 +7,11 @@ def flutter_dart_defines(values)
   end.join(",")
 end
 
+def flutter_dart_defines_from_file(path)
+  require "json"
+  flutter_dart_defines(JSON.parse(File.read(path)))
+end
+
 platform :ios do
   ENV["FASTLANE_DISABLE_PTY"] = "1"
   ENV["FASTLANE_EXPLICIT_OPEN3"] = "1"
@@ -114,10 +119,7 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines({
-        "FLAVOR" => "development",
-        "DATA_STORE_MODE" => "firestore"
-      })
+      dart_defines = flutter_dart_defines_from_file("../dart_define/dev_dart_define.json")
 
       sh "cd .. && flutter pub get"
       sh "pod install"
@@ -276,10 +278,7 @@ platform :ios do
       ci_run_number = ENV["GITHUB_RUN_NUMBER"].to_i
       build_number = [latest_build_number.to_i + 1, ci_run_number].max.to_s
       UI.message("Build number: #{build_number} (latest: #{latest_build_number}, ci_run: #{ci_run_number})")
-      dart_defines = flutter_dart_defines({
-        "FLAVOR" => "production",
-        "DATA_STORE_MODE" => "firestore"
-      })
+      dart_defines = flutter_dart_defines_from_file("../dart_define/prod_dart_define.json")
 
       sh "cd .. && flutter pub get"
       sh "pod install"

@@ -84,6 +84,10 @@ void main() {
 
       expect(yaml, contains('environment: prod'));
       expect(yaml, contains('PROD_GOOGLESERVICE_INFO_PLIST_BASE64'));
+      expect(
+        yaml,
+        contains('ios/Runner/Firebase/prod/GoogleService-Info.plist'),
+      );
       expect(yaml, contains('PROD_PROVISIONING_PROFILE_BASE64'));
       expect(yaml, contains('PROD_PROVISIONING_PROFILE_SPECIFIER'));
       expect(yaml, contains('ASC_KEY_ID'));
@@ -124,7 +128,18 @@ void main() {
         prodAndroid,
         contains('--dart-define-from-file=dart_define/prod_dart_define.json'),
       );
-      expect(fastfile, contains('"DATA_STORE_MODE" => "firestore"'));
+      expect(
+        fastfile,
+        contains(
+          'flutter_dart_defines_from_file("../dart_define/dev_dart_define.json")',
+        ),
+      );
+      expect(
+        fastfile,
+        contains(
+          'flutter_dart_defines_from_file("../dart_define/prod_dart_define.json")',
+        ),
+      );
       expect(prodDartDefine, contains('"DATA_STORE_MODE": "firestore"'));
     });
 
@@ -146,21 +161,26 @@ void main() {
       );
     });
 
-    test('dev Android workflowはupload keyを復元してAABとAPKを署名する', () {
-      final yaml = File(
-        '.github/workflows/deploy_dev_android.yml',
-      ).readAsStringSync();
+    test('Android workflowはupload keyを復元してAABとAPKを署名する', () {
+      final workflows = [
+        File('.github/workflows/deploy_dev_android.yml').readAsStringSync(),
+        File('.github/workflows/deploy_prod_android.yml').readAsStringSync(),
+      ];
 
-      expect(yaml, contains('Validate Android signing secrets'));
-      expect(yaml, contains('Restore Android signing keystore'));
-      expect(yaml, contains('Create Android key.properties'));
-      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
-      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
-      expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
-      expect(yaml, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
-      expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PATH'));
-      expect(yaml, contains('android/upload-keystore.jks'));
-      expect(yaml, contains('storeFile=../upload-keystore.jks'));
+      for (final yaml in workflows) {
+        expect(yaml, contains('Validate Android signing secrets'));
+        expect(yaml, contains('Restore Android signing keystore'));
+        expect(yaml, contains('Create Android key.properties'));
+        expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_JKS_BASE64'));
+        expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
+        expect(yaml, contains('ANDROID_UPLOAD_KEY_ALIAS'));
+        expect(yaml, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
+        expect(yaml, contains('ANDROID_UPLOAD_KEYSTORE_PATH'));
+        expect(yaml, contains('android/upload-keystore.jks'));
+        expect(yaml, contains('storeFile=../upload-keystore.jks'));
+        expect(yaml, contains('flutter build appbundle --release'));
+        expect(yaml, contains('flutter build apk --release'));
+      }
     });
 
     test('PRテンプレートはmerge前の実機確認を要求する', () {
