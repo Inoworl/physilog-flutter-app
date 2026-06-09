@@ -741,7 +741,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.inoworl.physilog.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "PhysiLog Dev App Store CI";
+				PROVISIONING_PROFILE_SPECIFIER = "PhysiLog Dev App Store CI 1780965196";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
