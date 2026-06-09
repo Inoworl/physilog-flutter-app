@@ -1,7 +1,7 @@
 {
   "FLAVOR": "development",
-  "IOS_APP_ID": "com.physilog.physiLog.dev",
-  "ANDROID_APP_ID": "com.physilog.physi_log.dev",
+  "IOS_APP_ID": "com.inoworl.physilog.dev",
+  "ANDROID_APP_ID": "com.inoworl.physilog.dev",
   "APP_NAME": "PhysiLog Dev",
   "FIREBASE_OPTIONS_CLASS": "DefaultFirebaseOptions",
   "DATA_STORE_MODE": "firestore",

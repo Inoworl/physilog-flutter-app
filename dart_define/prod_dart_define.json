@@ -1,7 +1,7 @@
 {
   "FLAVOR": "production",
-  "IOS_APP_ID": "com.physilog.physiLog",
-  "ANDROID_APP_ID": "com.physilog.physi_log",
+  "IOS_APP_ID": "com.inoworl.physilog",
+  "ANDROID_APP_ID": "com.inoworl.physilog",
   "APP_NAME": "PhysiLog",
   "FIREBASE_OPTIONS_CLASS": "DefaultFirebaseOptions",
   "DATA_STORE_MODE": "firestore",

@@ -24,7 +24,7 @@ platform :ios do
     require "fileutils"
     require "securerandom"
 
-    app_identifier = "com.physilog.physiLog.dev"
+    app_identifier = "com.inoworl.physilog.dev"
     profile_base64 = ENV["DEV_PROVISIONING_PROFILE_BASE64"].to_s
     profile_name = ENV["DEV_PROVISIONING_PROFILE_SPECIFIER"].to_s
     team_id = ENV["DEVELOPMENT_TEAM_ID"].to_s
@@ -141,7 +141,7 @@ platform :ios do
           teamID: team_id,
           signingStyle: "manual",
           provisioningProfiles: {
-            "com.physilog.physiLog.dev" => profile_name
+            "com.inoworl.physilog.dev" => profile_name
           },
           uploadBitcode: false,
           compileBitcode: false,
@@ -227,7 +227,7 @@ platform :ios do
     require "fileutils"
     require "securerandom"
 
-    app_identifier = "com.physilog.physiLog"
+    app_identifier = "com.inoworl.physilog"
     profile_base64 = ENV["PROD_PROVISIONING_PROFILE_BASE64"].to_s
     profile_name = ENV["PROD_PROVISIONING_PROFILE_SPECIFIER"].to_s
     team_id = ENV["DEVELOPMENT_TEAM_ID"].to_s
@@ -300,7 +300,7 @@ platform :ios do
           teamID: team_id,
           signingStyle: "manual",
           provisioningProfiles: {
-            "com.physilog.physiLog" => profile_name
+            "com.inoworl.physilog" => profile_name
           },
           uploadBitcode: false,
           compileBitcode: false,

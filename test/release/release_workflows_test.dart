@@ -101,7 +101,7 @@ void main() {
       final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
 
       expect(fastfile, contains('lane :prod do'));
-      expect(fastfile, contains('com.physilog.physiLog"'));
+      expect(fastfile, contains('com.inoworl.physilog"'));
       expect(fastfile, contains('Release-prod'));
       expect(fastfile, contains('PhysiLog-Prod.ipa'));
       expect(fastfile, contains('PROD_PROVISIONING_PROFILE_BASE64'));

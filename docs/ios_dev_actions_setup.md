@@ -75,7 +75,7 @@
 
 ## 事前に Apple 側で必要な設定
 
-- Bundle ID: `com.physilog.physiLog.dev`
+- Bundle ID: `com.inoworl.physilog.dev`
 - App Store Connect App: `PhysiLog Dev`
 - TestFlight 外部テスターグループ（例: `External Testers`）
 

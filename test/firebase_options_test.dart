@@ -14,4 +14,11 @@ void main() {
 
     expect(AppFirebaseOptions.currentPlatform.projectId, expectedProjectId);
   });
+
+  test('Firebase options use Inoworl mobile app ids', () {
+    expect(AppFirebaseOptions.androidDev.appId, contains(':android:390d671'));
+    expect(AppFirebaseOptions.androidProd.appId, contains(':android:aff373'));
+    expect(AppFirebaseOptions.iosDev.iosBundleId, 'com.inoworl.physilog.dev');
+    expect(AppFirebaseOptions.iosProd.iosBundleId, 'com.inoworl.physilog');
+  });
 }

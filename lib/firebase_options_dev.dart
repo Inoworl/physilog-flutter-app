@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBEAr9j1XOb6fSkLggCOCu1iq-YgtDguZo',
-    appId: '1:294569277060:android:4db6f11835f4fd9db5f4d1',
+    appId: '1:294569277060:android:390d67129850795bb5f4d1',
     messagingSenderId: '294569277060',
     projectId: 'physilog-dev',
     storageBucket: 'physilog-dev.firebasestorage.app',
@@ -59,10 +59,10 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCgZwSxWy3gOBwahPQWkEBetX-corH8Uwk',
-    appId: '1:294569277060:ios:b1b61dd5fa739ba8b5f4d1',
+    appId: '1:294569277060:ios:35416b20e608bb4fb5f4d1',
     messagingSenderId: '294569277060',
     projectId: 'physilog-dev',
     storageBucket: 'physilog-dev.firebasestorage.app',
-    iosBundleId: 'com.physilog.physiLog.dev',
+    iosBundleId: 'com.inoworl.physilog.dev',
   );
 }

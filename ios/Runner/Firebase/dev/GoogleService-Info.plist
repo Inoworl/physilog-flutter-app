@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.physilog.physiLog.dev</string>
+	<string>com.inoworl.physilog.dev</string>
 	<key>PROJECT_ID</key>
 	<string>physilog-dev</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:294569277060:ios:b1b61dd5fa739ba8b5f4d1</string>
+	<string>1:294569277060:ios:35416b20e608bb4fb5f4d1</string>
 </dict>
 </plist>
