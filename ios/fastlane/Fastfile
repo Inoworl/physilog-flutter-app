@@ -187,15 +187,21 @@ platform :ios do
         end
       else
         UI.important(
-          "DEV_TESTFLIGHT_* metadata is not configured. Fallback to upload only (internal processing)."
+          "DEV_TESTFLIGHT_* metadata is not configured. Uploading for internal TestFlight distribution."
         )
         upload_to_testflight(
           api_key: api_key,
           ipa: "./build/PhysiLog-Dev.ipa",
           app_identifier: app_identifier,
+          localized_build_info: {
+            "ja-JP" => {
+              whats_new: localized_whats_new_ja
+            }
+          },
+          changelog: localized_whats_new_ja,
           uses_non_exempt_encryption: uses_non_exempt_encryption,
-          skip_waiting_for_build_processing: true,
-          skip_submission: true
+          skip_waiting_for_build_processing: false,
+          skip_submission: false
         )
       end
     ensure
