@@ -7,10 +7,9 @@ void main() {
       'FLAVOR',
       defaultValue: 'development',
     );
-    const expectedProjectId =
-        flavor == 'prod' || flavor == 'production'
-            ? 'physilog-cb6cd'
-            : 'physilog-dev';
+    const expectedProjectId = flavor == 'prod' || flavor == 'production'
+        ? 'physilog-cb6cd'
+        : 'physilog-dev';
 
     expect(AppFirebaseOptions.currentPlatform.projectId, expectedProjectId);
   });

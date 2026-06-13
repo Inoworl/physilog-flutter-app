@@ -257,15 +257,11 @@ void main() {
     await tester.enterText(recordFields.at(0), '12.34');
     await tester.enterText(recordFields.at(1), 'sync-check');
     await _tapBottomSheetSubmit(tester, '記録する');
-    await _waitForAny(
-      tester,
-      [
-        find.text('手動記録を保存しました'),
-        find.textContaining('保存に失敗しました'),
-        find.text('Firebase認証待機中です。少し待って再実行してください。'),
-      ],
-      '記録保存メッセージ',
-    );
+    await _waitForAny(tester, [
+      find.text('手動記録を保存しました'),
+      find.textContaining('保存に失敗しました'),
+      find.text('Firebase認証待機中です。少し待って再実行してください。'),
+    ], '記録保存メッセージ');
     if (find.textContaining('保存に失敗しました').evaluate().isNotEmpty) {
       final failureMessage = _extractTextValue(
         find.textContaining('保存に失敗しました'),
@@ -283,32 +279,27 @@ void main() {
 
     await tester.tap(find.text('記録'));
     await tester.pumpAndSettle(const Duration(seconds: 2));
-    await _waitForAny(
-      tester,
-      [
-        find.text('記録がありません'),
-        find.text(athleteName),
-        find.text(eventName),
-        find.text('12.34秒'),
-      ],
-      '記録タブの表示',
-    );
+    await _waitForAny(tester, [
+      find.text('記録がありません'),
+      find.text(athleteName),
+      find.text(eventName),
+      find.text('12.34秒'),
+    ], '記録タブの表示');
     if (find.text('記録がありません').evaluate().isNotEmpty) {
       fail('記録が保存されていません');
     }
-    await _waitForAny(
-      tester,
-      [find.text(athleteName), find.text(eventName), find.text('12.34秒')],
-      '保存済みの記録',
-    );
+    await _waitForAny(tester, [
+      find.text(athleteName),
+      find.text(eventName),
+      find.text('12.34秒'),
+    ], '保存済みの記録');
 
     // メールアドレスを匿名アカウントへ登録
     await tester.tap(find.text('ホーム'));
-    final settingsButtonFinder = await _waitForAnyFinder(
-      tester,
-      [find.byTooltip('設定'), find.byIcon(Icons.settings_outlined)],
-      '設定ボタン',
-    );
+    final settingsButtonFinder = await _waitForAnyFinder(tester, [
+      find.byTooltip('設定'),
+      find.byIcon(Icons.settings_outlined),
+    ], '設定ボタン');
     await tester.tap(settingsButtonFinder);
     await tester.pumpAndSettle();
 
@@ -324,23 +315,19 @@ void main() {
     );
     await tester.tap(find.text('登録する'));
     await tester.pumpAndSettle(const Duration(seconds: 2));
-    await _waitForAuthResultMessage(
-      tester,
-      const [
-        'メールアドレスを登録しました',
-        'ログインしました',
-        'このメールアドレスは登録済みです。ログインをお試しください。',
-        'このメールアドレスのアカウントが見つかりません。',
-        'メールアドレスまたはパスワードが違います。',
-        'このメールアドレスのアカウントは',
-        'メールアドレスの形式が正しくありません',
-        'メールアドレスを入力してください',
-        'パスワードは6文字以上で入力してください',
-        '認証処理に失敗しました。時間をおいて再度お試しください。',
-        'Firebase認証が利用できません。設定を確認してください。',
-      ],
-      'メール登録完了メッセージ',
-    );
+    await _waitForAuthResultMessage(tester, const [
+      'メールアドレスを登録しました',
+      'ログインしました',
+      'このメールアドレスは登録済みです。ログインをお試しください。',
+      'このメールアドレスのアカウントが見つかりません。',
+      'メールアドレスまたはパスワードが違います。',
+      'このメールアドレスのアカウントは',
+      'メールアドレスの形式が正しくありません',
+      'メールアドレスを入力してください',
+      'パスワードは6文字以上で入力してください',
+      '認証処理に失敗しました。時間をおいて再度お試しください。',
+      'Firebase認証が利用できません。設定を確認してください。',
+    ], 'メール登録完了メッセージ');
 
     if (find.byType(BackButton).evaluate().isNotEmpty) {
       await tester.tap(find.byType(BackButton));
@@ -354,11 +341,10 @@ void main() {
     await FirebaseAuth.instance.signOut();
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    final settingsButtonFinder2 = await _waitForAnyFinder(
-      tester,
-      [find.byTooltip('設定'), find.byIcon(Icons.settings_outlined)],
-      '設定ボタン',
-    );
+    final settingsButtonFinder2 = await _waitForAnyFinder(tester, [
+      find.byTooltip('設定'),
+      find.byIcon(Icons.settings_outlined),
+    ], '設定ボタン');
     await tester.tap(settingsButtonFinder2);
     await tester.pumpAndSettle();
 
@@ -379,10 +365,10 @@ void main() {
 
     await tester.tap(find.text('記録'));
     await tester.pumpAndSettle(const Duration(seconds: 2));
-    await _waitForAny(
-      tester,
-      [find.text(athleteName), find.text(eventName), find.text('12.34秒')],
-      '再ログイン後の記録データ',
-    );
+    await _waitForAny(tester, [
+      find.text(athleteName),
+      find.text(eventName),
+      find.text('12.34秒'),
+    ], '再ログイン後の記録データ');
   });
 }
