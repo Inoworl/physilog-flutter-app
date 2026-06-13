@@ -27,6 +27,8 @@ lib/firebase_options*.dart
 android/app/src/*/google-services.json
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+ios/Runner/Firebase/*/GoogleService-Info.plist
+dart_define/*.json
 
 # 環境変数
 .env

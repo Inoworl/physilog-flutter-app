@@ -21,17 +21,31 @@ jobs:
       - name: Setup CI
         uses: ./.github/actions/setup
 
-      - name: Restore Firebase config (optional)
+      - name: Restore Firebase config files
         env:
           DEV_GOOGLESERVICE_INFO_PLIST_BASE64: ${{ secrets.DEV_GOOGLESERVICE_INFO_PLIST_BASE64 }}
+          APP_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.APP_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
+          PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_DART_DEFINE_JSON_BASE64: ${{ secrets.DEV_DART_DEFINE_JSON_BASE64 }}
         run: |
-          if [ -n "$DEV_GOOGLESERVICE_INFO_PLIST_BASE64" ]; then
-            mkdir -p ios/Runner/Firebase/dev
-            echo "$DEV_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/Firebase/dev/GoogleService-Info.plist
-            echo "Restored GoogleService-Info.plist"
-          else
-            echo "DEV_GOOGLESERVICE_INFO_PLIST_BASE64 is empty; skip restore."
+          set -euo pipefail
+          missing=0
+          for name in DEV_GOOGLESERVICE_INFO_PLIST_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 DEV_DART_DEFINE_JSON_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error ::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
           fi
+          mkdir -p ios/Runner/Firebase/dev dart_define
+          echo "$DEV_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/Firebase/dev/GoogleService-Info.plist
+          echo "$APP_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
+          echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
+          echo "$DEV_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/dev_dart_define.json
 
       - name: Import Code Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2

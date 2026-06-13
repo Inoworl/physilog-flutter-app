@@ -2,7 +2,7 @@ name: PR Tests
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [dev, main]
 
 jobs:
   analyze:
@@ -15,6 +15,27 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/setup
+
+      - name: Restore Firebase options
+        env:
+          APP_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.APP_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
+          PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error ::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "$APP_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
+          echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
 
       - name: Check formatting
         run: git ls-files '*.dart' ':!:lib/firebase_options*.dart' | xargs dart format --output=none --set-exit-if-changed
@@ -35,6 +56,27 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/setup
+
+      - name: Restore Firebase options
+        env:
+          APP_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.APP_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
+          PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error ::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "$APP_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
+          echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
 
       - name: Generate code
         run: flutter pub run build_runner build --delete-conflicting-outputs
