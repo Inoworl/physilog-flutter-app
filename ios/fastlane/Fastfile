@@ -7,9 +7,26 @@ def flutter_dart_defines(values)
   end.join(",")
 end
 
-def flutter_dart_defines_from_file(path, fallback_values)
+def flutter_dart_defines_from_file(path, fallback_values = nil)
   require "json"
-  values = File.exist?(path) ? JSON.parse(File.read(path)) : fallback_values
+  candidates = [
+    path,
+    File.expand_path(path, Dir.pwd),
+    File.expand_path(path, __dir__),
+    File.expand_path("../#{path}", __dir__)
+  ].uniq
+  resolved_path = candidates.find { |candidate| File.exist?(candidate) }
+
+  values =
+    if resolved_path
+      JSON.parse(File.read(resolved_path))
+    elsif fallback_values
+      UI.important("Dart define file not found at #{path}; using fallback values.")
+      fallback_values
+    else
+      UI.user_error!("Dart define file not found: #{path}")
+    end
+
   flutter_dart_defines(values)
 end
 

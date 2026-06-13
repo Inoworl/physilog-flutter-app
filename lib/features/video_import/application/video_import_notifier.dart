@@ -109,9 +109,7 @@ class VideoImportNotifier extends StateNotifier<VideoImportState> {
       // アプリ固有ディレクトリに保存
       final appDir = await getApplicationDocumentsDirectory();
       final videoDir = Directory('${appDir.path}/videos');
-      if (!await videoDir.exists()) {
-        await videoDir.create(recursive: true);
-      }
+      await videoDir.create(recursive: true);
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final destPath = '${videoDir.path}/video_$timestamp.mp4';

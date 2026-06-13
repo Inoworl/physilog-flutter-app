@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 const _docsBaseUrl = String.fromEnvironment(
   'DOCS_BASE_URL',
@@ -14,11 +16,25 @@ const _transferGuideUrl = '$_docsBaseUrl/transfer.html';
 const _accountDeletionUrl = '$_docsBaseUrl/account-deletion.html';
 const _measurementTipsUrl = '$_docsBaseUrl/measurement-tips.html';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  _EmailAuthMode? _selectedAuthMode;
+
+  @override
   Widget build(BuildContext context) {
+    final authUser = ref
+        .watch(authStateProvider)
+        .maybeWhen(data: (user) => user, orElse: () => null);
+    final registeredEmail = authUser?.email?.trim();
+    final hasRegisteredEmail =
+        registeredEmail != null && registeredEmail.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
       body: SafeArea(
@@ -33,12 +49,52 @@ class SettingsScreen extends StatelessWidget {
             _SettingsSection(
               title: 'アカウント',
               children: [
-                _SettingsTile(
-                  icon: Icons.mail_outline,
-                  title: 'メールアドレス登録',
-                  subtitle: '端末引き継ぎに使う連絡先を登録',
-                  onTap: () => _showEmailRegistrationSheet(context),
-                ),
+                _AccountEmailStatus(email: registeredEmail),
+                const Divider(height: 1),
+                if (hasRegisteredEmail) ...[
+                  _SettingsTile(
+                    icon: Icons.alternate_email,
+                    title: 'メールアドレス変更',
+                    subtitle: '確認メールを送って変更する',
+                    onTap: () => setState(
+                      () => _selectedAuthMode = _EmailAuthMode.changeEmail,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _SettingsTile(
+                    icon: Icons.lock_outline,
+                    title: 'パスワード変更',
+                    subtitle: '現在のパスワードで確認して変更する',
+                    onTap: () => setState(
+                      () => _selectedAuthMode = _EmailAuthMode.changePassword,
+                    ),
+                  ),
+                ] else ...[
+                  _SettingsTile(
+                    icon: Icons.mail_outline,
+                    title: 'メールアドレス登録',
+                    subtitle: 'この端末のデータを引き継げるようにする',
+                    onTap: () => setState(
+                      () => _selectedAuthMode = _EmailAuthMode.register,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  _SettingsTile(
+                    icon: Icons.login_outlined,
+                    title: '別端末から引き継ぐ',
+                    subtitle: '登録済みメールで以前のデータを読み込む',
+                    onTap: () => setState(
+                      () => _selectedAuthMode = _EmailAuthMode.transfer,
+                    ),
+                  ),
+                ],
+                if (_selectedAuthMode != null) ...[
+                  const Divider(height: 1),
+                  _EmailAuthForm(
+                    key: ValueKey(_selectedAuthMode),
+                    mode: _selectedAuthMode!,
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -147,42 +203,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showEmailRegistrationSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.md,
-            AppSpacing.xl,
-            AppSpacing.xxl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('メールアドレス登録', style: AppTextStyles.sectionTitle),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                '端末引き継ぎに使うメールアドレス登録は次のステップで有効化します。',
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('閉じる'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
@@ -209,6 +229,295 @@ class SettingsScreen extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       messenger.showSnackBar(const SnackBar(content: Text('アカウント削除は準備中です')));
+    }
+  }
+}
+
+enum _EmailAuthMode { register, transfer, changeEmail, changePassword }
+
+class _AccountEmailStatus extends StatelessWidget {
+  const _AccountEmailStatus({required this.email});
+
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = email == null || email!.isEmpty ? '未登録' : email!;
+    return ListTile(
+      leading: const Icon(
+        Icons.account_circle_outlined,
+        color: AppColors.primary,
+      ),
+      title: const Text('メールアドレス', style: AppTextStyles.cardTitle),
+      subtitle: Text(
+        value,
+        style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _EmailAuthForm extends ConsumerStatefulWidget {
+  const _EmailAuthForm({super.key, required this.mode});
+
+  final _EmailAuthMode mode;
+
+  @override
+  ConsumerState<_EmailAuthForm> createState() => _EmailAuthFormState();
+}
+
+class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
+  bool _isSubmitting = false;
+  bool _obscurePasswords = true;
+
+  bool get _isTransferMode => widget.mode == _EmailAuthMode.transfer;
+  bool get _isRegisterMode => widget.mode == _EmailAuthMode.register;
+  bool get _isChangeEmailMode => widget.mode == _EmailAuthMode.changeEmail;
+  bool get _isChangePasswordMode =>
+      widget.mode == _EmailAuthMode.changePassword;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _currentPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _description,
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            if (_isTransferMode) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'ログイン後は、この端末の未登録状態で作成したデータは表示されなくなります。',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            if (_isRegisterMode || _isTransferMode || _isChangeEmailMode)
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: _emailLabel),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                enabled: !_isSubmitting,
+                validator: _validateEmail,
+              ),
+            if (_isRegisterMode || _isTransferMode || _isChangeEmailMode)
+              const SizedBox(height: AppSpacing.md),
+            if (_isChangeEmailMode || _isChangePasswordMode) ...[
+              _passwordField(
+                controller: _currentPasswordController,
+                labelText: '現在のパスワード',
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (_isRegisterMode || _isTransferMode)
+              _passwordField(
+                controller: _passwordController,
+                labelText: 'パスワード',
+                textInputAction: _isRegisterMode
+                    ? TextInputAction.next
+                    : TextInputAction.done,
+              ),
+            if (_isRegisterMode || _isTransferMode)
+              const SizedBox(height: AppSpacing.md),
+            if (_isChangePasswordMode) ...[
+              _passwordField(
+                controller: _passwordController,
+                labelText: '新しいパスワード',
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (_isRegisterMode || _isChangePasswordMode) ...[
+              _passwordField(
+                controller: _confirmPasswordController,
+                labelText: _isChangePasswordMode ? '新しいパスワード再入力' : 'パスワード再入力',
+                textInputAction: TextInputAction.done,
+                validator: _validateConfirmPassword,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ] else
+              const SizedBox(height: AppSpacing.lg),
+            FilledButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: Text(_submitLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _description {
+    switch (widget.mode) {
+      case _EmailAuthMode.register:
+        return 'この端末のデータを別端末へ引き継げるようにします。';
+      case _EmailAuthMode.transfer:
+        return '登録済みのメールアドレスで以前の端末のデータを読み込みます。';
+      case _EmailAuthMode.changeEmail:
+        return '現在のパスワードで確認して、新しいメールアドレスへ確認メールを送ります。';
+      case _EmailAuthMode.changePassword:
+        return '現在のパスワードで確認して、新しいパスワードへ変更します。';
+    }
+  }
+
+  String get _emailLabel {
+    if (_isChangeEmailMode) {
+      return '新しいメールアドレス';
+    }
+    return 'メールアドレス';
+  }
+
+  String get _submitLabel {
+    switch (widget.mode) {
+      case _EmailAuthMode.register:
+        return '登録する';
+      case _EmailAuthMode.transfer:
+        return 'データを引き継ぐ';
+      case _EmailAuthMode.changeEmail:
+        return '確認メールを送る';
+      case _EmailAuthMode.changePassword:
+        return 'パスワードを変更する';
+    }
+  }
+
+  Widget _passwordField({
+    required TextEditingController controller,
+    required String labelText,
+    required TextInputAction textInputAction,
+    FormFieldValidator<String>? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        suffixIcon: IconButton(
+          tooltip: _obscurePasswords ? 'パスワードを表示' : 'パスワードを隠す',
+          icon: Icon(
+            _obscurePasswords
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+          ),
+          onPressed: _isSubmitting
+              ? null
+              : () => setState(() => _obscurePasswords = !_obscurePasswords),
+        ),
+      ),
+      obscureText: _obscurePasswords,
+      enabled: !_isSubmitting,
+      textInputAction: textInputAction,
+      validator: validator ?? _validatePassword,
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) return 'メールアドレスを入力してください';
+    if (!email.contains('@')) return 'メールアドレスの形式が正しくありません';
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if ((value ?? '').length < 6) {
+      return 'パスワードは6文字以上で入力してください';
+    }
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    final password = _passwordController.text;
+    if ((value ?? '').length < 6) {
+      return 'パスワードは6文字以上で入力してください';
+    }
+    if (value != password) {
+      return 'パスワードが一致しません';
+    }
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final authService = ref.read(authServiceProvider);
+    try {
+      switch (widget.mode) {
+        case _EmailAuthMode.register:
+          await authService.linkEmailAndPassword(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+        case _EmailAuthMode.transfer:
+          await authService.signInWithEmailAndPassword(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+        case _EmailAuthMode.changeEmail:
+          await authService.changeEmail(
+            currentPassword: _currentPasswordController.text,
+            newEmail: _emailController.text,
+          );
+        case _EmailAuthMode.changePassword:
+          await authService.changePassword(
+            currentPassword: _currentPasswordController.text,
+            newPassword: _passwordController.text,
+          );
+      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(_successMessage)));
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(authService.messageForAuthError(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  String get _successMessage {
+    switch (widget.mode) {
+      case _EmailAuthMode.register:
+        return 'メールアドレスを登録しました';
+      case _EmailAuthMode.transfer:
+        return 'データを引き継ぎました';
+      case _EmailAuthMode.changeEmail:
+        return '新しいメールアドレスへ確認メールを送信しました';
+      case _EmailAuthMode.changePassword:
+        return 'パスワードを変更しました';
     }
   }
 }

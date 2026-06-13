@@ -376,7 +376,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('FPSを選択', style: AppTextStyles.cardTitle),
+                        const Text('FPSを選択', style: AppTextStyles.cardTitle),
                         const SizedBox(height: AppSpacing.sm),
                         Wrap(
                           spacing: AppSpacing.sm,

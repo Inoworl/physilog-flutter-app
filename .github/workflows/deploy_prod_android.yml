@@ -154,6 +154,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload AAB artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-prod-aab-${{ github.run_id }}
+          path: build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Collect release notes
         run: echo "LATEST_COMMIT_MESSAGES=$(git log -n 10 --pretty=format:'%s' | tr '\n' '; ')" >> "$GITHUB_ENV"
 
