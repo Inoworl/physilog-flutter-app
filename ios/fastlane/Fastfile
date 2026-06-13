@@ -188,12 +188,12 @@ platform :ios do
             demo_account_required: false
           },
           localized_build_info: {
-            "ja-JP" => {
+            "ja" => {
               whats_new: localized_whats_new_ja
             }
           },
           localized_app_info: {
-            "ja-JP" => {
+            "ja" => {
               description: beta_app_description,
               feedback_email: feedback_email
             }
@@ -228,7 +228,7 @@ platform :ios do
           ipa: "./build/PhysiLog-Dev.ipa",
           app_identifier: app_identifier,
           localized_build_info: {
-            "ja-JP" => {
+            "ja" => {
               whats_new: localized_whats_new_ja
             }
           },
