@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,7 +19,11 @@ void main() {
     expect(find.text('メールアドレス'), findsOneWidget);
     expect(find.text('未登録'), findsOneWidget);
     expect(find.text('メールとパスワードを設定'), findsOneWidget);
+    expect(find.text('この端末で使うログイン情報を作成'), findsOneWidget);
     expect(find.text('別端末から引き継ぐ'), findsOneWidget);
+    expect(find.text('別端末で設定済みの情報を使用'), findsOneWidget);
+    expect(find.text('この端末のデータを別端末でも使えるようにします。'), findsNothing);
+    expect(find.text('登録済みのメールアドレスで以前の端末のデータを読み込みます。'), findsNothing);
     expect(find.text('規約・ポリシー'), findsOneWidget);
     expect(find.text('プライバシーポリシー'), findsOneWidget);
     expect(find.text('利用規約'), findsOneWidget);
@@ -109,6 +115,7 @@ void main() {
     await tester.tap(find.text('メールとパスワードを設定'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('この端末のデータを別端末でも使えるようにします。'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'パスワード再入力'), findsOneWidget);
@@ -146,6 +153,10 @@ void main() {
     expect(authService.linkedPassword, 'password123');
     expect(authService.linkedUserIdBeforeLink, 'anonymous-uid');
     expect(authService.signedInEmail, isNull);
+    expect(find.byType(AccountEmailAuthScreen), findsNothing);
+    expect(find.text('coach@example.com'), findsOneWidget);
+    expect(find.text('メールアドレス変更'), findsOneWidget);
+    expect(find.text('メールとパスワードを設定'), findsNothing);
     expect(find.text('引き継ぎ設定を保存しました'), findsOneWidget);
   });
 
@@ -156,6 +167,7 @@ void main() {
     await tester.tap(find.text('メールとパスワードを設定'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     final passwordField = find.widgetWithText(TextField, 'パスワード');
     expect(tester.widget<TextField>(passwordField).obscureText, isTrue);
 
@@ -166,7 +178,7 @@ void main() {
     expect(find.byTooltip('パスワードを隠す'), findsWidgets);
   });
 
-  testWidgets('別端末から引き継ぐは設定画面内で登録済みメールのデータを読み込む', (tester) async {
+  testWidgets('別端末から引き継ぐは別ページで登録済みメールのデータを読み込む', (tester) async {
     final authService = _FakeAuthService();
 
     await tester.pumpWidget(_settingsApp(authService: authService));
@@ -175,6 +187,7 @@ void main() {
     await tester.tap(find.text('別端末から引き継ぐ'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('登録済みのメールアドレスで以前の端末のデータを読み込みます。'), findsOneWidget);
     expect(find.text('ログイン後は、この端末の未登録状態で作成したデータは表示されなくなります。'), findsOneWidget);
@@ -208,6 +221,7 @@ void main() {
     await tester.tap(find.text('メールアドレス変更'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextFormField, '新しいメールアドレス'),
       'new@example.com',
@@ -235,6 +249,7 @@ void main() {
     await tester.tap(find.text('パスワード変更'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     await tester.enterText(
       find.widgetWithText(TextFormField, '現在のパスワード'),
       'password123',
@@ -259,22 +274,32 @@ void main() {
 }
 
 Widget _settingsApp({AuthService? authService}) {
-  return ProviderScope(
-    overrides: [
-      if (authService != null)
-        authServiceProvider.overrideWithValue(authService),
-    ],
-    child: const MaterialApp(home: SettingsScreen()),
-  );
+  return _settingsAppWithRoutes(authService: authService);
 }
 
 Widget _settingsAppWithHelpRoute() {
+  return _settingsAppWithRoutes();
+}
+
+Widget _settingsAppWithRoutes({AuthService? authService}) {
   final router = GoRouter(
     routes: [
       GoRoute(
         path: '/',
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/account/:mode',
+        name: 'settingsAccountAuth',
+        builder: (context, state) {
+          final mode = accountEmailAuthModeFromRoute(
+            state.pathParameters['mode'],
+          );
+          return AccountEmailAuthScreen(
+            mode: mode ?? AccountEmailAuthMode.register,
+          );
+        },
       ),
       GoRoute(
         path: '/settings/help',
@@ -293,7 +318,13 @@ Widget _settingsAppWithHelpRoute() {
     ],
   );
 
-  return ProviderScope(child: MaterialApp.router(routerConfig: router));
+  return ProviderScope(
+    overrides: [
+      if (authService != null)
+        authServiceProvider.overrideWithValue(authService),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
 }
 
 const _docsBaseUrl = 'https://physilog-dev.web.app';
@@ -339,9 +370,13 @@ class _HelpDestination {
 }
 
 class _FakeAuthService extends AuthService {
-  _FakeAuthService({User? user}) : _user = user, super(auth: null);
+  _FakeAuthService({User? user})
+    : _user = user,
+      _controller = StreamController<User?>.broadcast(),
+      super(auth: null);
 
-  final User? _user;
+  User? _user;
+  final StreamController<User?> _controller;
   String? linkedEmail;
   String? linkedPassword;
   String? linkedUserIdBeforeLink;
@@ -353,8 +388,9 @@ class _FakeAuthService extends AuthService {
   String? currentPasswordForPasswordChange;
 
   @override
-  Stream<User?> authStateChanges() {
-    return Stream<User?>.value(_user);
+  Stream<User?> authStateChanges() async* {
+    yield _user;
+    yield* _controller.stream;
   }
 
   @override
@@ -365,6 +401,12 @@ class _FakeAuthService extends AuthService {
     linkedUserIdBeforeLink = _user?.uid;
     linkedEmail = email;
     linkedPassword = password;
+    _user = _FakeUser(
+      uid: _user?.uid ?? 'uid',
+      email: email,
+      isAnonymous: false,
+    );
+    _controller.add(_user);
     return _user;
   }
 

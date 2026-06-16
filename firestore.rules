@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function hasOnlyUserMetadataFields() {
+      return request.resource.data.keys().hasOnly([
+        'createdAt',
+        'authProvider',
+        'emailLinkedAt',
+        'updatedAt',
+      ]);
+    }
+
+    function isAnonymousMetadataCreate() {
+      return hasOnlyUserMetadataFields()
+        && request.resource.data.authProvider == 'anonymous'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.emailLinkedAt == null;
+    }
+
+    function isEmailLinkedMetadataUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'authProvider',
+          'emailLinkedAt',
+          'updatedAt',
+        ])
+        && request.resource.data.authProvider == 'email'
+        && request.resource.data.emailLinkedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isAnonymousMetadataCreate();
+      allow update: if isOwner(userId) && isEmailLinkedMetadataUpdate();
+      allow delete: if false;
+
+      match /athletes/{athleteId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /events/{eventId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /records/{recordId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /entitlements/{entitlementId} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
