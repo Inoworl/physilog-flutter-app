@@ -44,7 +44,7 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isOwner(userId) && isAnonymousMetadataCreate();
       allow update: if isOwner(userId) && isEmailLinkedMetadataUpdate();
-      allow delete: if false;
+      allow delete: if isOwner(userId);
 
       match /athletes/{athleteId} {
         allow read, create, update, delete: if isOwner(userId);

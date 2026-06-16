@@ -207,6 +207,28 @@ void main() {
     verify(() => user.updatePassword('newPassword123')).called(1);
   });
 
+  test('deleteAccountはユーザーデータを削除してからFirebase Authユーザーを削除する', () async {
+    final auth = _MockFirebaseAuth();
+    final user = _MockUser();
+    final userMetadataRepository = _MockUserMetadataRepository();
+    when(() => auth.currentUser).thenReturn(user);
+    when(() => user.uid).thenReturn('uid');
+    when(
+      () => userMetadataRepository.deleteUserData(userId: any(named: 'userId')),
+    ).thenAnswer((_) async {});
+    when(() => user.delete()).thenAnswer((_) async {});
+
+    await AuthService(
+      auth: auth,
+      userMetadataRepository: userMetadataRepository,
+    ).deleteAccount();
+
+    verifyInOrder([
+      () => userMetadataRepository.deleteUserData(userId: 'uid'),
+      () => user.delete(),
+    ]);
+  });
+
   test('messageForAuthErrorは登録済みメールをログイン誘導に変換する', () {
     final message = AuthService().messageForAuthError(
       FirebaseAuthException(code: 'email-already-in-use'),

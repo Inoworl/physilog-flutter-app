@@ -28,6 +28,7 @@ void main() {
     expect(rules, contains('match /events/{eventId}'));
     expect(rules, contains('match /records/{recordId}'));
     expect(rules, contains('match /entitlements/{entitlementId}'));
+    expect(rules, contains('allow delete: if isOwner(userId);'));
     expect(rules, contains('allow create, update, delete: if false;'));
     expect(rules, contains('match /{document=**}'));
   });

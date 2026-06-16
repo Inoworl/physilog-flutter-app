@@ -87,7 +87,9 @@ void main() {
   }
 
   testWidgets('アカウント削除は確認ダイアログなしでは実行できない', (tester) async {
-    await tester.pumpWidget(_settingsApp());
+    final authService = _FakeAuthService();
+
+    await tester.pumpWidget(_settingsApp(authService: authService));
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
@@ -102,6 +104,28 @@ void main() {
     expect(find.text('アカウントを削除しますか？'), findsOneWidget);
     expect(find.text('削除する'), findsOneWidget);
     expect(find.text('キャンセル'), findsOneWidget);
+    expect(authService.deletedAccount, isFalse);
+  });
+
+  testWidgets('アカウント削除は確認後に現在のFirebase Authユーザーを削除する', (tester) async {
+    final authService = _FakeAuthService();
+
+    await tester.pumpWidget(_settingsApp(authService: authService));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('アカウント削除'),
+      240,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('アカウント削除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('削除する'));
+    await tester.pumpAndSettle();
+
+    expect(authService.deletedAccount, isTrue);
+    expect(find.text('アカウントを削除しました'), findsOneWidget);
   });
 
   testWidgets('引き継ぎ設定は再入力パスワードを検証して匿名アカウントに認証情報をリンクする', (tester) async {
@@ -386,6 +410,7 @@ class _FakeAuthService extends AuthService {
   String? currentPasswordForEmailChange;
   String? changedPassword;
   String? currentPasswordForPasswordChange;
+  bool deletedAccount = false;
 
   @override
   Stream<User?> authStateChanges() async* {
@@ -436,6 +461,13 @@ class _FakeAuthService extends AuthService {
   }) async {
     currentPasswordForPasswordChange = currentPassword;
     changedPassword = newPassword;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    deletedAccount = true;
+    _user = null;
+    _controller.add(null);
   }
 }
 

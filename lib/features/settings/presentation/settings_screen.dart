@@ -230,7 +230,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      messenger.showSnackBar(const SnackBar(content: Text('アカウント削除は準備中です')));
+      try {
+        await ref.read(authServiceProvider).deleteAccount();
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(const SnackBar(content: Text('アカウントを削除しました')));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        final message = ref
+            .read(authServiceProvider)
+            .messageForAuthError(error);
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
     }
   }
 }

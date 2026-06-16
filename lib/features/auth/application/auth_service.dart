@@ -112,6 +112,12 @@ class AuthService {
     await user.updatePassword(newPassword);
   }
 
+  Future<void> deleteAccount() async {
+    final user = _requireCurrentUser();
+    await _userMetadataRepository?.deleteUserData(userId: user.uid);
+    await user.delete();
+  }
+
   String messageForAuthError(Object error) {
     if (error is! FirebaseAuthException) {
       return '認証処理に失敗しました。時間をおいて再度お試しください。';
