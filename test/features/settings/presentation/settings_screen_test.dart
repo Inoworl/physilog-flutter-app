@@ -16,7 +16,7 @@ void main() {
     expect(find.text('アカウント'), findsOneWidget);
     expect(find.text('メールアドレス'), findsOneWidget);
     expect(find.text('未登録'), findsOneWidget);
-    expect(find.text('メールアドレス登録'), findsOneWidget);
+    expect(find.text('メールとパスワードを設定'), findsOneWidget);
     expect(find.text('別端末から引き継ぐ'), findsOneWidget);
     expect(find.text('規約・ポリシー'), findsOneWidget);
     expect(find.text('プライバシーポリシー'), findsOneWidget);
@@ -57,7 +57,7 @@ void main() {
     expect(find.text('coach@example.com'), findsOneWidget);
     expect(find.text('メールアドレス変更'), findsOneWidget);
     expect(find.text('パスワード変更'), findsOneWidget);
-    expect(find.text('メールアドレス登録'), findsNothing);
+    expect(find.text('メールとパスワードを設定'), findsNothing);
     expect(find.text('別端末から引き継ぐ'), findsNothing);
   });
 
@@ -98,17 +98,19 @@ void main() {
     expect(find.text('キャンセル'), findsOneWidget);
   });
 
-  testWidgets('メールアドレス登録は再入力パスワードを検証して匿名アカウントに認証情報をリンクする', (tester) async {
-    final authService = _FakeAuthService();
+  testWidgets('引き継ぎ設定は再入力パスワードを検証して匿名アカウントに認証情報をリンクする', (tester) async {
+    final authService = _FakeAuthService(
+      user: _FakeUser(uid: 'anonymous-uid', email: null, isAnonymous: true),
+    );
 
     await tester.pumpWidget(_settingsApp(authService: authService));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('メールアドレス登録'));
+    await tester.tap(find.text('メールとパスワードを設定'));
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomSheet), findsNothing);
-    expect(find.text('この端末のデータを別端末へ引き継げるようにします。'), findsOneWidget);
+    expect(find.text('この端末のデータを別端末でも使えるようにします。'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'パスワード再入力'), findsOneWidget);
 
     await tester.enterText(
@@ -123,9 +125,9 @@ void main() {
       find.widgetWithText(TextFormField, 'パスワード再入力'),
       'different123',
     );
-    await tester.ensureVisible(find.text('登録する'));
+    await tester.ensureVisible(find.text('設定する'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('登録する'));
+    await tester.tap(find.text('設定する'));
     await tester.pumpAndSettle();
 
     expect(find.text('パスワードが一致しません'), findsOneWidget);
@@ -135,22 +137,23 @@ void main() {
       find.widgetWithText(TextFormField, 'パスワード再入力'),
       'password123',
     );
-    await tester.ensureVisible(find.text('登録する'));
+    await tester.ensureVisible(find.text('設定する'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('登録する'));
+    await tester.tap(find.text('設定する'));
     await tester.pumpAndSettle();
 
     expect(authService.linkedEmail, 'coach@example.com');
     expect(authService.linkedPassword, 'password123');
+    expect(authService.linkedUserIdBeforeLink, 'anonymous-uid');
     expect(authService.signedInEmail, isNull);
-    expect(find.text('メールアドレスを登録しました'), findsOneWidget);
+    expect(find.text('引き継ぎ設定を保存しました'), findsOneWidget);
   });
 
   testWidgets('パスワード表示トグルは登録フォームの入力表示を切り替える', (tester) async {
     await tester.pumpWidget(_settingsApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('メールアドレス登録'));
+    await tester.tap(find.text('メールとパスワードを設定'));
     await tester.pumpAndSettle();
 
     final passwordField = find.widgetWithText(TextField, 'パスワード');
@@ -341,6 +344,7 @@ class _FakeAuthService extends AuthService {
   final User? _user;
   String? linkedEmail;
   String? linkedPassword;
+  String? linkedUserIdBeforeLink;
   String? signedInEmail;
   String? signedInPassword;
   String? changedEmail;
@@ -358,9 +362,10 @@ class _FakeAuthService extends AuthService {
     required String email,
     required String password,
   }) async {
+    linkedUserIdBeforeLink = _user?.uid;
     linkedEmail = email;
     linkedPassword = password;
-    return null;
+    return _user;
   }
 
   @override
@@ -393,7 +398,10 @@ class _FakeAuthService extends AuthService {
 }
 
 class _FakeUser extends Fake implements User {
-  _FakeUser({required this.email, required this.isAnonymous});
+  _FakeUser({required this.email, required this.isAnonymous, this.uid = 'uid'});
+
+  @override
+  final String uid;
 
   @override
   final String? email;

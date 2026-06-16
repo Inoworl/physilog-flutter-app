@@ -18,6 +18,7 @@ void main() {
     final user = _MockUser();
     final credential = _MockUserCredential();
     when(() => auth.currentUser).thenReturn(user);
+    when(() => user.uid).thenReturn('anonymous-uid');
     when(() => credential.user).thenReturn(user);
     when(
       () => user.linkWithCredential(any()),
@@ -29,6 +30,7 @@ void main() {
     );
 
     expect(result, user);
+    expect(result?.uid, 'anonymous-uid');
     verify(() => user.linkWithCredential(any())).called(1);
     verifyNever(
       () => auth.createUserWithEmailAndPassword(

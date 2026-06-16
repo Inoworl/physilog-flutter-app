@@ -72,8 +72,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ] else ...[
                   _SettingsTile(
                     icon: Icons.mail_outline,
-                    title: 'メールアドレス登録',
-                    subtitle: 'この端末のデータを引き継げるようにする',
+                    title: 'メールとパスワードを設定',
+                    subtitle: 'この端末のデータを別端末でも使えるようにする',
                     onTap: () => setState(
                       () => _selectedAuthMode = _EmailAuthMode.register,
                     ),
@@ -380,7 +380,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
   String get _description {
     switch (widget.mode) {
       case _EmailAuthMode.register:
-        return 'この端末のデータを別端末へ引き継げるようにします。';
+        return 'この端末のデータを別端末でも使えるようにします。';
       case _EmailAuthMode.transfer:
         return '登録済みのメールアドレスで以前の端末のデータを読み込みます。';
       case _EmailAuthMode.changeEmail:
@@ -400,7 +400,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
   String get _submitLabel {
     switch (widget.mode) {
       case _EmailAuthMode.register:
-        return '登録する';
+        return '設定する';
       case _EmailAuthMode.transfer:
         return 'データを引き継ぐ';
       case _EmailAuthMode.changeEmail:
@@ -511,7 +511,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
   String get _successMessage {
     switch (widget.mode) {
       case _EmailAuthMode.register:
-        return 'メールアドレスを登録しました';
+        return '引き継ぎ設定を保存しました';
       case _EmailAuthMode.transfer:
         return 'データを引き継ぎました';
       case _EmailAuthMode.changeEmail:
