@@ -13,7 +13,6 @@ const _privacyPolicyUrl = '$_docsBaseUrl/privacy.html';
 const _termsUrl = '$_docsBaseUrl/terms.html';
 const _usageGuideUrl = '$_docsBaseUrl/usage.html';
 const _transferGuideUrl = '$_docsBaseUrl/transfer.html';
-const _accountDeletionUrl = '$_docsBaseUrl/account-deletion.html';
 const _measurementTipsUrl = '$_docsBaseUrl/measurement-tips.html';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -69,6 +68,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       AccountEmailAuthMode.changePassword,
                     ),
                   ),
+                  const Divider(height: 1),
+                  _SettingsTile(
+                    icon: Icons.logout,
+                    title: 'ログアウト',
+                    subtitle: 'この端末を匿名状態に戻す',
+                    onTap: () => _showSignOutDialog(context),
+                  ),
                 ] else ...[
                   _SettingsTile(
                     icon: Icons.mail_outline,
@@ -118,22 +124,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
             _SettingsSection(
-              title: '端末引き継ぎ',
-              children: [
-                _SettingsTile(
-                  icon: Icons.sync_alt,
-                  title: '引き継ぎ方法を見る',
-                  subtitle: '新しい端末で記録を復元する手順',
-                  onTap: () => _openHelp(
-                    context,
-                    title: '端末引き継ぎ',
-                    url: _transferGuideUrl,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            _SettingsSection(
               title: 'ヘルプ',
               children: [
                 _SettingsTile(
@@ -156,20 +146,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 _SettingsTile(
-                  icon: Icons.delete_outline,
-                  title: 'アカウント削除方法',
-                  subtitle: '削除対象データと手順',
+                  icon: Icons.sync_alt,
+                  title: '引き継ぎ方法を見る',
+                  subtitle: '新しい端末で記録を復元する手順',
                   onTap: () => _openHelp(
                     context,
-                    title: 'アカウント削除方法',
-                    url: _accountDeletionUrl,
+                    title: '端末引き継ぎ',
+                    url: _transferGuideUrl,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
             _SettingsSection(
-              title: '危険な操作',
+              title: 'データ管理',
               children: [
                 _SettingsTile(
                   icon: Icons.delete_forever_outlined,
@@ -185,6 +175,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showSignOutDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ログアウトしますか？'),
+        content: const Text('この端末は新しい匿名状態に戻ります。登録済みデータは再ログインすると表示できます。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('ログアウト'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(authServiceProvider).signOutAndContinueAnonymously();
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(const SnackBar(content: Text('ログアウトしました')));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        final message = ref
+            .read(authServiceProvider)
+            .messageForAuthError(error);
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
   }
 
   void _openAccountAuth(BuildContext context, AccountEmailAuthMode mode) {
@@ -384,7 +413,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
             if (_isTransferMode) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'ログイン後は、この端末の未登録状態で作成したデータは表示されなくなります。',
+                '引き継ぎ時に、この端末の未登録状態で作成したデータは削除されます。',
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -549,7 +578,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
             password: _passwordController.text,
           );
         case AccountEmailAuthMode.transfer:
-          await authService.signInWithEmailAndPassword(
+          await authService.transferToEmailAndPassword(
             email: _emailController.text,
             password: _passwordController.text,
           );

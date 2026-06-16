@@ -167,6 +167,78 @@ void main() {
     ).called(1);
   });
 
+  test('transferToEmailAndPasswordは現在の匿名ユーザーデータを削除してからメールログインする', () async {
+    final auth = _MockFirebaseAuth();
+    final anonymousUser = _MockUser();
+    final signedInUser = _MockUser();
+    final credential = _MockUserCredential();
+    final userMetadataRepository = _MockUserMetadataRepository();
+    when(() => auth.currentUser).thenReturn(anonymousUser);
+    when(() => anonymousUser.uid).thenReturn('anonymous-uid');
+    when(() => anonymousUser.isAnonymous).thenReturn(true);
+    when(() => anonymousUser.email).thenReturn(null);
+    when(
+      () => userMetadataRepository.deleteUserData(userId: any(named: 'userId')),
+    ).thenAnswer((_) async {});
+    when(() => anonymousUser.delete()).thenAnswer((_) async {});
+    when(() => credential.user).thenReturn(signedInUser);
+    when(
+      () => auth.signInWithEmailAndPassword(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => credential);
+
+    final result =
+        await AuthService(
+          auth: auth,
+          userMetadataRepository: userMetadataRepository,
+        ).transferToEmailAndPassword(
+          email: ' coach@example.com ',
+          password: 'password123',
+        );
+
+    expect(result, signedInUser);
+    verifyInOrder([
+      () => userMetadataRepository.deleteUserData(userId: 'anonymous-uid'),
+      () => anonymousUser.delete(),
+      () => auth.signInWithEmailAndPassword(
+        email: 'coach@example.com',
+        password: 'password123',
+      ),
+    ]);
+  });
+
+  test('signOutAndContinueAnonymouslyはログアウト後に匿名認証へ戻す', () async {
+    final auth = _MockFirebaseAuth();
+    final user = _MockUser();
+    final credential = _MockUserCredential();
+    final userMetadataRepository = _MockUserMetadataRepository();
+    when(() => auth.signOut()).thenAnswer((_) async {});
+    when(() => auth.currentUser).thenReturn(null);
+    when(() => credential.user).thenReturn(user);
+    when(() => user.uid).thenReturn('new-anonymous-uid');
+    when(() => auth.signInAnonymously()).thenAnswer((_) async => credential);
+    when(
+      () => userMetadataRepository.ensureAnonymousUserCreated(
+        userId: any(named: 'userId'),
+      ),
+    ).thenAnswer((_) async {});
+
+    await AuthService(
+      auth: auth,
+      userMetadataRepository: userMetadataRepository,
+    ).signOutAndContinueAnonymously();
+
+    verifyInOrder([
+      () => auth.signOut(),
+      () => auth.signInAnonymously(),
+      () => userMetadataRepository.ensureAnonymousUserCreated(
+        userId: 'new-anonymous-uid',
+      ),
+    ]);
+  });
+
   test('changeEmailは現在パスワードで再認証して確認メール付きメール変更を実行する', () async {
     final auth = _MockFirebaseAuth();
     final user = _MockUser();

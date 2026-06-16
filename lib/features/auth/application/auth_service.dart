@@ -94,6 +94,34 @@ class AuthService {
     return credential.user;
   }
 
+  Future<User?> transferToEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    final auth = _requireAuth();
+    final anonymousUser = auth.currentUser;
+    final shouldDeleteAnonymousUser = _isAnonymousUser(anonymousUser);
+
+    if (shouldDeleteAnonymousUser) {
+      final user = anonymousUser!;
+      await _userMetadataRepository?.deleteUserData(userId: user.uid);
+      await user.delete();
+    }
+
+    try {
+      final credential = await auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return credential.user;
+    } catch (_) {
+      if (shouldDeleteAnonymousUser) {
+        await ensureAnonymousSignIn();
+      }
+      rethrow;
+    }
+  }
+
   Future<void> changeEmail({
     required String currentPassword,
     required String newEmail,
@@ -110,6 +138,11 @@ class AuthService {
     final user = _requireCurrentUser();
     await _reauthenticate(user, currentPassword: currentPassword);
     await user.updatePassword(newPassword);
+  }
+
+  Future<void> signOutAndContinueAnonymously() async {
+    await _requireAuth().signOut();
+    await ensureAnonymousSignIn();
   }
 
   Future<void> deleteAccount() async {
@@ -171,6 +204,11 @@ class AuthService {
       );
     }
     return user;
+  }
+
+  bool _isAnonymousUser(User? user) {
+    final email = user?.email?.trim();
+    return user != null && user.isAnonymous && (email == null || email.isEmpty);
   }
 
   Future<void> _reauthenticate(

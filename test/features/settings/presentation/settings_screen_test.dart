@@ -27,8 +27,7 @@ void main() {
     expect(find.text('規約・ポリシー'), findsOneWidget);
     expect(find.text('プライバシーポリシー'), findsOneWidget);
     expect(find.text('利用規約'), findsOneWidget);
-    expect(find.text('端末引き継ぎ'), findsOneWidget);
-    expect(find.text('引き継ぎ方法を見る'), findsOneWidget);
+    expect(find.text('端末引き継ぎ'), findsNothing);
 
     await tester.scrollUntilVisible(
       find.text('ヘルプ'),
@@ -39,7 +38,8 @@ void main() {
 
     expect(find.text('ヘルプ'), findsOneWidget);
     expect(find.text('アプリの使い方'), findsOneWidget);
-    expect(find.text('アカウント削除方法'), findsOneWidget);
+    expect(find.text('引き継ぎ方法を見る'), findsOneWidget);
+    expect(find.text('アカウント削除方法'), findsNothing);
 
     await tester.scrollUntilVisible(
       find.text('アカウント削除'),
@@ -49,6 +49,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('アカウント削除'), findsOneWidget);
+    expect(find.text('データ管理'), findsOneWidget);
+    expect(find.text('危険な操作'), findsNothing);
   });
 
   testWidgets('登録済みユーザーはメールアドレスと変更導線を表示する', (tester) async {
@@ -63,6 +65,7 @@ void main() {
     expect(find.text('coach@example.com'), findsOneWidget);
     expect(find.text('メールアドレス変更'), findsOneWidget);
     expect(find.text('パスワード変更'), findsOneWidget);
+    expect(find.text('ログアウト'), findsOneWidget);
     expect(find.text('メールとパスワードを設定'), findsNothing);
     expect(find.text('別端末から引き継ぐ'), findsNothing);
   });
@@ -126,6 +129,33 @@ void main() {
 
     expect(authService.deletedAccount, isTrue);
     expect(find.text('アカウントを削除しました'), findsOneWidget);
+  });
+
+  testWidgets('ログアウトは確認後に匿名状態へ戻す', (tester) async {
+    final authService = _FakeAuthService(
+      user: _FakeUser(
+        uid: 'email-uid',
+        email: 'coach@example.com',
+        isAnonymous: false,
+      ),
+    );
+
+    await tester.pumpWidget(_settingsApp(authService: authService));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('ログアウト'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ログアウトしますか？'), findsOneWidget);
+    expect(authService.signedOutToAnonymous, isFalse);
+
+    await tester.tap(find.text('ログアウト').last);
+    await tester.pumpAndSettle();
+
+    expect(authService.signedOutToAnonymous, isTrue);
+    expect(find.text('ログアウトしました'), findsOneWidget);
+    expect(find.text('未登録'), findsOneWidget);
+    expect(find.text('メールとパスワードを設定'), findsOneWidget);
   });
 
   testWidgets('引き継ぎ設定は再入力パスワードを検証して匿名アカウントに認証情報をリンクする', (tester) async {
@@ -203,7 +233,13 @@ void main() {
   });
 
   testWidgets('別端末から引き継ぐは別ページで登録済みメールのデータを読み込む', (tester) async {
-    final authService = _FakeAuthService();
+    final authService = _FakeAuthService(
+      user: _FakeUser(
+        uid: 'anonymous-transfer-uid',
+        email: null,
+        isAnonymous: true,
+      ),
+    );
 
     await tester.pumpWidget(_settingsApp(authService: authService));
     await tester.pumpAndSettle();
@@ -214,7 +250,7 @@ void main() {
     expect(find.byType(AccountEmailAuthScreen), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('登録済みのメールアドレスで以前の端末のデータを読み込みます。'), findsOneWidget);
-    expect(find.text('ログイン後は、この端末の未登録状態で作成したデータは表示されなくなります。'), findsOneWidget);
+    expect(find.text('引き継ぎ時に、この端末の未登録状態で作成したデータは削除されます。'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'パスワード再入力'), findsNothing);
 
     await tester.enterText(
@@ -230,6 +266,10 @@ void main() {
 
     expect(authService.signedInEmail, 'coach@example.com');
     expect(authService.signedInPassword, 'password123');
+    expect(
+      authService.deletedAnonymousUserIdBeforeTransfer,
+      'anonymous-transfer-uid',
+    );
     expect(authService.linkedEmail, isNull);
     expect(find.text('データを引き継ぎました'), findsOneWidget);
   });
@@ -374,11 +414,6 @@ const _helpDestinations = [
     title: 'アプリの使い方',
     url: '$_docsBaseUrl/usage.html',
   ),
-  _HelpDestination(
-    label: 'アカウント削除方法',
-    title: 'アカウント削除方法',
-    url: '$_docsBaseUrl/account-deletion.html',
-  ),
 ];
 
 class _HelpDestination {
@@ -411,6 +446,8 @@ class _FakeAuthService extends AuthService {
   String? changedPassword;
   String? currentPasswordForPasswordChange;
   bool deletedAccount = false;
+  bool signedOutToAnonymous = false;
+  String? deletedAnonymousUserIdBeforeTransfer;
 
   @override
   Stream<User?> authStateChanges() async* {
@@ -446,6 +483,21 @@ class _FakeAuthService extends AuthService {
   }
 
   @override
+  Future<User?> transferToEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    deletedAnonymousUserIdBeforeTransfer = _user?.isAnonymous == true
+        ? _user?.uid
+        : null;
+    signedInEmail = email;
+    signedInPassword = password;
+    _user = _FakeUser(uid: 'signed-in-uid', email: email, isAnonymous: false);
+    _controller.add(_user);
+    return _user;
+  }
+
+  @override
   Future<void> changeEmail({
     required String currentPassword,
     required String newEmail,
@@ -468,6 +520,13 @@ class _FakeAuthService extends AuthService {
     deletedAccount = true;
     _user = null;
     _controller.add(null);
+  }
+
+  @override
+  Future<void> signOutAndContinueAnonymously() async {
+    signedOutToAnonymous = true;
+    _user = _FakeUser(uid: 'new-anonymous-uid', email: null, isAnonymous: true);
+    _controller.add(_user);
   }
 }
 
