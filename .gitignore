@@ -23,6 +23,8 @@ build/
 
 # Firebase
 firebase-debug.log
+android/app/src/*/google-services.json
+android/app/google-services.json
 
 # 環境変数
 .env

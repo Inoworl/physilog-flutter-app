@@ -5,6 +5,8 @@
   "APP_NAME": "PhysiLog Dev",
   "FIREBASE_OPTIONS_CLASS": "DefaultFirebaseOptions",
   "DATA_STORE_MODE": "firestore",
+  "REVENUECAT_IOS_API_KEY": "test_WHaJWnmlrMVxHSglFhnGdgBtoBE",
+  "REVENUECAT_ANDROID_API_KEY": "test_WHaJWnmlrMVxHSglFhnGdgBtoBE",
   "ADMOB_IOS_APP_ID": "",
   "ADMOB_ANDROID_APP_ID": "",
   "ADMOB_IOS_BANNER_ID": "",

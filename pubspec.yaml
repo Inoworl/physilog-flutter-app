@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.5.1
   share_plus: ^10.1.4
+  purchases_flutter: ^10.2.0
 
 dev_dependencies:
   flutter_test:
