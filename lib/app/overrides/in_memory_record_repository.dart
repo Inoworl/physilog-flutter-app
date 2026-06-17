@@ -9,14 +9,20 @@ class InMemoryRecordRepository implements RecordRepository {
   final List<MeasurementRecord> _records;
 
   @override
-  Future<void> deleteRecord(String id) async {
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {
     _records.removeWhere((record) => record.id == id);
   }
 
   @override
-  Future<MeasurementRecord?> getRecord(String id) async {
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async {
     for (final record in _records) {
-      if (record.id == id) {
+      if (record.id == id && record.userId == userId) {
         return record;
       }
     }

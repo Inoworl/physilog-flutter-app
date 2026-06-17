@@ -11,8 +11,10 @@ import 'package:physi_log/shared/widgets/loading_state.dart';
 
 final _recordDetailProvider = FutureProvider.family<MeasurementRecord?, String>(
   (ref, id) async {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return null;
     final repository = ref.watch(recordRepositoryProvider);
-    return repository.getRecord(id);
+    return repository.getRecord(userId: userId, id: id);
   },
 );
 

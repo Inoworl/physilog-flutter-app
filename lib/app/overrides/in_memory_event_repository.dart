@@ -8,7 +8,7 @@ class InMemoryEventRepository implements EventRepository {
   final List<Event> _events;
 
   @override
-  Future<void> deleteEvent(String id) async {
+  Future<void> deleteEvent({required String userId, required String id}) async {
     _events.removeWhere((event) => event.id == id);
   }
 

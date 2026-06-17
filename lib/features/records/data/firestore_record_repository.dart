@@ -27,21 +27,24 @@ class FirestoreRecordRepository implements RecordRepository {
         query = query.where('athleteId', isEqualTo: filter.athleteId);
       }
       if (filter.athleteName != null && filter.athleteName!.isNotEmpty) {
-        query = query.where('athleteName', isEqualTo: filter.athleteName);
+        query = query.where(
+          'athleteNameSnapshot',
+          isEqualTo: filter.athleteName,
+        );
       }
       if (filter.eventType != null && filter.eventType!.isNotEmpty) {
-        query = query.where('eventType', isEqualTo: filter.eventType);
+        query = query.where('eventNameSnapshot', isEqualTo: filter.eventType);
       }
       if (filter.dateFrom != null) {
         query = query.where(
-          'measuredAt',
+          'recordedAt',
           isGreaterThanOrEqualTo: Timestamp.fromDate(filter.dateFrom!),
         );
       }
       if (filter.dateTo != null) {
         final endOfDay = filter.dateTo!.add(const Duration(days: 1));
         query = query.where(
-          'measuredAt',
+          'recordedAt',
           isLessThan: Timestamp.fromDate(endOfDay),
         );
       }
@@ -50,15 +53,15 @@ class FirestoreRecordRepository implements RecordRepository {
     final sortKey = filter?.sortKey ?? RecordSortKey.measuredAtDesc;
     switch (sortKey) {
       case RecordSortKey.measuredAtDesc:
-        query = query.orderBy('measuredAt', descending: true);
+        query = query.orderBy('recordedAt', descending: true);
       case RecordSortKey.measuredAtAsc:
-        query = query.orderBy('measuredAt');
+        query = query.orderBy('recordedAt');
       case RecordSortKey.durationAsc:
         query = query.orderBy('durationMs');
       case RecordSortKey.durationDesc:
         query = query.orderBy('durationMs', descending: true);
       case RecordSortKey.athleteName:
-        query = query.orderBy('athleteName');
+        query = query.orderBy('athleteNameSnapshot');
     }
 
     query = query.limit(limit);
@@ -77,9 +80,12 @@ class FirestoreRecordRepository implements RecordRepository {
   }
 
   @override
-  Future<MeasurementRecord?> getRecord(String id) async {
-    final doc = await _findRecordDocById(id);
-    if (doc == null || !doc.exists) return null;
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async {
+    final doc = await _collection(userId).doc(id).get();
+    if (!doc.exists) return null;
     return MeasurementRecord.fromFirestore(doc);
   }
 
@@ -96,24 +102,10 @@ class FirestoreRecordRepository implements RecordRepository {
   }
 
   @override
-  Future<void> deleteRecord(String id) async {
-    final doc = await _findRecordDocById(id);
-    if (doc != null && doc.exists) {
-      await doc.reference.delete();
-    }
-  }
-
-  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _findRecordDocById(
-    String id,
-  ) async {
-    final snapshot = await _firestore
-        .collectionGroup('records')
-        .where(FieldPath.documentId, isEqualTo: id)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) {
-      return null;
-    }
-    return snapshot.docs.first;
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {
+    await _collection(userId).doc(id).delete();
   }
 }

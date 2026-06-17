@@ -16,10 +16,16 @@ import 'package:physi_log/providers/app_providers.dart';
 
 class _FakeRecordRepository implements RecordRepository {
   @override
-  Future<void> deleteRecord(String id) async {}
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {}
 
   @override
-  Future<MeasurementRecord?> getRecord(String id) async => null;
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async => null;
 
   @override
   Future<List<MeasurementRecord>> getRecords({
@@ -40,7 +46,10 @@ class _FakeRecordRepository implements RecordRepository {
 
 class _FakeAthleteRepository implements AthleteRepository {
   @override
-  Future<void> deleteAthlete(String id) async {}
+  Future<void> deleteAthlete({
+    required String userId,
+    required String id,
+  }) async {}
 
   @override
   Future<List<Athlete>> getAthletes({required String userId}) async {
@@ -64,7 +73,10 @@ class _FakeAthleteRepository implements AthleteRepository {
 
 class _FakeEventRepository implements EventRepository {
   @override
-  Future<void> deleteEvent(String id) async {}
+  Future<void> deleteEvent({
+    required String userId,
+    required String id,
+  }) async {}
 
   @override
   Future<List<Event>> getEvents({required String userId}) async {

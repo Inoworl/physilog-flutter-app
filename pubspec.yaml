@@ -1,7 +1,7 @@
 name: physi_log
 description: "スポーツ体力測定動画計測アプリ"
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.9.2
@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.5.1
   share_plus: ^10.1.4
+  webview_flutter: ^4.13.1
   purchases_flutter: ^10.2.0
 
 dev_dependencies:

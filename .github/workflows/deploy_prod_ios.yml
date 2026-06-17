@@ -24,12 +24,28 @@ jobs:
       - name: Restore Firebase config
         env:
           PROD_GOOGLESERVICE_INFO_PLIST_BASE64: ${{ secrets.PROD_GOOGLESERVICE_INFO_PLIST_BASE64 }}
+          APP_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.APP_FIREBASE_OPTIONS_DART_BASE64 }}
+          DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
+          PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
+          PROD_DART_DEFINE_JSON_BASE64: ${{ secrets.PROD_DART_DEFINE_JSON_BASE64 }}
         run: |
-          if [ -z "$PROD_GOOGLESERVICE_INFO_PLIST_BASE64" ]; then
-            echo "PROD_GOOGLESERVICE_INFO_PLIST_BASE64 is required" >&2
+          set -euo pipefail
+          missing=0
+          for name in PROD_GOOGLESERVICE_INFO_PLIST_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 PROD_DART_DEFINE_JSON_BASE64; do
+            if [ -z "${!name}" ]; then
+              echo "::error ::Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
             exit 1
           fi
-          echo "$PROD_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          mkdir -p ios/Runner/Firebase/prod dart_define
+          echo "$PROD_GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/Firebase/prod/GoogleService-Info.plist
+          echo "$APP_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
+          echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
+          echo "$PROD_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/prod_dart_define.json
 
       - name: Import Code Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2

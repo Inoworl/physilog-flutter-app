@@ -166,7 +166,7 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
     return result;
   }
 
-  Future<Athlete?> addAthlete(String name) async {
+  Future<Athlete?> addAthlete(String name, {int? age}) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
 
@@ -175,6 +175,7 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
       id: const Uuid().v4(),
       userId: _userId,
       name: trimmed,
+      age: age,
       createdAt: now,
       updatedAt: now,
     );
@@ -187,6 +188,7 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
   Future<Athlete?> updateAthlete({
     required String athleteId,
     required String name,
+    int? age,
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
@@ -201,14 +203,19 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
     }
     if (existing == null) return null;
 
-    final updated = existing.copyWith(name: trimmed, updatedAt: DateTime.now());
+    final updated = existing.copyWith(
+      name: trimmed,
+      age: age,
+      updatedAt: DateTime.now(),
+    );
     await _repository.updateAthlete(updated);
     await loadAthletes();
     return updated;
   }
 
   Future<void> deleteAthlete(String athleteId) async {
-    await _repository.deleteAthlete(athleteId);
+    if (_userId == null) return;
+    await _repository.deleteAthlete(userId: _userId, id: athleteId);
     await loadAthletes();
   }
 }

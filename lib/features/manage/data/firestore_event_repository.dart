@@ -14,7 +14,11 @@ class FirestoreEventRepository implements EventRepository {
 
   @override
   Future<List<Event>> getEvents({required String userId}) async {
-    final snapshot = await _collection(userId).orderBy('name').get();
+    final snapshot = await _collection(userId)
+        .where('deletedAt', isNull: true)
+        .orderBy('sortOrder')
+        .orderBy('name')
+        .get();
     return snapshot.docs.map((doc) => Event.fromFirestore(doc)).toList();
   }
 
@@ -29,15 +33,10 @@ class FirestoreEventRepository implements EventRepository {
   }
 
   @override
-  Future<void> deleteEvent(String id) async {
-    final snapshot = await _firestore
-        .collectionGroup('events')
-        .where(FieldPath.documentId, isEqualTo: id)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) {
-      return;
-    }
-    await snapshot.docs.first.reference.delete();
+  Future<void> deleteEvent({required String userId, required String id}) async {
+    await _collection(userId).doc(id).update({
+      'deletedAt': Timestamp.fromDate(DateTime.now()),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
   }
 }

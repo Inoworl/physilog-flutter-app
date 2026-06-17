@@ -1,17 +1,17 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:physi_log/models/record_value_input.dart';
 
 part 'measurement_record.freezed.dart';
 part 'measurement_record.g.dart';
 
 @freezed
 class MeasurementRecord with _$MeasurementRecord {
-  const MeasurementRecord._();
-
   const factory MeasurementRecord({
     required String id,
     required String userId,
     String? athleteId,
+    String? eventId,
     required String athleteName,
     required String eventType,
     required int startMs,
@@ -27,6 +27,8 @@ class MeasurementRecord with _$MeasurementRecord {
     required DateTime updatedAt,
   }) = _MeasurementRecord;
 
+  const MeasurementRecord._();
+
   factory MeasurementRecord.fromJson(Map<String, dynamic> json) =>
       _$MeasurementRecordFromJson(json);
 
@@ -34,8 +36,20 @@ class MeasurementRecord with _$MeasurementRecord {
     final data = doc.data() as Map<String, dynamic>;
     return MeasurementRecord.fromJson({
       'id': doc.id,
-      ...data,
-      'measuredAt': (data['measuredAt'] as Timestamp)
+      'userId': doc.reference.parent.parent?.id ?? '',
+      'athleteId': data['athleteId'] as String?,
+      'eventId': data['eventId'] as String?,
+      'athleteName': data['athleteNameSnapshot'] as String? ?? '',
+      'eventType': data['eventNameSnapshot'] as String? ?? '',
+      'startMs': data['startMs'] as int? ?? 0,
+      'endMs': data['endMs'] as int? ?? 0,
+      'durationMs': data['durationMs'] as int? ?? 0,
+      'recordValue': (data['value'] as num?)?.toDouble(),
+      'recordUnit': data['unit'] as String?,
+      'memo': data['note'] as String? ?? '',
+      'videoRef': data['videoRef'] as String?,
+      'fps': (data['fps'] as num?)?.toDouble(),
+      'measuredAt': (data['recordedAt'] as Timestamp)
           .toDate()
           .toIso8601String(),
       'createdAt': (data['createdAt'] as Timestamp).toDate().toIso8601String(),
@@ -44,19 +58,30 @@ class MeasurementRecord with _$MeasurementRecord {
   }
 
   Map<String, dynamic> toFirestore() {
-    final json = toJson()..remove('id');
-    json['measuredAt'] = Timestamp.fromDate(measuredAt);
-    json['createdAt'] = Timestamp.fromDate(createdAt);
-    json['updatedAt'] = Timestamp.fromDate(updatedAt);
-    return json;
+    final value = effectiveRecordValue;
+    final unit = hasRecordValue ? recordUnit?.trim() : effectiveRecordUnit;
+    return {
+      'athleteId': athleteId ?? '',
+      'eventId': eventId ?? eventType,
+      'recordedAt': Timestamp.fromDate(measuredAt),
+      'value': value,
+      'athleteNameSnapshot': athleteName,
+      'eventNameSnapshot': eventType,
+      if (memo.isNotEmpty) 'note': memo,
+      'startMs': startMs,
+      'endMs': endMs,
+      'durationMs': durationMs,
+      if (unit != null && unit.isNotEmpty) 'unit': unit,
+      if (videoRef != null) 'videoRef': videoRef,
+      if (fps != null) 'fps': fps,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
   }
 
   bool get hasVideoReference => videoRef != null && videoRef!.trim().isNotEmpty;
 
-  bool get hasRecordValue =>
-      recordValue != null &&
-      recordUnit != null &&
-      recordUnit!.trim().isNotEmpty;
+  bool get hasRecordValue => recordValue != null;
 
   double get effectiveRecordValue {
     if (hasRecordValue) {
@@ -67,17 +92,21 @@ class MeasurementRecord with _$MeasurementRecord {
 
   String get effectiveRecordUnit {
     if (hasRecordValue) {
-      return recordUnit!.trim();
+      return recordUnit?.trim() ?? '';
     }
     return '秒';
   }
 
   String get formattedRecordValue {
-    final value = effectiveRecordValue;
-    final display = value == value.roundToDouble()
-        ? value.toStringAsFixed(0)
-        : value.toStringAsFixed(2);
-    return '$display$effectiveRecordUnit';
+    return RecordValueInput.formatDisplay(
+      recordValue: effectiveRecordValue,
+      recordUnit: effectiveRecordUnit,
+    );
+  }
+
+  String get recordValueInputText {
+    if (!hasRecordValue) return '';
+    return formattedRecordValue;
   }
 
   String get formattedDuration {

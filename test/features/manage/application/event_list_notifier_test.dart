@@ -71,4 +71,25 @@ void main() {
     expect(loaded, hasLength(1));
     expect(loaded.single.name, '50m走');
   });
+
+  test('種目を削除すると一覧から消える', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent('50m走');
+    expect(created, isA<Event>());
+
+    await notifier.deleteEvent(created!.id);
+
+    final loaded = notifier.state.maybeWhen(
+      loaded: (events) => events,
+      orElse: () => const <Event>[],
+    );
+
+    expect(loaded, isEmpty);
+    expect(await repository.getEvents(userId: 'local-user'), isEmpty);
+  });
 }

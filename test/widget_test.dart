@@ -28,9 +28,12 @@ void main() {
     await tester.pump();
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('動画計測'), findsOneWidget);
-    expect(find.text('手動記録'), findsOneWidget);
+    expect(find.text('ホーム'), findsOneWidget);
+    expect(find.text('計測'), findsNothing);
+    expect(find.text('記録'), findsOneWidget);
     expect(find.text('管理'), findsOneWidget);
+    expect(find.text('動画から計測を開始'), findsOneWidget);
+    expect(find.text('手入力で追加'), findsOneWidget);
 
     await tester.tap(find.text('記録'));
     await tester.pump(const Duration(milliseconds: 400));
