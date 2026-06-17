@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
@@ -43,12 +44,16 @@ class VideoPlayerNotifier extends StateNotifier<VideoPlayerState> {
   VideoPlayerNotifier() : super(const VideoPlayerState());
 
   Future<void> initializeVideo(String path) async {
-    // 既存コントローラ破棄
-    await state.controller?.dispose();
+    await release();
 
     try {
       final controller = VideoPlayerController.file(File(path));
       await controller.initialize();
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
 
       controller.addListener(_onVideoUpdate);
 
@@ -113,10 +118,23 @@ class VideoPlayerNotifier extends StateNotifier<VideoPlayerState> {
     await seekTo(state.currentPosition - amount);
   }
 
+  Future<void> release() async {
+    final controller = state.controller;
+    if (controller == null) return;
+
+    controller.removeListener(_onVideoUpdate);
+    state = const VideoPlayerState();
+
+    await SchedulerBinding.instance.endOfFrame;
+    await controller.pause().catchError((_) {});
+    await controller.dispose();
+  }
+
   @override
   void dispose() {
-    state.controller?.removeListener(_onVideoUpdate);
-    state.controller?.dispose();
+    final controller = state.controller;
+    controller?.removeListener(_onVideoUpdate);
+    controller?.dispose();
     super.dispose();
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,30 @@ import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 
 void main() {
+  test('Firebase deploy設定はFirestore Rulesをリポジトリ管理する', () {
+    final firebase =
+        jsonDecode(File('firebase.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final firestore = firebase['firestore'] as Map<String, dynamic>;
+
+    expect(firestore['rules'], 'firestore.rules');
+    expect(File('firestore.rules').existsSync(), isTrue);
+  });
+
+  test('Firestore Rulesは本人のusers配下だけを許可しentitlement書き込みを拒否する', () {
+    final rules = File('firestore.rules').readAsStringSync();
+
+    expect(rules, contains('match /users/{userId}'));
+    expect(rules, contains('request.auth.uid == userId'));
+    expect(rules, contains('match /athletes/{athleteId}'));
+    expect(rules, contains('match /events/{eventId}'));
+    expect(rules, contains('match /records/{recordId}'));
+    expect(rules, contains('match /entitlements/{entitlementId}'));
+    expect(rules, contains('allow delete: if isOwner(userId);'));
+    expect(rules, contains('allow create, update, delete: if false;'));
+    expect(rules, contains('match /{document=**}'));
+  });
+
   test('Firestore repositoryは英語collection名を使う', () {
     final athleteRepository = File(
       'lib/features/manage/data/firestore_athlete_repository.dart',

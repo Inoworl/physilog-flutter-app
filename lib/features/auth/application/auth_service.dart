@@ -1,24 +1,34 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:physi_log/features/auth/data/firestore_user_metadata_repository.dart';
+import 'package:physi_log/features/auth/domain/user_metadata_repository.dart';
 
 class AuthService {
-  AuthService({FirebaseAuth? auth}) : _auth = auth;
+  AuthService({
+    FirebaseAuth? auth,
+    UserMetadataRepository? userMetadataRepository,
+  }) : _auth = auth,
+       _userMetadataRepository = userMetadataRepository;
 
   factory AuthService.create() {
     try {
-      return AuthService(auth: FirebaseAuth.instance);
+      return AuthService(
+        auth: FirebaseAuth.instance,
+        userMetadataRepository: FirestoreUserMetadataRepository(),
+      );
     } catch (_) {
       return AuthService(auth: null);
     }
   }
 
   final FirebaseAuth? _auth;
+  final UserMetadataRepository? _userMetadataRepository;
 
   Stream<User?> authStateChanges() {
     final auth = _auth;
     if (auth == null) {
       return Stream<User?>.value(null);
     }
-    return auth.authStateChanges();
+    return auth.userChanges();
   }
 
   Future<String?> ensureAnonymousSignIn() async {
@@ -29,12 +39,17 @@ class AuthService {
 
     final currentUser = auth.currentUser;
     if (currentUser != null) {
+      await _ensureAnonymousUserMetadata(currentUser.uid);
       return currentUser.uid;
     }
 
     try {
       final credential = await auth.signInAnonymously();
-      return credential.user?.uid;
+      final userId = credential.user?.uid;
+      if (userId != null) {
+        await _ensureAnonymousUserMetadata(userId);
+      }
+      return userId;
     } catch (_) {
       return null;
     }
@@ -59,7 +74,13 @@ class AuthService {
       password: password,
     );
     final linked = await user.linkWithCredential(credential);
-    return linked.user;
+    await linked.user?.reload();
+    final currentUser = auth.currentUser;
+    final userId = currentUser?.uid ?? linked.user?.uid;
+    if (userId != null) {
+      await _markEmailLinked(userId);
+    }
+    return currentUser;
   }
 
   Future<User?> signInWithEmailAndPassword({
@@ -71,6 +92,34 @@ class AuthService {
       password: password,
     );
     return credential.user;
+  }
+
+  Future<User?> transferToEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    final auth = _requireAuth();
+    final anonymousUser = auth.currentUser;
+    final shouldDeleteAnonymousUser = _isAnonymousUser(anonymousUser);
+
+    if (shouldDeleteAnonymousUser) {
+      final user = anonymousUser!;
+      await _userMetadataRepository?.deleteUserData(userId: user.uid);
+      await user.delete();
+    }
+
+    try {
+      final credential = await auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return credential.user;
+    } catch (_) {
+      if (shouldDeleteAnonymousUser) {
+        await ensureAnonymousSignIn();
+      }
+      rethrow;
+    }
   }
 
   Future<void> changeEmail({
@@ -89,6 +138,17 @@ class AuthService {
     final user = _requireCurrentUser();
     await _reauthenticate(user, currentPassword: currentPassword);
     await user.updatePassword(newPassword);
+  }
+
+  Future<void> signOutAndContinueAnonymously() async {
+    await _requireAuth().signOut();
+    await ensureAnonymousSignIn();
+  }
+
+  Future<void> deleteAccount() async {
+    final user = _requireCurrentUser();
+    await _userMetadataRepository?.deleteUserData(userId: user.uid);
+    await user.delete();
   }
 
   String messageForAuthError(Object error) {
@@ -146,6 +206,11 @@ class AuthService {
     return user;
   }
 
+  bool _isAnonymousUser(User? user) {
+    final email = user?.email?.trim();
+    return user != null && user.isAnonymous && (email == null || email.isEmpty);
+  }
+
   Future<void> _reauthenticate(
     User user, {
     required String currentPassword,
@@ -163,5 +228,21 @@ class AuthService {
       password: currentPassword,
     );
     await user.reauthenticateWithCredential(credential);
+  }
+
+  Future<void> _ensureAnonymousUserMetadata(String userId) async {
+    try {
+      await _userMetadataRepository?.ensureAnonymousUserCreated(userId: userId);
+    } catch (_) {
+      // Metadata should not block app startup or authentication.
+    }
+  }
+
+  Future<void> _markEmailLinked(String userId) async {
+    try {
+      await _userMetadataRepository?.markEmailLinked(userId: userId);
+    } catch (_) {
+      // Linking Firebase Auth is the source of truth; metadata can be retried.
+    }
   }
 }

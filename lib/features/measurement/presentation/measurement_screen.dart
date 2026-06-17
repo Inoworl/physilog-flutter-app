@@ -506,7 +506,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                       ref
                                           .read(measurementProvider.notifier)
                                           .resetPositions();
-                                      context.pushNamed('videoImport');
+                                      _releaseVideoAndPushVideoImport(context);
                                     },
                                     icon: const Icon(Icons.refresh),
                                     label: const Text('続けて測定'),
@@ -549,7 +549,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                         // テキストリンクスタイル
                         Center(
                           child: TextButton(
-                            onPressed: () => context.pushNamed('videoImport'),
+                            onPressed: () =>
+                                _releaseVideoAndPushVideoImport(context),
                             child: const Text('別の動画を読み込む'),
                           ),
                         ),
@@ -573,6 +574,8 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
 
       if (record != null && mounted) {
         messenger.showSnackBar(const SnackBar(content: Text('記録を保存しました')));
+        await ref.read(videoPlayerProvider.notifier).release();
+        if (!mounted) return;
         navigator.popUntil((route) => route.isFirst);
       }
     } catch (e) {
@@ -609,11 +612,23 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
         ),
       );
       if (result == true && mounted) {
+        await ref.read(videoPlayerProvider.notifier).release();
+        if (!mounted) return;
         navigator.pop();
       }
     } else {
-      Navigator.of(context).pop();
+      final navigator = Navigator.of(context);
+      await ref.read(videoPlayerProvider.notifier).release();
+      if (!mounted) return;
+      navigator.pop();
     }
+  }
+
+  Future<void> _releaseVideoAndPushVideoImport(BuildContext context) async {
+    final router = GoRouter.of(context);
+    await ref.read(videoPlayerProvider.notifier).release();
+    if (!mounted) return;
+    router.pushNamed('videoImport');
   }
 }
 

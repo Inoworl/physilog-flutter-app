@@ -13,7 +13,6 @@ const _privacyPolicyUrl = '$_docsBaseUrl/privacy.html';
 const _termsUrl = '$_docsBaseUrl/terms.html';
 const _usageGuideUrl = '$_docsBaseUrl/usage.html';
 const _transferGuideUrl = '$_docsBaseUrl/transfer.html';
-const _accountDeletionUrl = '$_docsBaseUrl/account-deletion.html';
 const _measurementTipsUrl = '$_docsBaseUrl/measurement-tips.html';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -24,8 +23,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  _EmailAuthMode? _selectedAuthMode;
-
   @override
   Widget build(BuildContext context) {
     final authUser = ref
@@ -56,8 +53,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.alternate_email,
                     title: 'メールアドレス変更',
                     subtitle: '確認メールを送って変更する',
-                    onTap: () => setState(
-                      () => _selectedAuthMode = _EmailAuthMode.changeEmail,
+                    onTap: () => _openAccountAuth(
+                      context,
+                      AccountEmailAuthMode.changeEmail,
                     ),
                   ),
                   const Divider(height: 1),
@@ -65,34 +63,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.lock_outline,
                     title: 'パスワード変更',
                     subtitle: '現在のパスワードで確認して変更する',
-                    onTap: () => setState(
-                      () => _selectedAuthMode = _EmailAuthMode.changePassword,
+                    onTap: () => _openAccountAuth(
+                      context,
+                      AccountEmailAuthMode.changePassword,
                     ),
+                  ),
+                  const Divider(height: 1),
+                  _SettingsTile(
+                    icon: Icons.logout,
+                    title: 'ログアウト',
+                    subtitle: 'この端末を匿名状態に戻す',
+                    onTap: () => _showSignOutDialog(context),
                   ),
                 ] else ...[
                   _SettingsTile(
                     icon: Icons.mail_outline,
-                    title: 'メールアドレス登録',
-                    subtitle: 'この端末のデータを引き継げるようにする',
-                    onTap: () => setState(
-                      () => _selectedAuthMode = _EmailAuthMode.register,
+                    title: 'メールとパスワードを設定',
+                    subtitle: 'この端末で使うログイン情報を作成',
+                    onTap: () => _openAccountAuth(
+                      context,
+                      AccountEmailAuthMode.register,
                     ),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
                     icon: Icons.login_outlined,
                     title: '別端末から引き継ぐ',
-                    subtitle: '登録済みメールで以前のデータを読み込む',
-                    onTap: () => setState(
-                      () => _selectedAuthMode = _EmailAuthMode.transfer,
+                    subtitle: '別端末で設定済みの情報を使用',
+                    onTap: () => _openAccountAuth(
+                      context,
+                      AccountEmailAuthMode.transfer,
                     ),
-                  ),
-                ],
-                if (_selectedAuthMode != null) ...[
-                  const Divider(height: 1),
-                  _EmailAuthForm(
-                    key: ValueKey(_selectedAuthMode),
-                    mode: _selectedAuthMode!,
                   ),
                 ],
               ],
@@ -123,22 +124,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
             _SettingsSection(
-              title: '端末引き継ぎ',
-              children: [
-                _SettingsTile(
-                  icon: Icons.sync_alt,
-                  title: '引き継ぎ方法を見る',
-                  subtitle: '新しい端末で記録を復元する手順',
-                  onTap: () => _openHelp(
-                    context,
-                    title: '端末引き継ぎ',
-                    url: _transferGuideUrl,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            _SettingsSection(
               title: 'ヘルプ',
               children: [
                 _SettingsTile(
@@ -161,20 +146,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 _SettingsTile(
-                  icon: Icons.delete_outline,
-                  title: 'アカウント削除方法',
-                  subtitle: '削除対象データと手順',
+                  icon: Icons.sync_alt,
+                  title: '引き継ぎ方法を見る',
+                  subtitle: '新しい端末で記録を復元する手順',
                   onTap: () => _openHelp(
                     context,
-                    title: 'アカウント削除方法',
-                    url: _accountDeletionUrl,
+                    title: '端末引き継ぎ',
+                    url: _transferGuideUrl,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
             _SettingsSection(
-              title: '危険な操作',
+              title: 'データ管理',
               children: [
                 _SettingsTile(
                   icon: Icons.delete_forever_outlined,
@@ -189,6 +174,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showSignOutDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ログアウトしますか？'),
+        content: const Text('この端末は新しい匿名状態に戻ります。登録済みデータは再ログインすると表示できます。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('ログアウト'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(authServiceProvider).signOutAndContinueAnonymously();
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(const SnackBar(content: Text('ログアウトしました')));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        final message = ref
+            .read(authServiceProvider)
+            .messageForAuthError(error);
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+  }
+
+  void _openAccountAuth(BuildContext context, AccountEmailAuthMode mode) {
+    context.pushNamed(
+      'settingsAccountAuth',
+      pathParameters: {'mode': mode.routeSegment},
     );
   }
 
@@ -228,12 +259,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      messenger.showSnackBar(const SnackBar(content: Text('アカウント削除は準備中です')));
+      try {
+        await ref.read(authServiceProvider).deleteAccount();
+        if (!context.mounted) {
+          return;
+        }
+        messenger.showSnackBar(const SnackBar(content: Text('アカウントを削除しました')));
+      } catch (error) {
+        if (!context.mounted) {
+          return;
+        }
+        final message = ref
+            .read(authServiceProvider)
+            .messageForAuthError(error);
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
     }
   }
 }
 
-enum _EmailAuthMode { register, transfer, changeEmail, changePassword }
+enum AccountEmailAuthMode { register, transfer, changeEmail, changePassword }
+
+AccountEmailAuthMode? accountEmailAuthModeFromRoute(String? value) {
+  return switch (value) {
+    'register' => AccountEmailAuthMode.register,
+    'transfer' => AccountEmailAuthMode.transfer,
+    'change-email' => AccountEmailAuthMode.changeEmail,
+    'change-password' => AccountEmailAuthMode.changePassword,
+    _ => null,
+  };
+}
+
+extension AccountEmailAuthModeRoute on AccountEmailAuthMode {
+  String get routeSegment {
+    return switch (this) {
+      AccountEmailAuthMode.register => 'register',
+      AccountEmailAuthMode.transfer => 'transfer',
+      AccountEmailAuthMode.changeEmail => 'change-email',
+      AccountEmailAuthMode.changePassword => 'change-password',
+    };
+  }
+
+  String get title {
+    return switch (this) {
+      AccountEmailAuthMode.register => 'メールとパスワードを設定',
+      AccountEmailAuthMode.transfer => '別端末から引き継ぐ',
+      AccountEmailAuthMode.changeEmail => 'メールアドレス変更',
+      AccountEmailAuthMode.changePassword => 'パスワード変更',
+    };
+  }
+}
+
+class AccountEmailAuthScreen extends StatelessWidget {
+  const AccountEmailAuthScreen({super.key, required this.mode});
+
+  final AccountEmailAuthMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(mode.title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.xxl,
+          ),
+          children: [_EmailAuthForm(mode: mode)],
+        ),
+      ),
+    );
+  }
+}
 
 class _AccountEmailStatus extends StatelessWidget {
   const _AccountEmailStatus({required this.email});
@@ -258,9 +357,9 @@ class _AccountEmailStatus extends StatelessWidget {
 }
 
 class _EmailAuthForm extends ConsumerStatefulWidget {
-  const _EmailAuthForm({super.key, required this.mode});
+  const _EmailAuthForm({required this.mode});
 
-  final _EmailAuthMode mode;
+  final AccountEmailAuthMode mode;
 
   @override
   ConsumerState<_EmailAuthForm> createState() => _EmailAuthFormState();
@@ -275,11 +374,12 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
   bool _isSubmitting = false;
   bool _obscurePasswords = true;
 
-  bool get _isTransferMode => widget.mode == _EmailAuthMode.transfer;
-  bool get _isRegisterMode => widget.mode == _EmailAuthMode.register;
-  bool get _isChangeEmailMode => widget.mode == _EmailAuthMode.changeEmail;
+  bool get _isTransferMode => widget.mode == AccountEmailAuthMode.transfer;
+  bool get _isRegisterMode => widget.mode == AccountEmailAuthMode.register;
+  bool get _isChangeEmailMode =>
+      widget.mode == AccountEmailAuthMode.changeEmail;
   bool get _isChangePasswordMode =>
-      widget.mode == _EmailAuthMode.changePassword;
+      widget.mode == AccountEmailAuthMode.changePassword;
 
   @override
   void dispose() {
@@ -313,7 +413,7 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
             if (_isTransferMode) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'ログイン後は、この端末の未登録状態で作成したデータは表示されなくなります。',
+                '引き継ぎ時に、この端末の未登録状態で作成したデータは削除されます。',
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -379,13 +479,13 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
 
   String get _description {
     switch (widget.mode) {
-      case _EmailAuthMode.register:
-        return 'この端末のデータを別端末へ引き継げるようにします。';
-      case _EmailAuthMode.transfer:
+      case AccountEmailAuthMode.register:
+        return 'この端末のデータを別端末でも使えるようにします。';
+      case AccountEmailAuthMode.transfer:
         return '登録済みのメールアドレスで以前の端末のデータを読み込みます。';
-      case _EmailAuthMode.changeEmail:
+      case AccountEmailAuthMode.changeEmail:
         return '現在のパスワードで確認して、新しいメールアドレスへ確認メールを送ります。';
-      case _EmailAuthMode.changePassword:
+      case AccountEmailAuthMode.changePassword:
         return '現在のパスワードで確認して、新しいパスワードへ変更します。';
     }
   }
@@ -399,13 +499,13 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
 
   String get _submitLabel {
     switch (widget.mode) {
-      case _EmailAuthMode.register:
-        return '登録する';
-      case _EmailAuthMode.transfer:
+      case AccountEmailAuthMode.register:
+        return '設定する';
+      case AccountEmailAuthMode.transfer:
         return 'データを引き継ぐ';
-      case _EmailAuthMode.changeEmail:
+      case AccountEmailAuthMode.changeEmail:
         return '確認メールを送る';
-      case _EmailAuthMode.changePassword:
+      case AccountEmailAuthMode.changePassword:
         return 'パスワードを変更する';
     }
   }
@@ -472,29 +572,35 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
     final authService = ref.read(authServiceProvider);
     try {
       switch (widget.mode) {
-        case _EmailAuthMode.register:
+        case AccountEmailAuthMode.register:
           await authService.linkEmailAndPassword(
             email: _emailController.text,
             password: _passwordController.text,
           );
-        case _EmailAuthMode.transfer:
-          await authService.signInWithEmailAndPassword(
+        case AccountEmailAuthMode.transfer:
+          await authService.transferToEmailAndPassword(
             email: _emailController.text,
             password: _passwordController.text,
           );
-        case _EmailAuthMode.changeEmail:
+        case AccountEmailAuthMode.changeEmail:
           await authService.changeEmail(
             currentPassword: _currentPasswordController.text,
             newEmail: _emailController.text,
           );
-        case _EmailAuthMode.changePassword:
+        case AccountEmailAuthMode.changePassword:
           await authService.changePassword(
             currentPassword: _currentPasswordController.text,
             newPassword: _passwordController.text,
           );
       }
 
+      _emailController.clear();
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+      _currentPasswordController.clear();
+
       if (!mounted) return;
+      Navigator.of(context).pop();
       messenger.showSnackBar(SnackBar(content: Text(_successMessage)));
     } catch (error) {
       if (!mounted) return;
@@ -510,13 +616,13 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
 
   String get _successMessage {
     switch (widget.mode) {
-      case _EmailAuthMode.register:
-        return 'メールアドレスを登録しました';
-      case _EmailAuthMode.transfer:
+      case AccountEmailAuthMode.register:
+        return '引き継ぎ設定を保存しました';
+      case AccountEmailAuthMode.transfer:
         return 'データを引き継ぎました';
-      case _EmailAuthMode.changeEmail:
+      case AccountEmailAuthMode.changeEmail:
         return '新しいメールアドレスへ確認メールを送信しました';
-      case _EmailAuthMode.changePassword:
+      case AccountEmailAuthMode.changePassword:
         return 'パスワードを変更しました';
     }
   }

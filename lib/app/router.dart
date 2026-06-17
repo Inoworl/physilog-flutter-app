@@ -133,6 +133,25 @@ final router = GoRouter(
       },
     ),
     GoRoute(
+      path: '/settings/account/:mode',
+      name: 'settingsAccountAuth',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        final mode = accountEmailAuthModeFromRoute(
+          state.pathParameters['mode'],
+        );
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: AccountEmailAuthScreen(
+            mode: mode ?? AccountEmailAuthMode.register,
+          ),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+    ),
+    GoRoute(
       path: '/settings/help',
       name: 'settingsHelp',
       parentNavigatorKey: _rootNavigatorKey,
