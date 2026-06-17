@@ -11,46 +11,50 @@ void main() {
   });
 
   group('ProAccessPolicy', () {
-    final now = DateTime.utc(2026, 6, 15);
     const policy = ProAccessPolicy();
 
-    test('初回利用から7日未満はPro機能を利用できる', () {
+    test('無料ユーザーはPro機能と団体機能を利用できない', () {
       final status = policy.evaluate(
-        now: now,
-        trialStartedAt: now.subtract(const Duration(days: 6, hours: 23)),
-        hasLifetimePro: false,
+        hasRevenueCatPro: false,
+        hasEarlySupporterPro: false,
+        hasOrganizationPro: false,
       );
 
-      expect(status.isTrialActive, isTrue);
-      expect(status.canUsePro, isTrue);
-    });
-
-    test('7日経過後かつ未購入ならPro機能を利用できない', () {
-      final status = policy.evaluate(
-        now: now,
-        trialStartedAt: now.subtract(const Duration(days: 7)),
-        hasLifetimePro: false,
-      );
-
-      expect(status.isTrialActive, isFalse);
       expect(status.canUsePro, isFalse);
+      expect(status.canUseOrganizationFeatures, isFalse);
     });
 
-    test('買い切り購入済みまたは特別ユーザーならPro機能を利用できる', () {
-      final purchased = policy.evaluate(
-        now: now,
-        trialStartedAt: now.subtract(const Duration(days: 30)),
-        hasLifetimePro: true,
-      );
-      final earlyUser = policy.evaluate(
-        now: now,
-        trialStartedAt: null,
-        hasLifetimePro: false,
-        isEarlyUser: true,
+    test('RevenueCatで個人PROが有効ならPro機能を利用できる', () {
+      final status = policy.evaluate(
+        hasRevenueCatPro: true,
+        hasEarlySupporterPro: false,
+        hasOrganizationPro: false,
       );
 
-      expect(purchased.canUsePro, isTrue);
-      expect(earlyUser.canUsePro, isTrue);
+      expect(status.canUsePro, isTrue);
+      expect(status.canUseOrganizationFeatures, isFalse);
+    });
+
+    test('配信初期ユーザー特典が有効なら無料でPro機能を利用できる', () {
+      final status = policy.evaluate(
+        hasRevenueCatPro: false,
+        hasEarlySupporterPro: true,
+        hasOrganizationPro: false,
+      );
+
+      expect(status.canUsePro, isTrue);
+      expect(status.canUseOrganizationFeatures, isFalse);
+    });
+
+    test('団体PROが有効ならPro機能と団体機能を利用できる', () {
+      final status = policy.evaluate(
+        hasRevenueCatPro: false,
+        hasEarlySupporterPro: false,
+        hasOrganizationPro: true,
+      );
+
+      expect(status.canUsePro, isTrue);
+      expect(status.canUseOrganizationFeatures, isTrue);
     });
   });
 }

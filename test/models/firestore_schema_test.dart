@@ -184,7 +184,7 @@ void main() {
     final entitlement = Entitlement(
       id: 'current',
       userId: 'user-1',
-      plan: EntitlementPlans.monitorLifetime,
+      plan: EntitlementPlans.earlySupporterPro,
       source: EntitlementSources.manual,
       status: EntitlementStatuses.active,
       grantedAt: now,
@@ -197,7 +197,7 @@ void main() {
       data.keys,
       unorderedEquals(['plan', 'source', 'status', 'grantedAt', 'updatedAt']),
     );
-    expect(data['plan'], EntitlementPlans.monitorLifetime);
+    expect(data['plan'], EntitlementPlans.earlySupporterPro);
     expect(data['source'], EntitlementSources.manual);
     expect(data['status'], EntitlementStatuses.active);
     expect(data['grantedAt'], isA<Timestamp>());

@@ -3,25 +3,66 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/models/entitlement.dart';
 
 void main() {
-  test('activeかつ期限なしのentitlementはpremiumとして扱う', () {
+  test('activeな個人PRO entitlementはProとして扱う', () {
     final entitlement = Entitlement(
       id: 'current',
       userId: 'user-1',
-      plan: EntitlementPlans.monitorLifetime,
-      source: EntitlementSources.manual,
+      plan: EntitlementPlans.pro,
+      source: EntitlementSources.store,
       status: EntitlementStatuses.active,
       grantedAt: DateTime(2026, 5, 27, 10),
       updatedAt: DateTime(2026, 5, 27, 10),
     );
 
     expect(entitlement.isActiveAt(DateTime(2026, 5, 27, 11)), isTrue);
+    expect(entitlement.hasProAccessAt(DateTime(2026, 5, 27, 11)), isTrue);
+    expect(
+      entitlement.hasOrganizationAccessAt(DateTime(2026, 5, 27, 11)),
+      isFalse,
+    );
   });
 
-  test('期限切れまたはrevokedのentitlementはpremiumとして扱わない', () {
+  test('団体PRO entitlementはPro機能と団体機能を利用できる', () {
+    final entitlement = Entitlement(
+      id: 'current',
+      userId: 'user-1',
+      plan: EntitlementPlans.organizationPro,
+      source: EntitlementSources.manual,
+      status: EntitlementStatuses.active,
+      grantedAt: DateTime(2026, 5, 27, 10),
+      updatedAt: DateTime(2026, 5, 27, 10),
+    );
+
+    expect(entitlement.hasProAccessAt(DateTime(2026, 5, 27, 11)), isTrue);
+    expect(
+      entitlement.hasOrganizationAccessAt(DateTime(2026, 5, 27, 11)),
+      isTrue,
+    );
+  });
+
+  test('配信初期ユーザー特典 entitlementは無料でProとして扱う', () {
+    final entitlement = Entitlement(
+      id: 'current',
+      userId: 'user-1',
+      plan: EntitlementPlans.earlySupporterPro,
+      source: EntitlementSources.promo,
+      status: EntitlementStatuses.active,
+      grantedAt: DateTime(2026, 5, 27, 10),
+      updatedAt: DateTime(2026, 5, 27, 10),
+    );
+
+    expect(entitlement.hasProAccessAt(DateTime(2026, 5, 27, 11)), isTrue);
+    expect(
+      entitlement.hasOrganizationAccessAt(DateTime(2026, 5, 27, 11)),
+      isFalse,
+    );
+  });
+
+  test('期限切れまたはrevokedのentitlementはProとして扱わない', () {
     final base = Entitlement(
       id: 'current',
       userId: 'user-1',
-      plan: EntitlementPlans.annual600,
+      plan: EntitlementPlans.pro,
       source: EntitlementSources.store,
       status: EntitlementStatuses.active,
       expiresAt: DateTime(2026, 5, 27, 10),
@@ -30,13 +71,14 @@ void main() {
     );
 
     expect(base.isActiveAt(DateTime(2026, 5, 27, 11)), isFalse);
+    expect(base.hasProAccessAt(DateTime(2026, 5, 27, 11)), isFalse);
     expect(
       base
           .copyWith(
             status: EntitlementStatuses.revoked,
             expiresAt: DateTime(2026, 6, 27, 10),
           )
-          .isActiveAt(DateTime(2026, 5, 27, 11)),
+          .hasProAccessAt(DateTime(2026, 5, 27, 11)),
       isFalse,
     );
   });
@@ -46,7 +88,7 @@ void main() {
     final entitlement = Entitlement(
       id: 'current',
       userId: 'user-1',
-      plan: EntitlementPlans.annual600,
+      plan: EntitlementPlans.pro,
       source: EntitlementSources.store,
       status: EntitlementStatuses.active,
       productId: 'physilog_annual',
@@ -59,7 +101,7 @@ void main() {
 
     final data = entitlement.toFirestore();
 
-    expect(data['plan'], EntitlementPlans.annual600);
+    expect(data['plan'], EntitlementPlans.pro);
     expect(data['source'], EntitlementSources.store);
     expect(data['status'], EntitlementStatuses.active);
     expect(data['productId'], 'physilog_annual');

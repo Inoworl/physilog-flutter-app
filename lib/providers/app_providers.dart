@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
+import 'package:physi_log/features/billing/application/revenuecat_service.dart';
+import 'package:physi_log/features/billing/domain/pro_access_policy.dart';
 import 'package:physi_log/features/entitlements/data/firestore_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/data/no_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
@@ -94,10 +96,38 @@ final currentEntitlementProvider = FutureProvider<Entitlement?>((ref) async {
       .getCurrentEntitlement(userId: userId);
 });
 
-final isPremiumEnabledProvider = Provider<bool>((ref) {
+final revenueCatServiceProvider = Provider<RevenueCatService>((ref) {
+  return const RevenueCatService();
+});
+
+final hasRevenueCatProProvider = FutureProvider<bool>((ref) async {
+  if (!ref.watch(useFirestoreProvider)) {
+    return false;
+  }
+  return ref.watch(revenueCatServiceProvider).hasLifetimePro();
+});
+
+final proAccessStatusProvider = Provider<ProAccessStatus>((ref) {
+  final now = DateTime.now();
   final entitlement = ref.watch(currentEntitlementProvider);
-  return entitlement.maybeWhen(
-    data: (value) => value?.isActiveAt(DateTime.now()) ?? false,
-    orElse: () => false,
+  final revenueCatPro = ref.watch(hasRevenueCatProProvider);
+  final currentEntitlement = entitlement.valueOrNull;
+
+  return const ProAccessPolicy().evaluate(
+    hasRevenueCatPro:
+        (revenueCatPro.valueOrNull ?? false) ||
+        (currentEntitlement?.hasPersonalProAccessAt(now) ?? false),
+    hasEarlySupporterPro:
+        currentEntitlement?.hasEarlySupporterProAccessAt(now) ?? false,
+    hasOrganizationPro:
+        currentEntitlement?.hasOrganizationAccessAt(now) ?? false,
   );
+});
+
+final isPremiumEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(proAccessStatusProvider).canUsePro;
+});
+
+final isOrganizationProEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(proAccessStatusProvider).canUseOrganizationFeatures;
 });

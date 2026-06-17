@@ -1,37 +1,32 @@
 class ProAccessStatus {
   const ProAccessStatus({
-    required this.isTrialActive,
-    required this.hasLifetimePro,
-    required this.isEarlyUser,
+    required this.hasRevenueCatPro,
+    required this.hasEarlySupporterPro,
+    required this.hasOrganizationPro,
   });
 
-  final bool isTrialActive;
-  final bool hasLifetimePro;
-  final bool isEarlyUser;
+  final bool hasRevenueCatPro;
+  final bool hasEarlySupporterPro;
+  final bool hasOrganizationPro;
 
-  bool get canUsePro => isTrialActive || hasLifetimePro || isEarlyUser;
+  bool get canUsePro =>
+      hasRevenueCatPro || hasEarlySupporterPro || hasOrganizationPro;
+
+  bool get canUseOrganizationFeatures => hasOrganizationPro;
 }
 
 class ProAccessPolicy {
-  const ProAccessPolicy({this.trialDuration = const Duration(days: 7)});
-
-  final Duration trialDuration;
+  const ProAccessPolicy();
 
   ProAccessStatus evaluate({
-    required DateTime now,
-    required DateTime? trialStartedAt,
-    required bool hasLifetimePro,
-    bool isEarlyUser = false,
+    required bool hasRevenueCatPro,
+    required bool hasEarlySupporterPro,
+    required bool hasOrganizationPro,
   }) {
-    final isTrialActive =
-        trialStartedAt != null &&
-        !now.isBefore(trialStartedAt) &&
-        now.difference(trialStartedAt) < trialDuration;
-
     return ProAccessStatus(
-      isTrialActive: isTrialActive,
-      hasLifetimePro: hasLifetimePro,
-      isEarlyUser: isEarlyUser,
+      hasRevenueCatPro: hasRevenueCatPro,
+      hasEarlySupporterPro: hasEarlySupporterPro,
+      hasOrganizationPro: hasOrganizationPro,
     );
   }
 }

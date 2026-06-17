@@ -7,9 +7,9 @@ part 'entitlement.g.dart';
 class EntitlementPlans {
   const EntitlementPlans._();
 
-  static const annual600 = 'annual_600';
-  static const annual980 = 'annual_980';
-  static const monitorLifetime = 'monitor_lifetime';
+  static const pro = 'pro';
+  static const organizationPro = 'organization_pro';
+  static const earlySupporterPro = 'early_supporter_pro';
 }
 
 class EntitlementSources {
@@ -84,5 +84,29 @@ class Entitlement with _$Entitlement {
       return false;
     }
     return expiresAt == null || expiresAt!.isAfter(at);
+  }
+
+  bool hasProAccessAt(DateTime at) {
+    if (!isActiveAt(at)) {
+      return false;
+    }
+    return switch (plan) {
+      EntitlementPlans.pro ||
+      EntitlementPlans.organizationPro ||
+      EntitlementPlans.earlySupporterPro => true,
+      _ => false,
+    };
+  }
+
+  bool hasPersonalProAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.pro;
+  }
+
+  bool hasEarlySupporterProAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.earlySupporterPro;
+  }
+
+  bool hasOrganizationAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.organizationPro;
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -24,17 +23,19 @@ void main() {
       );
     });
 
-    test('dart-define files expose RevenueCat public SDK key placeholders', () {
-      for (final path in [
-        'dart_define/dev_dart_define.json',
-        'dart_define/prod_dart_define.json',
-      ]) {
-        final values =
-            jsonDecode(File(path).readAsStringSync()) as Map<String, dynamic>;
+    test('RevenueCatEnvironment reads public SDK keys from dart-define', () {
+      final environment = File(
+        'lib/features/billing/domain/revenuecat_environment.dart',
+      ).readAsStringSync();
 
-        expect(values, contains('REVENUECAT_IOS_API_KEY'), reason: path);
-        expect(values, contains('REVENUECAT_ANDROID_API_KEY'), reason: path);
-      }
+      expect(
+        environment,
+        contains("String.fromEnvironment('REVENUECAT_IOS_API_KEY')"),
+      );
+      expect(
+        environment,
+        contains("String.fromEnvironment('REVENUECAT_ANDROID_API_KEY')"),
+      );
     });
   });
 }

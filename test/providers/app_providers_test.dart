@@ -37,7 +37,7 @@ void main() {
     expect(container.read(useFirestoreProvider), isFalse);
   });
 
-  test('isPremiumEnabledProviderはactive entitlementならtrueを返す', () async {
+  test('isPremiumEnabledProviderは個人PRO entitlementならtrueを返す', () async {
     final now = DateTime(2026, 5, 27, 10);
     final container = ProviderContainer(
       overrides: [
@@ -47,7 +47,7 @@ void main() {
             Entitlement(
               id: 'current',
               userId: 'firebase-user-id',
-              plan: EntitlementPlans.monitorLifetime,
+              plan: EntitlementPlans.pro,
               source: EntitlementSources.manual,
               status: EntitlementStatuses.active,
               grantedAt: now,
@@ -62,6 +62,56 @@ void main() {
     await container.read(currentEntitlementProvider.future);
 
     expect(container.read(isPremiumEnabledProvider), isTrue);
+  });
+
+  test(
+    'isPremiumEnabledProviderはRevenueCatのpro entitlementならtrueを返す',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('firebase-user-id'),
+          entitlementRepositoryProvider.overrideWithValue(
+            const _FakeEntitlementRepository(null),
+          ),
+          hasRevenueCatProProvider.overrideWith((ref) async => true),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(currentEntitlementProvider.future);
+      await container.read(hasRevenueCatProProvider.future);
+
+      expect(container.read(isPremiumEnabledProvider), isTrue);
+      expect(container.read(isOrganizationProEnabledProvider), isFalse);
+    },
+  );
+
+  test('isOrganizationProEnabledProviderは団体PRO entitlementならtrueを返す', () async {
+    final now = DateTime(2026, 5, 27, 10);
+    final container = ProviderContainer(
+      overrides: [
+        currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        entitlementRepositoryProvider.overrideWithValue(
+          _FakeEntitlementRepository(
+            Entitlement(
+              id: 'current',
+              userId: 'firebase-user-id',
+              plan: EntitlementPlans.organizationPro,
+              source: EntitlementSources.manual,
+              status: EntitlementStatuses.active,
+              grantedAt: now,
+              updatedAt: now,
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(currentEntitlementProvider.future);
+
+    expect(container.read(isPremiumEnabledProvider), isTrue);
+    expect(container.read(isOrganizationProEnabledProvider), isTrue);
   });
 
   test('isPremiumEnabledProviderはentitlement未付与ならfalseを返す', () async {
