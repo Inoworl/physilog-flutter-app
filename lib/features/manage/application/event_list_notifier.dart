@@ -54,7 +54,11 @@ class EventListNotifier extends StateNotifier<EventListState> {
     await loadEvents();
   }
 
-  Future<Event?> addEvent(String name) async {
+  Future<Event?> addEvent(
+    String name, {
+    EventRecordType recordType = EventRecordType.time,
+    EventMeasurementMethod? measurementMethod,
+  }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
 
@@ -63,6 +67,10 @@ class EventListNotifier extends StateNotifier<EventListState> {
       id: _uuid.v4(),
       userId: _userId,
       name: trimmed,
+      unit: recordType.defaultUnit,
+      recordType: recordType,
+      measurementMethod:
+          measurementMethod ?? recordType.defaultMeasurementMethod,
       createdAt: now,
       updatedAt: now,
     );
@@ -72,9 +80,14 @@ class EventListNotifier extends StateNotifier<EventListState> {
     return event;
   }
 
+  /// 種目を更新する。
+  ///
+  /// 記録の型（[Event.recordType]）は作成後に変更しない。既存記録を別単位で
+  /// 再解釈してしまう事故を防ぐため、ここでは名前と計測方法だけを更新する。
   Future<Event?> updateEvent({
     required String eventId,
     required String name,
+    EventMeasurementMethod? measurementMethod,
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
@@ -89,7 +102,11 @@ class EventListNotifier extends StateNotifier<EventListState> {
     }
     if (existing == null) return null;
 
-    final updated = existing.copyWith(name: trimmed, updatedAt: DateTime.now());
+    final updated = existing.copyWith(
+      name: trimmed,
+      measurementMethod: measurementMethod ?? existing.measurementMethod,
+      updatedAt: DateTime.now(),
+    );
     await _repository.updateEvent(updated);
     await loadEvents();
     return updated;
