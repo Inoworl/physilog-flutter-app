@@ -72,6 +72,80 @@ void main() {
     expect(loaded.single.name, '50m走');
   });
 
+  test('記録の型を指定せず追加するとタイム/動画計測/秒になる', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent('50m走');
+
+    expect(created, isNotNull);
+    expect(created!.recordType, EventRecordType.time);
+    expect(created.measurementMethod, EventMeasurementMethod.video);
+    expect(created.unit, '秒');
+  });
+
+  test('距離種目を追加すると既定の単位と計測方法（cm/手入力）が入る', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent(
+      '立ち幅跳び',
+      recordType: EventRecordType.distance,
+    );
+
+    expect(created!.recordType, EventRecordType.distance);
+    expect(created.measurementMethod, EventMeasurementMethod.manual);
+    expect(created.unit, 'cm');
+  });
+
+  test('計測方法を明示指定して追加できる', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent(
+      'ストップウォッチ50m',
+      recordType: EventRecordType.time,
+      measurementMethod: EventMeasurementMethod.manual,
+    );
+
+    expect(created!.recordType, EventRecordType.time);
+    expect(created.measurementMethod, EventMeasurementMethod.manual);
+  });
+
+  test('更新では計測方法は変えられるが記録の型は固定される', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent(
+      '立ち幅跳び',
+      recordType: EventRecordType.distance,
+    );
+
+    final updated = await notifier.updateEvent(
+      eventId: created!.id,
+      name: '立ち幅跳び（両足）',
+      measurementMethod: EventMeasurementMethod.video,
+    );
+
+    expect(updated!.name, '立ち幅跳び（両足）');
+    // 計測方法は更新される
+    expect(updated.measurementMethod, EventMeasurementMethod.video);
+    // 記録の型は作成時のまま固定（既存記録の単位を壊さないため）
+    expect(updated.recordType, EventRecordType.distance);
+  });
+
   test('種目を削除すると一覧から消える', () async {
     final repository = LocalEventRepository();
     final notifier = EventListNotifier(
