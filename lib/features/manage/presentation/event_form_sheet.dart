@@ -50,6 +50,41 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     });
   }
 
+  String? get _recordTypeHint => _isEditing ? '作成後は変更できません' : null;
+
+  void _handleRecordTypeChanged(Set<EventRecordType> selection) {
+    _onRecordTypeChanged(selection.first);
+  }
+
+  void _handleMethodChanged(Set<EventMeasurementMethod> selection) {
+    setState(() => _measurementMethod = selection.first);
+  }
+
+  Widget _buildRecordTypeSelector() {
+    return SegmentedButton<EventRecordType>(
+      segments: [
+        for (final type in EventRecordType.values)
+          ButtonSegment(value: type, label: Text(type.label)),
+      ],
+      selected: {_recordType},
+      showSelectedIcon: false,
+      // 編集時は記録の型を固定する（既存記録の単位を壊さないため）。
+      onSelectionChanged: _isEditing ? null : _handleRecordTypeChanged,
+    );
+  }
+
+  Widget _buildMethodSelector() {
+    return SegmentedButton<EventMeasurementMethod>(
+      segments: [
+        for (final method in EventMeasurementMethod.values)
+          ButtonSegment(value: method, label: Text(method.label)),
+      ],
+      selected: {_measurementMethod},
+      showSelectedIcon: false,
+      onSelectionChanged: _handleMethodChanged,
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -146,36 +181,13 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
               onFieldSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 24),
-            _FieldLabel(
-              '記録の型',
-              hint: _isEditing ? '作成後は変更できません' : null,
-            ),
+            _FieldLabel('記録の型', hint: _recordTypeHint),
             const SizedBox(height: 8),
-            SegmentedButton<EventRecordType>(
-              segments: [
-                for (final type in EventRecordType.values)
-                  ButtonSegment(value: type, label: Text(type.label)),
-              ],
-              selected: {_recordType},
-              showSelectedIcon: false,
-              // 編集時は記録の型を固定する（既存記録の単位を壊さないため）。
-              onSelectionChanged: _isEditing
-                  ? null
-                  : (selection) => _onRecordTypeChanged(selection.first),
-            ),
+            _buildRecordTypeSelector(),
             const SizedBox(height: 20),
             const _FieldLabel('計測方法'),
             const SizedBox(height: 8),
-            SegmentedButton<EventMeasurementMethod>(
-              segments: [
-                for (final method in EventMeasurementMethod.values)
-                  ButtonSegment(value: method, label: Text(method.label)),
-              ],
-              selected: {_measurementMethod},
-              showSelectedIcon: false,
-              onSelectionChanged: (selection) =>
-                  setState(() => _measurementMethod = selection.first),
-            ),
+            _buildMethodSelector(),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _isSubmitting ? null : _submit,
