@@ -35,11 +35,11 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.event?.name);
-    _recordType = widget.event?.recordType ?? EventRecordType.time;
+    final event = widget.event;
+    _nameController = TextEditingController(text: event?.name);
+    _recordType = event?.recordType ?? EventRecordType.time;
     _measurementMethod =
-        widget.event?.measurementMethod ??
-        _recordType.defaultMeasurementMethod;
+        event?.measurementMethod ?? _recordType.defaultMeasurementMethod;
   }
 
   /// 記録の型を切り替えたとき、計測方法をその型の既定に合わせる（新規作成時のみ）。
@@ -115,7 +115,7 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(24, 0, 24, bottomInset + 24),
       child: Form(
         key: _formKey,
