@@ -23,17 +23,17 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
   /// ランキングを非表示にしている種目key。
   final Set<String> _hiddenRankingKeys = {};
 
+  Future<void> _refresh() {
+    return ref.read(dailyRecordsNotifierProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dailyRecordsNotifierProvider);
 
     return state.when(
       loading: () => const LoadingState(message: '記録を読み込み中...'),
-      error: (message) => ErrorState(
-        message: message,
-        onRetry: () =>
-            ref.read(dailyRecordsNotifierProvider.notifier).refresh(),
-      ),
+      error: (message) => ErrorState(message: message, onRetry: _refresh),
       loaded: (sessions, selectedIndex) {
         if (sessions.isEmpty) {
           return const EmptyState(
