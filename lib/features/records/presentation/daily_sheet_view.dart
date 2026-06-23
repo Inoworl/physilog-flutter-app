@@ -73,8 +73,8 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
     final notifier = ref.read(dailyRecordsNotifierProvider.notifier);
     final canOlder = selectedIndex < sessions.length - 1;
     final canNewer = selectedIndex > 0;
-    final label = '${_dateFormat.format(session.date)}'
-        '（${session.athleteCount}人）';
+    final dateText = _dateFormat.format(session.date);
+    final label = '$dateText（${session.athleteCount}人）';
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -118,9 +118,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
             itemCount: sessions.length,
             itemBuilder: (context, index) {
               final session = sessions[index];
-              final events = session.columns
-                  .map((c) => c.name)
-                  .join('・');
+              final events = session.columns.map((c) => c.name).join('・');
               return ListTile(
                 selected: index == selectedIndex,
                 title: Text(_dateFormat.format(session.date)),
@@ -198,14 +196,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
             spacing: AppSpacing.sm,
             children: [
               for (final column in session.columns)
-                FilterChip(
-                  label: Text(column.name),
-                  selected: !_hiddenRankingKeys.contains(column.key),
-                  onSelected: (selected) => _toggleRanking(
-                    column.key,
-                    selected,
-                  ),
-                ),
+                _buildRankingChip(column),
             ],
           ),
           for (final column in session.columns)
@@ -213,6 +204,15 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
               _buildRankingFor(session, column),
         ],
       ),
+    );
+  }
+
+  Widget _buildRankingChip(DailyEventColumn column) {
+    final visible = !_hiddenRankingKeys.contains(column.key);
+    return FilterChip(
+      label: Text(column.name),
+      selected: visible,
+      onSelected: (value) => _toggleRanking(column.key, value),
     );
   }
 
@@ -227,14 +227,15 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
   }
 
   Widget _buildRankingFor(DailySession session, DailyEventColumn column) {
-    final ranked = session.rows
-        .where((row) => row.cells[column.key] != null)
-        .map((row) => (name: row.name, cell: row.cells[column.key]!))
-        .toList();
+    final ranked = <({String name, DailyCell cell})>[];
+    for (final row in session.rows) {
+      final cell = row.cells[column.key];
+      if (cell != null) ranked.add((name: row.name, cell: cell));
+    }
     ranked.sort((a, b) {
-      return column.recordType.lowerIsBetter
-          ? a.cell.value.compareTo(b.cell.value)
-          : b.cell.value.compareTo(a.cell.value);
+      final lowerIsBetter = column.recordType.lowerIsBetter;
+      if (lowerIsBetter) return a.cell.value.compareTo(b.cell.value);
+      return b.cell.value.compareTo(a.cell.value);
     });
 
     final theme = Theme.of(context);

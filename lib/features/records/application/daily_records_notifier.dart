@@ -160,8 +160,9 @@ List<DailySession> buildDailySessions(
     }
     final columns = columnByKey.values.toList()
       ..sort((a, b) {
-        final byOrder = sortOrderByKey[a.key]!.compareTo(sortOrderByKey[b.key]!);
-        if (byOrder != 0) return byOrder;
+        final orderA = sortOrderByKey[a.key]!;
+        final orderB = sortOrderByKey[b.key]!;
+        if (orderA != orderB) return orderA.compareTo(orderB);
         return a.name.compareTo(b.name);
       });
 
@@ -175,9 +176,8 @@ List<DailySession> buildDailySessions(
       if (!dayBest.containsKey(aKey)) {
         dayBest[aKey] = {};
         rowOrder.add(aKey);
-        nameByKey[aKey] = record.athleteName.isEmpty
-            ? '未登録'
-            : record.athleteName;
+        final name = record.athleteName;
+        nameByKey[aKey] = name.isEmpty ? '未登録' : name;
       }
       final existing = dayBest[aKey]![eKey];
       final lowerIsBetter = recordTypeOf(record).lowerIsBetter;
