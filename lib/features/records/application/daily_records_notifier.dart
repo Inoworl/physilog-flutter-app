@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
+import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
@@ -90,6 +91,16 @@ String _eventKey(MeasurementRecord record) {
 
 DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
+/// 種目マスタに残っていない記録（削除済み種目など）の記録の型を、
+/// 記録の単位から推測する。秒→タイム / cm→距離 / 回→回数。
+EventRecordType _inferRecordTypeFromUnit(String? unit) {
+  final normalized = unit?.trim();
+  for (final type in EventRecordType.values) {
+    if (type.defaultUnit == normalized) return type;
+  }
+  return EventRecordType.time;
+}
+
 /// 記録と種目マスタから、日別の計測会リスト（新しい順）を組み立てる純粋関数。
 List<DailySession> buildDailySessions(
   List<MeasurementRecord> records,
@@ -108,7 +119,8 @@ List<DailySession> buildDailySessions(
   EventRecordType recordTypeOf(MeasurementRecord record) {
     final byId = record.eventId == null ? null : eventById[record.eventId];
     final event = byId ?? eventByName[record.eventType];
-    return event?.recordType ?? EventRecordType.time;
+    if (event != null) return event.recordType;
+    return _inferRecordTypeFromUnit(record.effectiveRecordUnit);
   }
 
   int eventSortOrderOf(MeasurementRecord record) {
@@ -222,11 +234,16 @@ final dailyRecordsNotifierProvider =
       final recordRepository = ref.watch(recordRepositoryProvider);
       final eventRepository = ref.watch(eventRepositoryProvider);
       final userId = ref.watch(currentUserIdProvider);
-      return DailyRecordsNotifier(
+      final notifier = DailyRecordsNotifier(
         recordRepository: recordRepository,
         eventRepository: eventRepository,
         userId: userId,
       );
+      // 記録一覧が更新されたら、日別ビューも最新データへ追従して再読み込みする。
+      ref.listen<RecordListState>(recordListNotifierProvider, (_, _) {
+        notifier.refresh();
+      });
+      return notifier;
     });
 
 class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
