@@ -188,7 +188,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ランキングを表示する種目', style: AppTextStyles.caption),
+          const Text('ランキングを表示する種目', style: AppTextStyles.caption),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,

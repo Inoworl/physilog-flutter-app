@@ -45,6 +45,13 @@ class _FakeRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    return savedRecords.where((record) => record.userId == userId).toList();
+  }
+
+  @override
   Future<void> saveRecord(MeasurementRecord record) async {
     savedRecords.add(record);
   }
