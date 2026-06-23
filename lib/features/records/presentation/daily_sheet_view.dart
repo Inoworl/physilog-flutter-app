@@ -148,9 +148,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
       child: DataTable(
         headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
         columns: [
-          const DataColumn(
-            label: Text('選手', style: AppTextStyles.caption),
-          ),
+          const DataColumn(label: Text('選手', style: AppTextStyles.caption)),
           for (final column in session.columns)
             DataColumn(
               label: Text(column.name, style: AppTextStyles.caption),
@@ -195,8 +193,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
           Wrap(
             spacing: AppSpacing.sm,
             children: [
-              for (final column in session.columns)
-                _buildRankingChip(column),
+              for (final column in session.columns) _buildRankingChip(column),
             ],
           ),
           for (final column in session.columns)
