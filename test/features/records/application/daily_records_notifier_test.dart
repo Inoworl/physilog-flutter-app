@@ -1,7 +1,13 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/records/application/daily_records_notifier.dart';
+import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/domain/record_filter.dart';
+import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 MeasurementRecord _rec({
   required String id,
@@ -49,6 +55,110 @@ Event _event({
     createdAt: now,
     updatedAt: now,
   );
+}
+
+class _FakeRecordRepository implements RecordRepository {
+  _FakeRecordRepository(this.records);
+
+  final List<MeasurementRecord> records;
+
+  @override
+  Future<List<MeasurementRecord>> getRecords({
+    required String userId,
+    RecordFilter? filter,
+    int limit = 20,
+    MeasurementRecord? lastRecord,
+  }) async {
+    return records.where((record) => record.userId == userId).toList();
+  }
+
+  @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    return records.where((record) => record.userId == userId).toList();
+  }
+
+  @override
+  Future<MeasurementRecord?> getRecord({
+    required String userId,
+    required String id,
+  }) async {
+    for (final record in records) {
+      if (record.userId == userId && record.id == id) return record;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> saveRecord(MeasurementRecord record) async {
+    records.add(record);
+  }
+
+  @override
+  Future<void> updateRecord(MeasurementRecord record) async {
+    final index = records.indexWhere((item) => item.id == record.id);
+    if (index != -1) records[index] = record;
+  }
+
+  @override
+  Future<void> deleteRecord({
+    required String userId,
+    required String id,
+  }) async {
+    records.removeWhere((record) => record.userId == userId && record.id == id);
+  }
+}
+
+class _FakeEventRepository implements EventRepository {
+  _FakeEventRepository(this.events);
+
+  final List<Event> events;
+
+  @override
+  Future<List<Event>> getEvents({required String userId}) async {
+    return events.where((event) => event.userId == userId).toList();
+  }
+
+  @override
+  Future<void> saveEvent(Event event) async {
+    events.add(event);
+  }
+
+  @override
+  Future<void> updateEvent(Event event) async {
+    final index = events.indexWhere((item) => item.id == event.id);
+    if (index != -1) events[index] = event;
+  }
+
+  @override
+  Future<void> deleteEvent({required String userId, required String id}) async {
+    events.removeWhere((event) => event.userId == userId && event.id == id);
+  }
+}
+
+Future<DailyRecordsState> _waitForDailyLoaded(
+  ProviderContainer container,
+) async {
+  for (var i = 0; i < 20; i++) {
+    final state = container.read(dailyRecordsNotifierProvider);
+    final isLoading = state.maybeWhen(loading: () => true, orElse: () => false);
+    if (!isLoading) return state;
+    await Future<void>.delayed(Duration.zero);
+  }
+  return container.read(dailyRecordsNotifierProvider);
+}
+
+Future<RecordListState> _waitForRecordListLoaded(
+  ProviderContainer container,
+) async {
+  for (var i = 0; i < 20; i++) {
+    final state = container.read(recordListNotifierProvider);
+    final isLoading = state.maybeWhen(loading: () => true, orElse: () => false);
+    if (!isLoading) return state;
+    await Future<void>.delayed(Duration.zero);
+  }
+  return container.read(recordListNotifierProvider);
 }
 
 void main() {
@@ -239,5 +349,108 @@ void main() {
     final older = sessions[1].rows.single; // 5/30 = 220
     expect(newer.cells['id:ehj']!.isPersonalBest, isTrue);
     expect(older.cells['id:ehj']!.isPersonalBest, isFalse);
+  });
+
+  test('種目マスタに存在しない距離記録も大きい方を自己ベストにする', () {
+    final records = [
+      _rec(
+        id: 'r1',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'deleted-distance-event',
+        eventType: '削除済み距離種目',
+        value: 220,
+        unit: 'cm',
+        measuredAt: day2,
+      ),
+      _rec(
+        id: 'r2',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'deleted-distance-event',
+        eventType: '削除済み距離種目',
+        value: 230,
+        unit: 'cm',
+        measuredAt: day1,
+      ),
+    ];
+
+    final sessions = buildDailySessions(records, const []);
+    final newer = sessions.first.rows.single; // 6/12 = 230
+    final older = sessions[1].rows.single; // 5/30 = 220
+    expect(newer.cells['id:deleted-distance-event']!.isPersonalBest, isTrue);
+    expect(older.cells['id:deleted-distance-event']!.isPersonalBest, isFalse);
+    expect(sessions.first.columns.single.recordType, EventRecordType.distance);
+  });
+
+  test('記録保存後に一覧だけ更新されると日別ビューも新しい記録を反映する', () async {
+    final records = [
+      _rec(
+        id: 'r1',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'e50',
+        eventType: '50m',
+        value: 7.50,
+        unit: '秒',
+        measuredAt: day1,
+      ),
+    ];
+    final recordRepository = _FakeRecordRepository(records);
+    final container = ProviderContainer(
+      overrides: [
+        currentUserIdProvider.overrideWithValue('u1'),
+        recordRepositoryProvider.overrideWithValue(recordRepository),
+        eventRepositoryProvider.overrideWithValue(_FakeEventRepository(events)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final initialState = await _waitForDailyLoaded(container);
+    expect(
+      initialState.when(
+        loading: () => null,
+        error: (_) => null,
+        loaded: (sessions, _) =>
+            sessions.single.rows.single.cells['id:e50']!.value,
+      ),
+      7.50,
+    );
+
+    await recordRepository.saveRecord(
+      _rec(
+        id: 'r2',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'e50',
+        eventType: '50m',
+        value: 7.20,
+        unit: '秒',
+        measuredAt: day1,
+      ),
+    );
+    container.invalidate(recordListNotifierProvider);
+    final updatedListState = await _waitForRecordListLoaded(container);
+    expect(
+      updatedListState.when(
+        loading: () => null,
+        error: (_) => null,
+        loaded: (records, _, _) => records
+            .firstWhere((record) => record.id == 'r2')
+            .effectiveRecordValue,
+      ),
+      7.20,
+    );
+
+    final updatedState = container.read(dailyRecordsNotifierProvider);
+    expect(
+      updatedState.when(
+        loading: () => null,
+        error: (_) => null,
+        loaded: (sessions, _) =>
+            sessions.single.rows.single.cells['id:e50']!.value,
+      ),
+      7.20,
+    );
   });
 }
