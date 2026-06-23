@@ -108,7 +108,10 @@ class _FakeEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     return _events.where((event) => event.userId == userId).toList();
   }
 

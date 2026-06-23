@@ -86,7 +86,10 @@ class _FakeEventRepository implements EventRepository {
   }) async {}
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     return [
       Event(
         id: 'event-1',

@@ -116,8 +116,14 @@ class _FakeEventRepository implements EventRepository {
   final List<Event> events;
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
-    return events.where((event) => event.userId == userId).toList();
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
+    return events
+        .where((event) => event.userId == userId)
+        .where((event) => includeDeleted || event.deletedAt == null)
+        .toList();
   }
 
   @override
@@ -381,6 +387,67 @@ void main() {
     expect(newer.cells['id:deleted-distance-event']!.isPersonalBest, isTrue);
     expect(older.cells['id:deleted-distance-event']!.isPersonalBest, isFalse);
     expect(sessions.first.columns.single.recordType, EventRecordType.distance);
+  });
+
+  test('日別集計は削除済み種目のrecordTypeを使う（m単位でも距離扱い）', () async {
+    // 単位 'm' は単位推測だと time(小さい方が良い)に倒れてしまうが、
+    // 削除済み種目の recordType=distance を参照して大きい方を自己ベストにする。
+    final deletedDistance = _event(
+      id: 'ehj-old',
+      name: '走り幅跳び(旧)',
+      type: EventRecordType.distance,
+      sortOrder: 5,
+    ).copyWith(deletedAt: DateTime(2026, 6, 1));
+
+    final records = [
+      _rec(
+        id: 'r1',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'ehj-old',
+        eventType: '走り幅跳び(旧)',
+        value: 4.5,
+        unit: 'm',
+        measuredAt: day2,
+      ),
+      _rec(
+        id: 'r2',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'ehj-old',
+        eventType: '走り幅跳び(旧)',
+        value: 5.0,
+        unit: 'm',
+        measuredAt: day1,
+      ),
+    ];
+
+    final container = ProviderContainer(
+      overrides: [
+        currentUserIdProvider.overrideWithValue('u1'),
+        recordRepositoryProvider.overrideWithValue(
+          _FakeRecordRepository(records),
+        ),
+        eventRepositoryProvider.overrideWithValue(
+          _FakeEventRepository([deletedDistance]),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await _waitForDailyLoaded(container);
+    final sessions = state.maybeWhen(
+      loaded: (sessions, _) => sessions,
+      orElse: () => <DailySession>[],
+    );
+
+    expect(sessions.first.columns.single.recordType, EventRecordType.distance);
+    // 距離は大きい方がベスト → 5.0(新しい日)がPB、4.5(古い日)は非PB
+    expect(
+      sessions.first.rows.single.cells['id:ehj-old']!.isPersonalBest,
+      true,
+    );
+    expect(sessions[1].rows.single.cells['id:ehj-old']!.isPersonalBest, false);
   });
 
   test('記録保存後に一覧だけ更新されると日別ビューも新しい記録を反映する', () async {

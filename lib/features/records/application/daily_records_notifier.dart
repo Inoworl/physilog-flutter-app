@@ -272,7 +272,12 @@ class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
     state = const DailyRecordsState.loading();
     try {
       final records = await _recordRepository.getAllRecords(userId: userId);
-      final events = await _eventRepository.getEvents(userId: userId);
+      // 削除済み種目も含めて取得し、過去記録でも正規の recordType を参照できる
+      // ようにする（単位推測に頼らずベスト判定方向を正しくするため）。
+      final events = await _eventRepository.getEvents(
+        userId: userId,
+        includeDeleted: true,
+      );
       final sessions = buildDailySessions(records, events);
       state = DailyRecordsState.loaded(sessions: sessions, selectedIndex: 0);
     } catch (e) {
