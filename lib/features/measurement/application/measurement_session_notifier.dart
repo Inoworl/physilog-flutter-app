@@ -71,15 +71,35 @@ class MeasurementSessionState {
   }
 }
 
+/// 計測会プロバイダの引数（種目＋日付）。日付を変えると別の計測会になる。
+class SessionArgs {
+  const SessionArgs({required this.event, required this.date});
+
+  final Event event;
+  final DateTime date;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SessionArgs &&
+      other.event == event &&
+      other.date.year == date.year &&
+      other.date.month == date.month &&
+      other.date.day == date.day;
+
+  @override
+  int get hashCode => Object.hash(event, date.year, date.month, date.day);
+}
+
 final measurementSessionProvider = StateNotifierProvider.autoDispose
-    .family<MeasurementSessionNotifier, MeasurementSessionState, Event>((
+    .family<MeasurementSessionNotifier, MeasurementSessionState, SessionArgs>((
       ref,
-      event,
+      args,
     ) {
       return MeasurementSessionNotifier(
         repository: ref.watch(recordRepositoryProvider),
         userId: ref.watch(currentUserIdProvider),
-        event: event,
+        event: args.event,
+        now: args.date,
       );
     });
 

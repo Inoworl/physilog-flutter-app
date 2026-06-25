@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/presentation/manage_screen.dart';
+import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_session_screen.dart';
 import 'package:physi_log/features/measurement/presentation/session_setup_screen.dart';
@@ -11,7 +12,6 @@ import 'package:physi_log/features/records/presentation/records_tab_screen.dart'
 import 'package:physi_log/features/settings/presentation/settings_screen.dart';
 import 'package:physi_log/features/settings/presentation/settings_web_view_screen.dart';
 import 'package:physi_log/features/video_import/presentation/video_import_screen.dart';
-import 'package:physi_log/models/event.dart';
 import 'package:physi_log/shared/widgets/app_bottom_nav_shell.dart';
 
 const _defaultSettingsHelpUrl = String.fromEnvironment(
@@ -140,10 +140,13 @@ final router = GoRouter(
           name: 'measurementSession',
           parentNavigatorKey: _rootNavigatorKey,
           pageBuilder: (context, state) {
-            final event = state.extra as Event;
+            final args = state.extra as SessionArgs;
             return CustomTransitionPage(
               key: state.pageKey,
-              child: MeasurementSessionScreen(event: event),
+              child: MeasurementSessionScreen(
+                event: args.event,
+                date: args.date,
+              ),
               transitionsBuilder: _slideFromRight,
               transitionDuration: const Duration(milliseconds: 300),
               reverseTransitionDuration: const Duration(milliseconds: 300),

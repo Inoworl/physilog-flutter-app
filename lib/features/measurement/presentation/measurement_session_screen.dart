@@ -17,9 +17,16 @@ import 'package:physi_log/models/record_value_input.dart';
 /// 選手リスト＋キーパッドを出しっぱなしにして、点呼のリズムで測っていく。
 /// 「保存して次へ」で次の未計測選手へ自動フォーカスし、ベスト採用は自動判定する。
 class MeasurementSessionScreen extends ConsumerStatefulWidget {
-  const MeasurementSessionScreen({super.key, required this.event});
+  const MeasurementSessionScreen({
+    super.key,
+    required this.event,
+    required this.date,
+  });
 
   final Event event;
+
+  /// 計測会の日付（種目選択画面で指定。当日固定ではない）。
+  final DateTime date;
 
   @override
   ConsumerState<MeasurementSessionScreen> createState() =>
@@ -30,8 +37,10 @@ class _MeasurementSessionScreenState
     extends ConsumerState<MeasurementSessionScreen> {
   String? _selectedAthleteId;
   String _input = '';
+  _SessionFeedback? _feedback;
 
   Event get _event => widget.event;
+  SessionArgs get _args => SessionArgs(event: widget.event, date: widget.date);
   bool get _isInteger => _event.recordType == EventRecordType.count;
 
   void _onKey(String key) {
@@ -64,7 +73,7 @@ class _MeasurementSessionScreenState
   }
 
   void _advanceToNextUnmeasured(List<Athlete> roster) {
-    final session = ref.read(measurementSessionProvider(_event));
+    final session = ref.read(measurementSessionProvider(_args));
     final currentIndex = roster.indexWhere((a) => a.id == _selectedAthleteId);
     // 現在地の次から未計測を探し、末尾まで無ければ先頭から探す。
     for (var step = 1; step <= roster.length; step++) {
@@ -97,7 +106,7 @@ class _MeasurementSessionScreenState
       return;
     }
 
-    final notifier = ref.read(measurementSessionProvider(_event).notifier);
+    final notifier = ref.read(measurementSessionProvider(_args).notifier);
     final decision = await notifier.recordAttempt(
       athleteId: athleteId,
       athleteName: athlete.name,
@@ -106,59 +115,36 @@ class _MeasurementSessionScreenState
     ref.invalidate(recordListNotifierProvider);
 
     if (!mounted) return;
-    _showResult(athlete, value, decision, notifier);
+    // 結果は画面上部のバナーで知らせる（下部の「保存して次へ」に重ねない）。
+    setState(() {
+      _feedback = _SessionFeedback(
+        athleteId: athleteId,
+        athleteName: athlete.name,
+        value: value,
+        decision: decision,
+      );
+    });
     _advanceToNextUnmeasured(roster);
   }
 
-  void _showResult(
-    Athlete athlete,
-    double value,
-    BestAttemptDecision decision,
-    MeasurementSessionNotifier notifier,
-  ) {
-    final unit = _event.recordType.defaultUnit;
-    final valueText = RecordValueInput.formatDisplay(
-      recordValue: value,
-      recordUnit: unit,
+  /// 更新ならずの試技を、あとから採用する救済路。
+  Future<void> _adoptLast() async {
+    final fb = _feedback;
+    if (fb == null) return;
+    final notifier = ref.read(measurementSessionProvider(_args).notifier);
+    await notifier.recordAttempt(
+      athleteId: fb.athleteId,
+      athleteName: fb.athleteName,
+      value: fb.value,
+      forceAdopt: true,
     );
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-
-    if (decision.isNotImproved) {
-      final bestText = RecordValueInput.formatDisplay(
-        recordValue: decision.bestValue,
-        recordUnit: unit,
-      );
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('${athlete.name}：ベストは$bestTextのまま（今回 $valueText は不採用）'),
-          action: SnackBarAction(
-            label: '今回を採用',
-            onPressed: () async {
-              await notifier.recordAttempt(
-                athleteId: athlete.id,
-                athleteName: athlete.name,
-                value: value,
-                forceAdopt: true,
-              );
-              ref.invalidate(recordListNotifierProvider);
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
-    final label = decision.isImproved
-        ? '🔼 ${athlete.name}：ベスト更新！ $valueText'
-        : '${athlete.name}：$valueText を記録';
-    messenger.showSnackBar(
-      SnackBar(content: Text(label), duration: const Duration(seconds: 2)),
-    );
+    ref.invalidate(recordListNotifierProvider);
+    if (!mounted) return;
+    setState(() => _feedback = null);
   }
 
   Future<void> _finish() async {
-    final session = ref.read(measurementSessionProvider(_event));
+    final session = ref.read(measurementSessionProvider(_args));
     await SessionSummarySheet.show(
       context,
       event: _event,
@@ -171,7 +157,7 @@ class _MeasurementSessionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(measurementSessionProvider(_event));
+    final session = ref.watch(measurementSessionProvider(_args));
     final athleteState = ref.watch(athleteListNotifierProvider);
 
     return Scaffold(
@@ -204,9 +190,17 @@ class _MeasurementSessionScreenState
               _ProgressHeader(
                 measured: session.measuredCount,
                 total: athletes.length,
+                date: widget.date,
                 isVideoEvent:
                     _event.measurementMethod == EventMeasurementMethod.video,
               ),
+              if (_feedback != null)
+                _ResultBanner(
+                  feedback: _feedback!,
+                  unit: _event.recordType.defaultUnit,
+                  onAdopt: _adoptLast,
+                  onClose: () => setState(() => _feedback = null),
+                ),
               Expanded(
                 child: _RosterList(
                   athletes: athletes,
@@ -234,16 +228,19 @@ class _ProgressHeader extends StatelessWidget {
   const _ProgressHeader({
     required this.measured,
     required this.total,
+    required this.date,
     required this.isVideoEvent,
   });
 
   final int measured;
   final int total;
+  final DateTime date;
   final bool isVideoEvent;
 
   @override
   Widget build(BuildContext context) {
     final remaining = (total - measured).clamp(0, total);
+    final dateText = '${date.month}月${date.day}日';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
@@ -255,7 +252,7 @@ class _ProgressHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '計測済み $measured人 ／ 残り $remaining人',
+            '$dateText ・ 計測済み $measured人 ／ 残り $remaining人',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           if (isVideoEvent) ...[
@@ -318,6 +315,87 @@ class _RosterList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// 直前の試技の結果（バナー表示用）。
+class _SessionFeedback {
+  const _SessionFeedback({
+    required this.athleteId,
+    required this.athleteName,
+    required this.value,
+    required this.decision,
+  });
+
+  final String athleteId;
+  final String athleteName;
+  final double value;
+  final BestAttemptDecision decision;
+}
+
+/// 直前の保存結果を画面上部に出すバナー。SnackBarと違い下部のボタンに重ならない。
+class _ResultBanner extends StatelessWidget {
+  const _ResultBanner({
+    required this.feedback,
+    required this.unit,
+    required this.onAdopt,
+    required this.onClose,
+  });
+
+  final _SessionFeedback feedback;
+  final String unit;
+  final Future<void> Function() onAdopt;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final decision = feedback.decision;
+    final valueText = RecordValueInput.formatDisplay(
+      recordValue: feedback.value,
+      recordUnit: unit,
+    );
+
+    final Color background;
+    final String message;
+    if (decision.isImproved) {
+      background = AppColors.success.withValues(alpha: 0.14);
+      message = '🔼 ${feedback.athleteName}：ベスト更新！ $valueText';
+    } else if (decision.isNotImproved) {
+      background = AppColors.warning.withValues(alpha: 0.16);
+      final bestText = RecordValueInput.formatDisplay(
+        recordValue: decision.bestValue,
+        recordUnit: unit,
+      );
+      message = '${feedback.athleteName}：ベストは$bestTextのまま（今回 $valueText は不採用）';
+    } else {
+      background = AppColors.primaryLight.withValues(alpha: 0.14);
+      message = '${feedback.athleteName}：$valueText を記録';
+    }
+
+    return Container(
+      width: double.infinity,
+      color: background,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          if (decision.isNotImproved)
+            TextButton(onPressed: onAdopt, child: const Text('今回を採用')),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: onClose,
+          ),
+        ],
+      ),
     );
   }
 }
