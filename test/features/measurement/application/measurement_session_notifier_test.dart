@@ -273,6 +273,31 @@ void main() {
       expect(notifier.state.entryFor('a2')!.attemptCount, 1);
     });
 
+    test('種目名変更後もeventIdが一致する当日記録を復元する', () async {
+      final today = DateTime(2026, 6, 25, 10);
+      final repo = _InMemoryRecordRepository([
+        _seedRecord(
+          id: 'r1',
+          athleteId: 'a1',
+          athleteName: 'たろう',
+          value: 7.21,
+          unit: '秒',
+          measuredAt: today,
+          eventId: 'event-1',
+          eventType: '30m走（旧）',
+        ),
+      ]);
+
+      final notifier = await _makeNotifier(
+        repo,
+        event: _event(name: '30m走'),
+        now: today,
+      );
+
+      expect(notifier.state.measuredCount, 1);
+      expect(notifier.state.entryFor('a1')!.bestValue, 7.21);
+    });
+
     test('別日の記録は復元対象に含めない', () async {
       final today = DateTime(2026, 6, 25, 10);
       final yesterday = DateTime(2026, 6, 24, 10);
