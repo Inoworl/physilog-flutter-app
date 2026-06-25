@@ -43,6 +43,15 @@ class _InMemoryRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    final records = _records.values.where((r) => r.userId == userId).toList();
+    records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+    return records;
+  }
+
+  @override
   Future<MeasurementRecord?> getRecord({
     required String userId,
     required String id,
