@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/presentation/daily_sheet_view.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
 import 'package:physi_log/features/records/presentation/record_sheet_view.dart';
 import 'package:physi_log/features/records/presentation/widgets/delete_confirmation_dialog.dart';
@@ -11,7 +12,7 @@ import 'package:physi_log/shared/widgets/empty_state.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
 
-enum RecordsViewMode { list, sheet }
+enum RecordsViewMode { list, sheet, daily }
 
 class RecordsTabScreen extends ConsumerStatefulWidget {
   const RecordsTabScreen({
@@ -84,6 +85,11 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
                   icon: Icon(Icons.list_alt),
                 ),
                 ButtonSegment(
+                  value: RecordsViewMode.daily,
+                  label: Text('日別'),
+                  icon: Icon(Icons.event_note),
+                ),
+                ButtonSegment(
                   value: RecordsViewMode.sheet,
                   label: Text('シート'),
                   icon: Icon(Icons.table_chart),
@@ -98,17 +104,21 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _viewMode == RecordsViewMode.list
-                  ? _RecordListContent(
-                      key: const ValueKey(RecordsViewMode.list),
-                      onRefresh: _refresh,
-                    )
-                  : RecordSheetView(
-                      key: ValueKey(
-                        '${RecordsViewMode.sheet.name}-${widget.initialAthleteId ?? ''}',
-                      ),
-                      initialAthleteId: widget.initialAthleteId,
-                    ),
+              child: switch (_viewMode) {
+                RecordsViewMode.list => _RecordListContent(
+                  key: const ValueKey(RecordsViewMode.list),
+                  onRefresh: _refresh,
+                ),
+                RecordsViewMode.daily => const DailySheetView(
+                  key: ValueKey(RecordsViewMode.daily),
+                ),
+                RecordsViewMode.sheet => RecordSheetView(
+                  key: ValueKey(
+                    '${RecordsViewMode.sheet.name}-${widget.initialAthleteId ?? ''}',
+                  ),
+                  initialAthleteId: widget.initialAthleteId,
+                ),
+              },
             ),
           ),
         ],

@@ -80,6 +80,18 @@ class FirestoreRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    final snapshot = await _collection(
+      userId,
+    ).orderBy('recordedAt', descending: true).get();
+    return snapshot.docs
+        .map((doc) => MeasurementRecord.fromFirestore(doc))
+        .toList();
+  }
+
+  @override
   Future<MeasurementRecord?> getRecord({
     required String userId,
     required String id,
