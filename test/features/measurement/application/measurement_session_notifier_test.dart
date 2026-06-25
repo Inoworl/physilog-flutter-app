@@ -8,7 +8,7 @@ import 'package:physi_log/models/measurement_record.dart';
 /// テスト用のインメモリ記録リポジトリ。日別・種目フィルタだけ最低限再現する。
 class _InMemoryRecordRepository implements RecordRepository {
   _InMemoryRecordRepository([List<MeasurementRecord>? seed])
-    : _records = {for (final r in seed ?? const []) r.id: r};
+    : _records = {for (final r in seed ?? const <MeasurementRecord>[]) r.id: r};
 
   final Map<String, MeasurementRecord> _records;
 
@@ -40,6 +40,12 @@ class _InMemoryRecordRepository implements RecordRepository {
     }
     records.sort((a, b) => a.measuredAt.compareTo(b.measuredAt));
     return records.take(limit).toList();
+  }
+
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    return _records.values.where((r) => r.userId == userId).toList();
   }
 
   @override
