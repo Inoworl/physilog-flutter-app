@@ -292,7 +292,7 @@ void main() {
                 final view = state.uri.queryParameters['view'];
                 final initialViewMode = view == 'sheet'
                     ? RecordsViewMode.sheet
-                    : RecordsViewMode.list;
+                    : RecordsViewMode.daily;
 
                 return RecordsTabScreen(
                   initialViewMode: initialViewMode,

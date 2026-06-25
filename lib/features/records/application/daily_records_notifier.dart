@@ -12,11 +12,14 @@ part 'daily_records_notifier.freezed.dart';
 /// 日別シートの1セルぶんの値。
 class DailyCell {
   const DailyCell({
+    required this.recordId,
     required this.value,
     required this.displayText,
     required this.isPersonalBest,
   });
 
+  /// このセルが表す記録のID（タップで編集・削除するのに使う）。
+  final String recordId;
   final double value;
   final String displayText;
 
@@ -213,6 +216,7 @@ List<DailySession> buildDailySessions(
         final best = allTimeBest['$aKey|$eKey'];
         final isPb = best == null || (value - best).abs() < 1e-9;
         cells[eKey] = DailyCell(
+          recordId: record.id,
           value: value,
           displayText: record.formattedRecordValue,
           isPersonalBest: isPb,
