@@ -123,6 +123,42 @@ void main() {
     expect(cell.displayText, '4.4秒');
   });
 
+  test('eventIdが無い旧記録も種目名でマスタに紐づけてrecordTypeを使う', () {
+    final sheet = buildAthleteSheet(
+      records: [
+        _record(
+          id: 'r1',
+          eventId: '',
+          eventType: '走り幅跳び',
+          value: 4.5,
+          unit: '秒',
+          measuredAt: DateTime(2026, 5, 30, 10),
+        ),
+        _record(
+          id: 'r2',
+          eventId: '',
+          eventType: '走り幅跳び',
+          value: 5.0,
+          unit: '秒',
+          measuredAt: DateTime(2026, 6, 12, 10),
+        ),
+      ],
+      events: [
+        _event(
+          id: 'e3',
+          name: '走り幅跳び',
+          recordType: EventRecordType.distance,
+          sortOrder: 0,
+        ),
+      ],
+    );
+
+    expect(sheet.columns.single.recordType, EventRecordType.distance);
+    // 単位文字列では time に推測されるが、種目マスタの distance を優先する。
+    expect(sheet.rows.first.cells['name:走り幅跳び']!.isPersonalBest, isTrue);
+    expect(sheet.rows.last.cells['name:走り幅跳び']!.isPersonalBest, isFalse);
+  });
+
   test('未計測の種目セルは欠損する', () {
     final sheet = buildAthleteSheet(
       records: [
