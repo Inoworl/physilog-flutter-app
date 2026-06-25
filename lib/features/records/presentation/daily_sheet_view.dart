@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/records/application/daily_records_notifier.dart';
+import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/presentation/widgets/delete_confirmation_dialog.dart';
 import 'package:physi_log/shared/widgets/empty_state.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
@@ -161,12 +164,71 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
               cells: [
                 DataCell(Text(row.name, style: AppTextStyles.body)),
                 for (final column in session.columns)
-                  DataCell(_buildValueCell(theme, row.cells[column.key])),
+                  _buildDataCell(theme, row, column),
               ],
             ),
         ],
       ),
     );
+  }
+
+  DataCell _buildDataCell(
+    ThemeData theme,
+    DailyAthleteRow row,
+    DailyEventColumn column,
+  ) {
+    final cell = row.cells[column.key];
+    return DataCell(
+      _buildValueCell(theme, cell),
+      onTap: cell == null
+          ? null
+          : () => _onCellTap(cell, row.name, column.name),
+    );
+  }
+
+  /// セル（＝1記録）をタップ → 編集・削除メニュー。
+  Future<void> _onCellTap(
+    DailyCell cell,
+    String athleteName,
+    String eventName,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('$athleteName ・ $eventName'),
+              subtitle: Text(cell.displayText),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('編集'),
+              onTap: () => Navigator.pop(context, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: AppColors.error),
+              title: const Text('削除', style: TextStyle(color: AppColors.error)),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+
+    if (action == 'edit') {
+      context.pushNamed('recordEdit', pathParameters: {'id': cell.recordId});
+      return;
+    }
+    final confirmed = await DeleteConfirmationDialog.show(context, athleteName);
+    if (confirmed == true && mounted) {
+      await ref
+          .read(recordListNotifierProvider.notifier)
+          .deleteRecord(cell.recordId);
+    }
   }
 
   Widget _buildValueCell(ThemeData theme, DailyCell? cell) {
