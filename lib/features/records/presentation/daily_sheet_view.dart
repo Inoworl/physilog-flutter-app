@@ -243,7 +243,11 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
   }
 
   Widget _buildRankingSection(DailySession session) {
-    if (session.columns.isEmpty) return const SizedBox.shrink();
+    // 順位なし（lowerIsBetter == null）の種目はランキング対象外。
+    final rankable = session.columns
+        .where((column) => column.lowerIsBetter != null)
+        .toList();
+    if (rankable.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -255,10 +259,10 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
           Wrap(
             spacing: AppSpacing.sm,
             children: [
-              for (final column in session.columns) _buildRankingChip(column),
+              for (final column in rankable) _buildRankingChip(column),
             ],
           ),
-          for (final column in session.columns)
+          for (final column in rankable)
             if (!_hiddenRankingKeys.contains(column.key))
               _buildRankingFor(session, column),
         ],
