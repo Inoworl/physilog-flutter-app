@@ -147,15 +147,17 @@ class MeasurementSessionNotifier
     }
 
     try {
+      // 種目名でフィルタすると、種目名を変更した後に旧名で保存された記録
+      // （eventIdは一致）を取りこぼす。日付だけで取得し、種目の一致は
+      // _belongsToEvent（eventId優先）で判定する。
       final records = await _repository.getRecords(
         userId: userId,
         filter: RecordFilter(
-          eventType: _event.name,
           dateFrom: state.date,
           dateTo: state.date,
           sortKey: RecordSortKey.measuredAtAsc,
         ),
-        // 1日の計測会ぶんを取りこぼさないよう十分大きく取る。
+        // 1日の記録ぶんを取りこぼさないよう十分大きく取る。
         limit: 1000,
       );
 
