@@ -76,14 +76,17 @@ class _InMemoryRecordRepository implements RecordRepository {
 Event _event({
   EventRecordType recordType = EventRecordType.time,
   String name = '30m走',
+  String? unit,
+  EventScoreDirection? scoreDirection,
 }) {
   return Event(
     id: 'event-1',
     userId: 'user-1',
     name: name,
-    unit: recordType.defaultUnit,
+    unit: unit ?? recordType.defaultUnit,
     recordType: recordType,
     measurementMethod: recordType.defaultMeasurementMethod,
+    scoreDirection: scoreDirection,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
   );
@@ -244,6 +247,29 @@ void main() {
       final entry = notifier.state.entryFor('a1')!;
       expect(entry.bestValue, 235);
       expect(entry.unit, 'cm');
+    });
+
+    test('計測会は種目に設定した単位で記録を保存する', () async {
+      final repo = _InMemoryRecordRepository();
+      final notifier = await _makeNotifier(
+        repo,
+        event: _event(
+          recordType: EventRecordType.distance,
+          name: '体重',
+          unit: 'kg',
+          scoreDirection: EventScoreDirection.none,
+        ),
+      );
+
+      await notifier.recordAttempt(
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        value: 62.5,
+      );
+
+      final saved = repo.all.single;
+      expect(saved.recordUnit, 'kg');
+      expect(notifier.state.entryFor('a1')!.unit, 'kg');
     });
   });
 
