@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/records/application/daily_records_notifier.dart';
+import 'package:physi_log/features/records/application/record_filter_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
@@ -519,5 +520,53 @@ void main() {
       ),
       7.20,
     );
+  });
+
+  test('日別ビューも記録フィルターの選手条件を反映する', () async {
+    final records = [
+      _rec(
+        id: 'r1',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'e50',
+        eventType: '50m',
+        value: 7.21,
+        unit: '秒',
+        measuredAt: day1,
+      ),
+      _rec(
+        id: 'r2',
+        athleteId: 'a2',
+        athleteName: 'じろう',
+        eventId: 'e50',
+        eventType: '50m',
+        value: 7.35,
+        unit: '秒',
+        measuredAt: day1,
+      ),
+    ];
+    final container = ProviderContainer(
+      overrides: [
+        currentUserIdProvider.overrideWithValue('u1'),
+        recordRepositoryProvider.overrideWithValue(
+          _FakeRecordRepository(records),
+        ),
+        eventRepositoryProvider.overrideWithValue(_FakeEventRepository(events)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(recordFilterNotifierProvider.notifier)
+        .setAthlete(athleteId: 'a1', athleteName: 'たろう');
+
+    final state = await _waitForDailyLoaded(container);
+    final rows = state.when(
+      loading: () => const <DailyAthleteRow>[],
+      error: (_) => const <DailyAthleteRow>[],
+      loaded: (sessions, _) => sessions.single.rows,
+    );
+
+    expect(rows.map((row) => row.name), ['たろう']);
   });
 }

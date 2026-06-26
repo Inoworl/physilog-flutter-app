@@ -31,6 +31,8 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
+              const _StartSessionButton(),
+              const SizedBox(height: AppSpacing.lg),
               _QuickActionsSection(),
               const SizedBox(height: AppSpacing.xxl),
               const _AthleteSection(),
@@ -64,6 +66,23 @@ class _GreetingSection extends StatelessWidget {
           style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+}
+
+class _StartSessionButton extends StatelessWidget {
+  const _StartSessionButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: FilledButton.icon(
+        onPressed: () => context.pushNamed('measurementSessionSetup'),
+        icon: const Icon(Icons.groups),
+        label: const Text('計測会を開始（チームでまとめて計測）'),
+      ),
     );
   }
 }
