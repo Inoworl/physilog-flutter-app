@@ -108,26 +108,28 @@ class _MeasurementSessionScreenState
       orElse: () => roster.first,
     );
 
-    final double? value;
+    final double value;
     if (_timeMode) {
-      value = MinSecInput.toSeconds(_input);
-      if (value == null || value <= 0) {
+      final parsed = MinSecInput.toSeconds(_input);
+      if (parsed == null || parsed <= 0) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('分:秒を入力してください（秒は00〜59）')));
         return;
       }
+      value = parsed;
     } else {
       final cleaned = _input.endsWith('.')
           ? _input.substring(0, _input.length - 1)
           : _input;
-      value = double.tryParse(cleaned);
-      if (value == null || value <= 0) {
+      final parsed = double.tryParse(cleaned);
+      if (parsed == null || parsed <= 0) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
         return;
       }
+      value = parsed;
     }
 
     final notifier = ref.read(measurementSessionProvider(_args).notifier);
