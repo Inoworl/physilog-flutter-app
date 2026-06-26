@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
+import 'package:physi_log/shared/widgets/numeric_keypad_grid.dart';
 
 /// 計測会の連続手入力用キーパッド。値の表示・数字パッド・「保存して次へ」を1枚に。
 ///
@@ -61,7 +62,7 @@ class SessionKeypad extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            _KeypadGrid(allowDecimal: allowDecimal, onKey: onKey),
+            NumericKeypadGrid(allowDecimal: allowDecimal, onKey: onKey),
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
@@ -74,65 +75,6 @@ class SessionKeypad extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _KeypadGrid extends StatelessWidget {
-  const _KeypadGrid({required this.allowDecimal, required this.onKey});
-
-  final bool allowDecimal;
-  final ValueChanged<String> onKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final keys = <String>[
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      allowDecimal ? '.' : '',
-      '0',
-      '⌫',
-    ];
-
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSpacing.sm,
-      crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 2.2,
-      children: [
-        for (final key in keys) _KeypadButton(label: key, onKey: onKey),
-      ],
-    );
-  }
-}
-
-class _KeypadButton extends StatelessWidget {
-  const _KeypadButton({required this.label, required this.onKey});
-
-  final String label;
-  final ValueChanged<String> onKey;
-
-  @override
-  Widget build(BuildContext context) {
-    if (label.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return OutlinedButton(
-      onPressed: () => onKey(label),
-      style: OutlinedButton.styleFrom(
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.headlineSmall),
     );
   }
 }
