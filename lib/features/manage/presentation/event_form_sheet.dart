@@ -26,11 +26,20 @@ class EventFormSheet extends ConsumerStatefulWidget {
 class _EventFormSheetState extends ConsumerState<EventFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _unitController;
   late EventRecordType _recordType;
   late EventMeasurementMethod _measurementMethod;
+  late EventScoreDirection _scoreDirection;
   bool _isSubmitting = false;
 
   bool get _isEditing => widget.event != null;
+
+  static const _unitPresets = ['秒', 'cm', 'm', 'kg', '回', '%', '点', 'レベル'];
+
+  EventScoreDirection _defaultDirectionFor(EventRecordType type) =>
+      type.lowerIsBetter
+      ? EventScoreDirection.lower
+      : EventScoreDirection.higher;
 
   @override
   void initState() {
@@ -40,13 +49,21 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     _recordType = event?.recordType ?? EventRecordType.time;
     _measurementMethod =
         event?.measurementMethod ?? _recordType.defaultMeasurementMethod;
+    _scoreDirection =
+        event?.effectiveScoreDirection ?? _defaultDirectionFor(_recordType);
+    _unitController = TextEditingController(
+      text: event?.unit ?? _recordType.defaultUnit,
+    );
   }
 
-  /// 記録の型を切り替えたとき、計測方法をその型の既定に合わせる（新規作成時のみ）。
+  /// 記録の型を切り替えたとき、計測方法・単位・ベスト方向をその型の既定に
+  /// 合わせる（新規作成時のみ）。
   void _onRecordTypeChanged(EventRecordType type) {
     setState(() {
       _recordType = type;
       _measurementMethod = type.defaultMeasurementMethod;
+      _scoreDirection = _defaultDirectionFor(type);
+      _unitController.text = type.defaultUnit;
     });
   }
 
@@ -85,9 +102,55 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
     );
   }
 
+  Widget _buildUnitField() {
+    return TextFormField(
+      controller: _unitController,
+      readOnly: _isEditing,
+      decoration: InputDecoration(
+        labelText: '単位',
+        hintText: '例: 秒 / cm / kg / 回 / %',
+        helperText: _isEditing ? '作成後は変更できません' : null,
+      ),
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) return '単位を入力してください';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildUnitPresets() {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final unit in _unitPresets)
+          ActionChip(
+            label: Text(unit),
+            onPressed: () => setState(() => _unitController.text = unit),
+          ),
+      ],
+    );
+  }
+
+  /// ベスト方向（大きい/小さい/順位なし）。記録があっても変更できる。
+  Widget _buildDirectionSelector() {
+    return Wrap(
+      spacing: 8,
+      children: [
+        for (final direction in EventScoreDirection.values)
+          ChoiceChip(
+            label: Text(direction.label),
+            selected: _scoreDirection == direction,
+            onSelected: (_) => setState(() => _scoreDirection = direction),
+          ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
+    _unitController.dispose();
     super.dispose();
   }
 
@@ -102,12 +165,15 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
           eventId: widget.event!.id,
           name: _nameController.text.trim(),
           measurementMethod: _measurementMethod,
+          scoreDirection: _scoreDirection,
         );
       } else {
         await notifier.addEvent(
           _nameController.text.trim(),
           recordType: _recordType,
           measurementMethod: _measurementMethod,
+          unit: _unitController.text.trim(),
+          scoreDirection: _scoreDirection,
         );
       }
       if (!mounted) return;
@@ -184,6 +250,18 @@ class _EventFormSheetState extends ConsumerState<EventFormSheet> {
             _FieldLabel('記録の型', hint: _recordTypeHint),
             const SizedBox(height: 8),
             _buildRecordTypeSelector(),
+            const SizedBox(height: 20),
+            const _FieldLabel('単位'),
+            const SizedBox(height: 8),
+            _buildUnitField(),
+            if (!_isEditing) ...[
+              const SizedBox(height: 8),
+              _buildUnitPresets(),
+            ],
+            const SizedBox(height: 20),
+            const _FieldLabel('ベスト方向'),
+            const SizedBox(height: 8),
+            _buildDirectionSelector(),
             const SizedBox(height: 20),
             const _FieldLabel('計測方法'),
             const SizedBox(height: 8),
