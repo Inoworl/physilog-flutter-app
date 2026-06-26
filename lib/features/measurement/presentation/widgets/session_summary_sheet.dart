@@ -30,7 +30,12 @@ class SessionSummarySheet extends StatelessWidget {
 
   List<SessionEntry> _ranked() {
     final sorted = [...entries];
-    final lowerIsBetter = event.scoreLowerIsBetter ?? false;
+    final lowerIsBetter = event.scoreLowerIsBetter;
+    if (lowerIsBetter == null) {
+      // 順位をつけない種目は名前順（ランキングしない）。
+      sorted.sort((a, b) => a.athleteName.compareTo(b.athleteName));
+      return sorted;
+    }
     sorted.sort((a, b) {
       return lowerIsBetter
           ? a.bestValue.compareTo(b.bestValue)
@@ -42,6 +47,7 @@ class SessionSummarySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ranked = _ranked();
+    final isRanked = event.scoreLowerIsBetter != null;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -88,11 +94,13 @@ class SessionSummarySheet extends StatelessWidget {
                           final entry = ranked[index];
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: index == 0
+                              backgroundColor: (isRanked && index == 0)
                                   ? AppColors.warning
                                   : AppColors.primaryLight,
                               foregroundColor: Colors.white,
-                              child: Text('${index + 1}'),
+                              child: isRanked
+                                  ? Text('${index + 1}')
+                                  : const Icon(Icons.person, size: 18),
                             ),
                             title: Text(entry.athleteName),
                             trailing: Text(

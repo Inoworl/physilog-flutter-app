@@ -148,13 +148,22 @@ List<DailySession> buildDailySessions(
     return _inferRecordTypeFromUnit(record.effectiveRecordUnit).lowerIsBetter;
   }
 
+  // 順位をつけない種目（scoreDirection=none）のkey。ランキング・PBの対象外。
+  final noneEventKeys = <String>{};
+  for (final record in records) {
+    if (scoreLowerIsBetterOf(record) == null) {
+      noneEventKeys.add(_eventKey(record));
+    }
+  }
+
   // 全期間ベスト（選手key + 種目key -> 最良値）。PB判定に使う。
+  // 順位なし種目はベストの概念を持たないので集計しない。
   final allTimeBest = <String, double>{};
   for (final record in records) {
+    final lowerIsBetter = scoreLowerIsBetterOf(record);
+    if (lowerIsBetter == null) continue;
     final key = '${_athleteKey(record)}|${_eventKey(record)}';
     final value = record.effectiveRecordValue;
-    // 順位なし(null)は最大値を残す扱い（PBは順位なし種目では意味を持たない）。
-    final lowerIsBetter = scoreLowerIsBetterOf(record) ?? false;
     final current = allTimeBest[key];
     if (current == null ||
         (lowerIsBetter ? value < current : value > current)) {
@@ -213,14 +222,17 @@ List<DailySession> buildDailySessions(
         nameByKey[aKey] = name.isEmpty ? '未登録' : name;
       }
       final existing = dayBest[aKey]![eKey];
-      final lowerIsBetter = scoreLowerIsBetterOf(record) ?? false;
+      final lowerIsBetter = scoreLowerIsBetterOf(record);
       if (existing == null) {
         dayBest[aKey]![eKey] = record;
       } else {
         final cur = existing.effectiveRecordValue;
         final val = record.effectiveRecordValue;
-        final better = lowerIsBetter ? val < cur : val > cur;
-        if (better) dayBest[aKey]![eKey] = record;
+        // 順位なしは「最新（あとで計測したもの）」を残す。それ以外はベスト。
+        final keep = lowerIsBetter == null
+            ? !record.measuredAt.isBefore(existing.measuredAt)
+            : (lowerIsBetter ? val < cur : val > cur);
+        if (keep) dayBest[aKey]![eKey] = record;
       }
     }
 
@@ -232,7 +244,10 @@ List<DailySession> buildDailySessions(
       dayBest[aKey]!.forEach((eKey, record) {
         final value = record.effectiveRecordValue;
         final best = allTimeBest['$aKey|$eKey'];
-        final isPb = best == null || (value - best).abs() < 1e-9;
+        // 順位なし種目はPB強調しない。
+        final isPb = noneEventKeys.contains(eKey)
+            ? false
+            : (best == null || (value - best).abs() < 1e-9);
         cells[eKey] = DailyCell(
           recordId: record.id,
           value: value,
