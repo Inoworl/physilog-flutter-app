@@ -13,11 +13,13 @@ Future<void> _pump(
   return tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: ValueKeypadField(
-          recordType: recordType,
-          unit: unit,
-          initialValue: initialValue,
-          onChanged: onChanged,
+        body: SingleChildScrollView(
+          child: ValueKeypadField(
+            recordType: recordType,
+            unit: unit,
+            initialValue: initialValue,
+            onChanged: onChanged,
+          ),
         ),
       ),
     ),
