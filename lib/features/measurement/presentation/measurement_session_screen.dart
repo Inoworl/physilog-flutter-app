@@ -223,7 +223,7 @@ class _MeasurementSessionScreenState
               if (_feedback != null)
                 _ResultBanner(
                   feedback: _feedback!,
-                  unit: _event.recordType.defaultUnit,
+                  unit: _event.unit,
                   onAdopt: _adoptLast,
                   onClose: () => setState(() => _feedback = null),
                 ),
@@ -256,7 +256,7 @@ class _MeasurementSessionScreenState
                 ),
               SessionKeypad(
                 input: _timeMode ? MinSecInput.format(_input) : _input,
-                unit: _timeMode ? '分:秒' : _event.recordType.defaultUnit,
+                unit: _timeMode ? '分:秒' : _event.unit,
                 allowDecimal: !_isInteger && !_timeMode,
                 onKey: _onKey,
                 onSave: () => _save(athletes),
