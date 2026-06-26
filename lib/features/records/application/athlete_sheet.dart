@@ -66,10 +66,11 @@ AthleteSheet buildAthleteSheet({
     final recordType =
         event?.recordType ?? _inferType(record.effectiveRecordUnit);
     // ベスト方向は種目マスタの scoreDirection を使う（単位推測に頼らない）。
-    // 旧記録（マスタ無し）のみ単位からの推測で補完する。
-    final lowerIsBetter =
-        event?.scoreLowerIsBetter ??
-        _inferType(record.effectiveRecordUnit).lowerIsBetter;
+    // 種目マスタが無い旧記録のみ、単位からの推測で補完する。
+    // ※ none（null）を潰さないため、event がある場合は scoreLowerIsBetter を優先。
+    final bool? lowerIsBetter = event != null
+        ? event.scoreLowerIsBetter
+        : _inferType(record.effectiveRecordUnit).lowerIsBetter;
     final name =
         event?.name ?? (record.eventType.isEmpty ? '未設定' : record.eventType);
     columnMeta[key] = DailyEventColumn(
