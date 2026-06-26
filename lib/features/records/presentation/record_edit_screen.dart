@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/models/event.dart';
@@ -34,6 +35,7 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   late TextEditingController _recordValueController;
   late TextEditingController _memoController;
   String? _selectedEventType;
+  late DateTime _measuredDate;
   bool _initialized = false;
   bool _isSaving = false;
 
@@ -55,7 +57,30 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
       );
       _memoController = TextEditingController(text: record.memo);
       _selectedEventType = record.eventType;
+      _measuredDate = record.measuredAt;
       _initialized = true;
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _measuredDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      // 日付だけ差し替え、元の時刻は保つ。
+      setState(() {
+        _measuredDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _measuredDate.hour,
+          _measuredDate.minute,
+          _measuredDate.second,
+        );
+      });
     }
   }
 
@@ -106,6 +131,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         !eventOptions.contains(_selectedEventType)) {
       _selectedEventType = eventOptions.isEmpty ? null : eventOptions.first;
     }
+
+    final dateText = DateFormat('yyyy/MM/dd').format(_measuredDate);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -181,6 +208,12 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            OutlinedButton.icon(
+              onPressed: _selectDate,
+              icon: const Icon(Icons.calendar_today),
+              label: Text('測定日: $dateText'),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _memoController,
               decoration: const InputDecoration(
@@ -255,6 +288,7 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         durationMs: isManualRecord ? durationMs : record.durationMs,
         recordValue: recordValue,
         recordUnit: recordUnit,
+        measuredAt: _measuredDate,
         memo: _memoController.text.trim(),
         updatedAt: DateTime.now(),
       );
