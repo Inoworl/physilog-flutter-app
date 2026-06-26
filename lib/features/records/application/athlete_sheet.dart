@@ -44,6 +44,7 @@ AthleteSheet buildAthleteSheet({
   required List<Event> events,
 }) {
   final eventById = {for (final e in events) e.id: e};
+  final eventByName = {for (final e in events) e.name: e};
 
   String keyOf(MeasurementRecord r) =>
       (r.eventId != null && r.eventId!.isNotEmpty)
@@ -57,9 +58,11 @@ AthleteSheet buildAthleteSheet({
 
   for (final record in records) {
     final key = keyOf(record);
+    // eventId優先、見つからなければ種目名でマスタに紐づける（旧記録対策）。
+    // マスタの recordType を使うことで、単位推測に頼らずベスト方向を正しくする。
     final event = (record.eventId != null && record.eventId!.isNotEmpty)
-        ? eventById[record.eventId]
-        : null;
+        ? (eventById[record.eventId] ?? eventByName[record.eventType])
+        : eventByName[record.eventType];
     final recordType =
         event?.recordType ?? _inferType(record.effectiveRecordUnit);
     final name =
