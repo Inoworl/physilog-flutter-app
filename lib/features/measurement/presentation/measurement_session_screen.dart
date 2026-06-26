@@ -5,6 +5,7 @@ import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/measurement/application/best_record_policy.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
+import 'package:physi_log/features/measurement/application/min_sec_input.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_keypad.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_summary_sheet.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
@@ -39,9 +40,13 @@ class _MeasurementSessionScreenState
   String _input = '';
   _SessionFeedback? _feedback;
 
+  /// タイム種目で「分:秒」入力にしているか（既定は秒）。
+  bool _timeMode = false;
+
   Event get _event => widget.event;
   SessionArgs get _args => SessionArgs(event: widget.event, date: widget.date);
   bool get _isInteger => _event.recordType == EventRecordType.count;
+  bool get _isTimeEvent => _event.recordType == EventRecordType.time;
 
   void _onKey(String key) {
     setState(() {
@@ -49,6 +54,14 @@ class _MeasurementSessionScreenState
         if (_input.isNotEmpty) {
           _input = _input.substring(0, _input.length - 1);
         }
+        return;
+      }
+      if (_timeMode) {
+        // 分:秒モードは数字のみ・最大4桁（99:59）。先頭ゼロは受けない。
+        if (key == '.') return;
+        if (_input.length >= 4) return;
+        if (_input.isEmpty && key == '0') return;
+        _input = '$_input$key';
         return;
       }
       if (key == '.') {
@@ -95,15 +108,26 @@ class _MeasurementSessionScreenState
       orElse: () => roster.first,
     );
 
-    final cleaned = _input.endsWith('.')
-        ? _input.substring(0, _input.length - 1)
-        : _input;
-    final value = double.tryParse(cleaned);
-    if (value == null || value <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
-      return;
+    final double? value;
+    if (_timeMode) {
+      value = MinSecInput.toSeconds(_input);
+      if (value == null || value <= 0) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('分:秒を入力してください（秒は00〜59）')));
+        return;
+      }
+    } else {
+      final cleaned = _input.endsWith('.')
+          ? _input.substring(0, _input.length - 1)
+          : _input;
+      value = double.tryParse(cleaned);
+      if (value == null || value <= 0) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
+        return;
+      }
     }
 
     final notifier = ref.read(measurementSessionProvider(_args).notifier);
@@ -209,10 +233,29 @@ class _MeasurementSessionScreenState
                   onSelect: _selectAthlete,
                 ),
               ),
+              if (_isTimeEvent)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('秒')),
+                      ButtonSegment(value: true, label: Text('分:秒')),
+                    ],
+                    selected: {_timeMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selected) => setState(() {
+                      _timeMode = selected.first;
+                      _input = '';
+                    }),
+                  ),
+                ),
               SessionKeypad(
-                input: _input,
-                unit: _event.recordType.defaultUnit,
-                allowDecimal: !_isInteger,
+                input: _timeMode ? MinSecInput.format(_input) : _input,
+                unit: _timeMode ? '分:秒' : _event.recordType.defaultUnit,
+                allowDecimal: !_isInteger && !_timeMode,
                 onKey: _onKey,
                 onSave: () => _save(athletes),
               ),
