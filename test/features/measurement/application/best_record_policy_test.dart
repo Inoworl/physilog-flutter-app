@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/measurement/application/best_record_policy.dart';
-import 'package:physi_log/models/event.dart';
 
 void main() {
   group('BestRecordPolicy.evaluate', () {
@@ -8,7 +7,7 @@ void main() {
       final decision = BestRecordPolicy.evaluate(
         candidate: 7.21,
         previousBest: null,
-        recordType: EventRecordType.time,
+        lowerIsBetter: true,
       );
 
       expect(decision.isFirstAttempt, isTrue);
@@ -20,7 +19,7 @@ void main() {
       final decision = BestRecordPolicy.evaluate(
         candidate: 7.05,
         previousBest: 7.21,
-        recordType: EventRecordType.time,
+        lowerIsBetter: true,
       );
 
       expect(decision.isImproved, isTrue);
@@ -32,7 +31,7 @@ void main() {
       final decision = BestRecordPolicy.evaluate(
         candidate: 7.40,
         previousBest: 7.21,
-        recordType: EventRecordType.time,
+        lowerIsBetter: true,
       );
 
       expect(decision.isNotImproved, isTrue);
@@ -44,7 +43,7 @@ void main() {
       final decision = BestRecordPolicy.evaluate(
         candidate: 235,
         previousBest: 230,
-        recordType: EventRecordType.distance,
+        lowerIsBetter: false,
       );
 
       expect(decision.isImproved, isTrue);
@@ -55,7 +54,7 @@ void main() {
       final decision = BestRecordPolicy.evaluate(
         candidate: 12,
         previousBest: 15,
-        recordType: EventRecordType.count,
+        lowerIsBetter: false,
       );
 
       expect(decision.isNotImproved, isTrue);
@@ -66,16 +65,33 @@ void main() {
       final time = BestRecordPolicy.evaluate(
         candidate: 7.21,
         previousBest: 7.21,
-        recordType: EventRecordType.time,
+        lowerIsBetter: true,
       );
       final distance = BestRecordPolicy.evaluate(
         candidate: 230,
         previousBest: 230,
-        recordType: EventRecordType.distance,
+        lowerIsBetter: false,
       );
 
       expect(time.isNotImproved, isTrue);
       expect(distance.isNotImproved, isTrue);
+    });
+
+    test('順位なし種目（lowerIsBetter=null）は常に最新値で記録', () {
+      final first = BestRecordPolicy.evaluate(
+        candidate: 60.5,
+        previousBest: null,
+        lowerIsBetter: null,
+      );
+      final second = BestRecordPolicy.evaluate(
+        candidate: 58.0,
+        previousBest: 60.5,
+        lowerIsBetter: null,
+      );
+
+      expect(first.isFirstAttempt, isTrue);
+      expect(second.isRecorded, isTrue);
+      expect(second.bestValue, 58.0);
     });
   });
 

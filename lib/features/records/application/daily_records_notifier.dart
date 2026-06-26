@@ -35,11 +35,16 @@ class DailyEventColumn {
     required this.key,
     required this.name,
     required this.recordType,
+    required this.lowerIsBetter,
   });
 
   final String key;
   final String name;
   final EventRecordType recordType;
+
+  /// ベスト方向。小さい=true／大きい=false／順位なし=null。
+  /// 種目の scoreDirection から解決した値（単位推測に頼らない）。
+  final bool? lowerIsBetter;
 }
 
 /// 日別シートの行（選手）。
@@ -134,12 +139,22 @@ List<DailySession> buildDailySessions(
     return event?.sortOrder ?? 1 << 30;
   }
 
+  // ベスト方向（小さい=true／大きい=false／順位なし=null）。
+  // 種目マスタの scoreDirection を使い、単位推測には頼らない（旧記録のみ補完）。
+  bool? scoreLowerIsBetterOf(MeasurementRecord record) {
+    final byId = record.eventId == null ? null : eventById[record.eventId];
+    final event = byId ?? eventByName[record.eventType];
+    if (event != null) return event.scoreLowerIsBetter;
+    return _inferRecordTypeFromUnit(record.effectiveRecordUnit).lowerIsBetter;
+  }
+
   // 全期間ベスト（選手key + 種目key -> 最良値）。PB判定に使う。
   final allTimeBest = <String, double>{};
   for (final record in records) {
     final key = '${_athleteKey(record)}|${_eventKey(record)}';
     final value = record.effectiveRecordValue;
-    final lowerIsBetter = recordTypeOf(record).lowerIsBetter;
+    // 順位なし(null)は最大値を残す扱い（PBは順位なし種目では意味を持たない）。
+    final lowerIsBetter = scoreLowerIsBetterOf(record) ?? false;
     final current = allTimeBest[key];
     if (current == null ||
         (lowerIsBetter ? value < current : value > current)) {
@@ -172,6 +187,7 @@ List<DailySession> buildDailySessions(
           key: key,
           name: record.eventType.isEmpty ? '未設定' : record.eventType,
           recordType: recordTypeOf(record),
+          lowerIsBetter: scoreLowerIsBetterOf(record),
         ),
       );
     }
@@ -197,7 +213,7 @@ List<DailySession> buildDailySessions(
         nameByKey[aKey] = name.isEmpty ? '未登録' : name;
       }
       final existing = dayBest[aKey]![eKey];
-      final lowerIsBetter = recordTypeOf(record).lowerIsBetter;
+      final lowerIsBetter = scoreLowerIsBetterOf(record) ?? false;
       if (existing == null) {
         dayBest[aKey]![eKey] = record;
       } else {

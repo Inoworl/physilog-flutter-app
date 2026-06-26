@@ -30,7 +30,7 @@ class SessionSummarySheet extends StatelessWidget {
 
   List<SessionEntry> _ranked() {
     final sorted = [...entries];
-    final lowerIsBetter = event.recordType.lowerIsBetter;
+    final lowerIsBetter = event.scoreLowerIsBetter ?? false;
     sorted.sort((a, b) {
       return lowerIsBetter
           ? a.bestValue.compareTo(b.bestValue)

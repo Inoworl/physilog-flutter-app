@@ -65,15 +65,23 @@ AthleteSheet buildAthleteSheet({
         : eventByName[record.eventType];
     final recordType =
         event?.recordType ?? _inferType(record.effectiveRecordUnit);
+    // ベスト方向は種目マスタの scoreDirection を使う（単位推測に頼らない）。
+    // 旧記録（マスタ無し）のみ単位からの推測で補完する。
+    final lowerIsBetter =
+        event?.scoreLowerIsBetter ??
+        _inferType(record.effectiveRecordUnit).lowerIsBetter;
     final name =
         event?.name ?? (record.eventType.isEmpty ? '未設定' : record.eventType);
     columnMeta[key] = DailyEventColumn(
       key: key,
       name: name,
       recordType: recordType,
+      lowerIsBetter: lowerIsBetter,
     );
     sortOrderByKey[key] = event?.sortOrder ?? (1 << 20);
 
+    // 順位なし(null)は最大値を残す扱い（PB/ベストは順位なし種目では意味を持たない）。
+    final effectiveLower = lowerIsBetter ?? false;
     final day = DateTime(
       record.measuredAt.year,
       record.measuredAt.month,
@@ -86,7 +94,7 @@ AthleteSheet buildAthleteSheet({
       dayMap[key] = record;
     } else {
       final cur = existing.effectiveRecordValue;
-      final better = recordType.lowerIsBetter ? value < cur : value > cur;
+      final better = effectiveLower ? value < cur : value > cur;
       if (better) dayMap[key] = record;
     }
 
@@ -94,7 +102,7 @@ AthleteSheet buildAthleteSheet({
     if (best == null) {
       allTimeBest[key] = value;
     } else {
-      final better = recordType.lowerIsBetter ? value < best : value > best;
+      final better = effectiveLower ? value < best : value > best;
       if (better) allTimeBest[key] = value;
     }
   }

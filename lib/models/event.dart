@@ -47,6 +47,28 @@ enum EventMeasurementMethod {
   final String label;
 }
 
+/// ベスト判定の方向。種目ごとに選べるようにし、単位推測に頼らない。
+enum EventScoreDirection {
+  @JsonValue('higher')
+  higher('大きいほど良い'),
+  @JsonValue('lower')
+  lower('小さいほど良い'),
+  @JsonValue('none')
+  none('順位をつけない');
+
+  const EventScoreDirection(this.label);
+
+  /// フォームなどで表示するラベル。
+  final String label;
+
+  /// ベスト比較・ランキングに使う向き。none は比較しない（null）。
+  bool? get lowerIsBetter => switch (this) {
+    EventScoreDirection.lower => true,
+    EventScoreDirection.higher => false,
+    EventScoreDirection.none => null,
+  };
+}
+
 @freezed
 class Event with _$Event {
   const factory Event({
@@ -57,6 +79,8 @@ class Event with _$Event {
     @Default(EventRecordType.time) EventRecordType recordType,
     @Default(EventMeasurementMethod.video)
     EventMeasurementMethod measurementMethod,
+    // 明示設定が無い旧種目は null。effectiveScoreDirection で recordType から導出する。
+    EventScoreDirection? scoreDirection,
     @Default(0) int sortOrder,
     DateTime? deletedAt,
     required DateTime createdAt,
@@ -64,6 +88,16 @@ class Event with _$Event {
   }) = _Event;
 
   const Event._();
+
+  /// 実効ベスト方向。明示設定が無ければ記録の型から導出する（旧種目の移行）。
+  EventScoreDirection get effectiveScoreDirection =>
+      scoreDirection ??
+      (recordType.lowerIsBetter
+          ? EventScoreDirection.lower
+          : EventScoreDirection.higher);
+
+  /// ベスト比較に使う向き。none（順位をつけない）のときは null。
+  bool? get scoreLowerIsBetter => effectiveScoreDirection.lowerIsBetter;
 
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
 
@@ -90,6 +124,8 @@ class Event with _$Event {
       // 生成 fromJson と読み書き対称になる。
       'recordType': recordType.name,
       'measurementMethod': measurementMethod.name,
+      // 旧種目も次回保存時に明示的な方向が入るよう、実効値を書き出す。
+      'scoreDirection': effectiveScoreDirection.name,
       'sortOrder': sortOrder,
       'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'createdAt': Timestamp.fromDate(createdAt),

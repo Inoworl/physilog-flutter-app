@@ -292,7 +292,7 @@ class _DailySheetViewState extends ConsumerState<DailySheetView> {
       if (cell != null) ranked.add((name: row.name, cell: cell));
     }
     ranked.sort((a, b) {
-      final lowerIsBetter = column.recordType.lowerIsBetter;
+      final lowerIsBetter = column.lowerIsBetter ?? false;
       if (lowerIsBetter) return a.cell.value.compareTo(b.cell.value);
       return b.cell.value.compareTo(a.cell.value);
     });
