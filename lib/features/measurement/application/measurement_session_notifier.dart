@@ -132,7 +132,6 @@ class MeasurementSessionNotifier
   final Uuid _uuid;
 
   Event get _event => state.event;
-  EventRecordType get _recordType => _event.recordType;
 
   static DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
@@ -213,8 +212,9 @@ class MeasurementSessionNotifier
     double? fps,
     bool forceAdopt = false,
   }) async {
+    // 既定は種目に設定した単位（kg/% など独自単位を尊重する）。
     final resolvedUnit = (unit == null || unit.trim().isEmpty)
-        ? _recordType.defaultUnit
+        ? _event.unit
         : unit.trim();
     final existing = state.entries[athleteId];
     final decision = BestRecordPolicy.evaluate(
