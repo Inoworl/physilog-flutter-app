@@ -38,7 +38,7 @@ void main() {
     await tester.tap(find.text('記録'));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('一覧'), findsOneWidget);
+    expect(find.text('日別'), findsOneWidget);
     expect(find.text('シート'), findsOneWidget);
   });
 }

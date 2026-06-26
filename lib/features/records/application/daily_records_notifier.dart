@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
+import 'package:physi_log/features/records/application/record_filter_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
@@ -12,11 +14,14 @@ part 'daily_records_notifier.freezed.dart';
 /// 日別シートの1セルぶんの値。
 class DailyCell {
   const DailyCell({
+    required this.recordId,
     required this.value,
     required this.displayText,
     required this.isPersonalBest,
   });
 
+  /// このセルが表す記録のID（タップで編集・削除するのに使う）。
+  final String recordId;
   final double value;
   final String displayText;
 
@@ -213,6 +218,7 @@ List<DailySession> buildDailySessions(
         final best = allTimeBest['$aKey|$eKey'];
         final isPb = best == null || (value - best).abs() < 1e-9;
         cells[eKey] = DailyCell(
+          recordId: record.id,
           value: value,
           displayText: record.formattedRecordValue,
           isPersonalBest: isPb,
@@ -234,10 +240,12 @@ final dailyRecordsNotifierProvider =
       final recordRepository = ref.watch(recordRepositoryProvider);
       final eventRepository = ref.watch(eventRepositoryProvider);
       final userId = ref.watch(currentUserIdProvider);
+      final filter = ref.watch(recordFilterNotifierProvider);
       final notifier = DailyRecordsNotifier(
         recordRepository: recordRepository,
         eventRepository: eventRepository,
         userId: userId,
+        filter: filter,
       );
       // 記録一覧が更新されたら、日別ビューも最新データへ追従して再読み込みする。
       ref.listen<RecordListState>(recordListNotifierProvider, (_, _) {
@@ -251,9 +259,11 @@ class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
     required RecordRepository recordRepository,
     required EventRepository eventRepository,
     required String? userId,
+    required RecordFilter filter,
   }) : _recordRepository = recordRepository,
        _eventRepository = eventRepository,
        _userId = userId,
+       _filter = filter,
        super(const DailyRecordsState.loading()) {
     load();
   }
@@ -261,6 +271,7 @@ class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
   final RecordRepository _recordRepository;
   final EventRepository _eventRepository;
   final String? _userId;
+  final RecordFilter _filter;
 
   Future<void> load() async {
     final userId = _userId;
@@ -278,7 +289,9 @@ class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
         userId: userId,
         includeDeleted: true,
       );
-      final sessions = buildDailySessions(records, events);
+      // 記録一覧と同じ絞り込み条件（選手・種目・期間）を日別ビューにも反映する。
+      final filtered = _applyFilter(records);
+      final sessions = buildDailySessions(filtered, events);
       state = DailyRecordsState.loaded(sessions: sessions, selectedIndex: 0);
     } catch (e) {
       state = DailyRecordsState.error('記録の読み込みに失敗しました: $e');
@@ -286,6 +299,30 @@ class DailyRecordsNotifier extends StateNotifier<DailyRecordsState> {
   }
 
   Future<void> refresh() => load();
+
+  /// 記録フィルター（選手・種目・期間）を適用する。
+  List<MeasurementRecord> _applyFilter(List<MeasurementRecord> records) {
+    final filter = _filter;
+    return records.where((r) {
+      if (filter.athleteId != null && filter.athleteId!.isNotEmpty) {
+        if (r.athleteId != filter.athleteId) return false;
+      }
+      if (filter.athleteName != null && filter.athleteName!.isNotEmpty) {
+        if (!r.athleteName.contains(filter.athleteName!)) return false;
+      }
+      if (filter.eventType != null && filter.eventType!.isNotEmpty) {
+        if (r.eventType != filter.eventType) return false;
+      }
+      if (filter.dateFrom != null && r.measuredAt.isBefore(filter.dateFrom!)) {
+        return false;
+      }
+      if (filter.dateTo != null) {
+        final end = filter.dateTo!.add(const Duration(days: 1));
+        if (r.measuredAt.isAfter(end)) return false;
+      }
+      return true;
+    }).toList();
+  }
 
   /// 表示中の計測会を1つ前（より新しい日）に移す。
   void moveToNewer() => _moveTo(-1);
