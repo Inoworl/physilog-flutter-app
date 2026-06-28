@@ -146,6 +146,45 @@ void main() {
     expect(updated.recordType, EventRecordType.distance);
   });
 
+  test('単位とベスト方向を指定して追加できる（体重kg・順位なし）', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent(
+      '体重',
+      recordType: EventRecordType.distance,
+      unit: 'kg',
+      scoreDirection: EventScoreDirection.none,
+    );
+
+    expect(created!.unit, 'kg');
+    expect(created.scoreDirection, EventScoreDirection.none);
+    expect(created.scoreLowerIsBetter, isNull);
+  });
+
+  test('更新でベスト方向を変更できる（記録があっても可）', () async {
+    final repository = LocalEventRepository();
+    final notifier = EventListNotifier(
+      repository: repository,
+      userId: 'local-user',
+    );
+
+    final created = await notifier.addEvent('体脂肪率', unit: '%');
+    // 既定（タイム由来）は小さいほど良い。
+    expect(created!.effectiveScoreDirection, EventScoreDirection.lower);
+
+    final updated = await notifier.updateEvent(
+      eventId: created.id,
+      name: '体脂肪率',
+      scoreDirection: EventScoreDirection.none,
+    );
+
+    expect(updated!.effectiveScoreDirection, EventScoreDirection.none);
+  });
+
   test('種目を削除すると一覧から消える', () async {
     final repository = LocalEventRepository();
     final notifier = EventListNotifier(

@@ -58,19 +58,25 @@ class EventListNotifier extends StateNotifier<EventListState> {
     String name, {
     EventRecordType recordType = EventRecordType.time,
     EventMeasurementMethod? measurementMethod,
+    String? unit,
+    EventScoreDirection? scoreDirection,
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
 
+    final resolvedUnit = (unit == null || unit.trim().isEmpty)
+        ? recordType.defaultUnit
+        : unit.trim();
     final now = DateTime.now();
     final event = Event(
       id: _uuid.v4(),
       userId: _userId,
       name: trimmed,
-      unit: recordType.defaultUnit,
+      unit: resolvedUnit,
       recordType: recordType,
       measurementMethod:
           measurementMethod ?? recordType.defaultMeasurementMethod,
+      scoreDirection: scoreDirection,
       createdAt: now,
       updatedAt: now,
     );
@@ -82,12 +88,15 @@ class EventListNotifier extends StateNotifier<EventListState> {
 
   /// 種目を更新する。
   ///
-  /// 記録の型（[Event.recordType]）は作成後に変更しない。既存記録を別単位で
-  /// 再解釈してしまう事故を防ぐため、ここでは名前と計測方法だけを更新する。
+  /// 記録の型・単位（[Event.recordType]/[Event.unit]）は作成後に変更しない。
+  /// 既存記録を別単位で再解釈してしまう事故を防ぐため。ベスト方向
+  /// （[Event.scoreDirection]）は記録があっても変更してよい（順位の向きが
+  /// 変わるだけで値の意味は変わらない）。
   Future<Event?> updateEvent({
     required String eventId,
     required String name,
     EventMeasurementMethod? measurementMethod,
+    EventScoreDirection? scoreDirection,
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
@@ -105,6 +114,7 @@ class EventListNotifier extends StateNotifier<EventListState> {
     final updated = existing.copyWith(
       name: trimmed,
       measurementMethod: measurementMethod ?? existing.measurementMethod,
+      scoreDirection: scoreDirection ?? existing.scoreDirection,
       updatedAt: DateTime.now(),
     );
     await _repository.updateEvent(updated);
