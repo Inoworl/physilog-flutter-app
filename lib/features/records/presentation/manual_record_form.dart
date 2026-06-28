@@ -5,10 +5,10 @@ import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/presentation/widgets/value_keypad_field.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
-import 'package:physi_log/models/record_value_input.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
@@ -30,16 +30,15 @@ class ManualRecordForm extends ConsumerStatefulWidget {
 
 class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   final _formKey = GlobalKey<FormState>();
-  final _recordValueController = TextEditingController();
   final _memoController = TextEditingController();
   DateTime _measuredDate = DateTime.now();
   String? _selectedAthleteId;
   String? _selectedEventId;
+  double? _recordValue;
   bool _isSaving = false;
 
   @override
   void dispose() {
-    _recordValueController.dispose();
     _memoController.dispose();
     super.dispose();
   }
@@ -105,12 +104,12 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       return;
     }
 
-    final parsedRecordValue = RecordValueInput.parse(
-      _recordValueController.text,
-    );
-    final recordValue = parsedRecordValue.recordValue;
-    final recordUnit = parsedRecordValue.recordUnit;
-    if (recordValue == null) return;
+    final recordValue = _recordValue;
+    if (recordValue == null || recordValue <= 0) {
+      messenger.showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
+      return;
+    }
+    final recordUnit = selectedEvent.unit;
     final durationMs = recordUnit == '秒' ? (recordValue * 1000).round() : 0;
     final now = DateTime.now();
     final measuredAt = DateTime(
@@ -281,35 +280,25 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                         )
                         .toList(),
                     onChanged: (value) {
-                      setState(() => _selectedEventId = value);
+                      setState(() {
+                        _selectedEventId = value;
+                        _recordValue = null;
+                      });
                     },
                     validator: (value) => value == null ? '種目を選択してください' : null,
                   ),
                 ],
                 const SizedBox(height: AppSpacing.lg),
-                TextFormField(
-                  controller: _recordValueController,
-                  decoration: const InputDecoration(
-                    labelText: '記録値',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.timer),
-                    hintText: '例: 12.34秒 / 15回 / 5m',
+                if (_findSelectedEvent(events) case final selectedEvent?) ...[
+                  Text('記録値', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: AppSpacing.sm),
+                  ValueKeypadField(
+                    key: ValueKey(selectedEvent.id),
+                    recordType: selectedEvent.recordType,
+                    unit: selectedEvent.unit,
+                    onChanged: (value) => _recordValue = value,
                   ),
-                  keyboardType: TextInputType.text,
-                  validator: (value) {
-                    final parsed = RecordValueInput.parse(value ?? '');
-                    switch (parsed) {
-                      case EmptyRecordValueInput():
-                        return '記録値を入力してください';
-                      case InvalidRecordValueInput():
-                        return parsed.validationMessage;
-                      case ValidRecordValueInput():
-                        return null;
-                      case TimeRecordValueInput():
-                        return null;
-                    }
-                  },
-                ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 OutlinedButton.icon(
                   onPressed: _selectDate,
