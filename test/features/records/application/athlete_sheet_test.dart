@@ -8,14 +8,17 @@ Event _event({
   required String name,
   EventRecordType recordType = EventRecordType.time,
   int sortOrder = 0,
+  String? unit,
+  EventScoreDirection? scoreDirection,
 }) {
   return Event(
     id: id,
     userId: 'u1',
     name: name,
-    unit: recordType.defaultUnit,
+    unit: unit ?? recordType.defaultUnit,
     recordType: recordType,
     sortOrder: sortOrder,
+    scoreDirection: scoreDirection,
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
   );
@@ -182,5 +185,45 @@ void main() {
   test('記録が無ければ空シート', () {
     final sheet = buildAthleteSheet(records: const [], events: events);
     expect(sheet.isEmpty, isTrue);
+  });
+
+  test('順位なし種目は同日複数で最新を残し、PB強調しない', () {
+    final sheet = buildAthleteSheet(
+      records: [
+        _record(
+          id: 'r1',
+          eventId: 'e9',
+          eventType: '体重',
+          value: 60.5,
+          unit: 'kg',
+          measuredAt: DateTime(2026, 6, 1, 9),
+        ),
+        _record(
+          id: 'r2',
+          eventId: 'e9',
+          eventType: '体重',
+          value: 60.0,
+          unit: 'kg',
+          measuredAt: DateTime(2026, 6, 1, 18),
+        ),
+      ],
+      events: [
+        _event(
+          id: 'e9',
+          name: '体重',
+          recordType: EventRecordType.distance,
+          unit: 'kg',
+          scoreDirection: EventScoreDirection.none,
+        ),
+      ],
+    );
+
+    final cell = sheet.rows.single.cells['e9']!;
+    // 同日複数は最新（18時）を残す。
+    expect(cell.value, 60.0);
+    expect(cell.recordId, 'r2');
+    // 順位なしはPB強調しない。
+    expect(cell.isPersonalBest, isFalse);
+    expect(sheet.columns.single.lowerIsBetter, isNull);
   });
 }

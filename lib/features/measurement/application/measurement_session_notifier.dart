@@ -177,11 +177,15 @@ class MeasurementSessionNotifier
           continue;
         }
         // 念のため複数件あればベストを残す（通常は1件に上書きされている）。
-        final better = BestRecordPolicy.isBetter(
-          candidate: record.effectiveRecordValue,
-          previousBest: existing.bestValue,
-          recordType: _recordType,
-        );
+        // 順位なし種目（null）は後勝ち＝最新を残す（recordsはmeasuredAt昇順）。
+        final lowerIsBetter = _event.scoreLowerIsBetter;
+        final better =
+            lowerIsBetter == null ||
+            BestRecordPolicy.isBetter(
+              candidate: record.effectiveRecordValue,
+              previousBest: existing.bestValue,
+              lowerIsBetter: lowerIsBetter,
+            );
         entries[athleteId] = SessionEntry(
           record: better ? record : existing.record,
           attemptCount: existing.attemptCount + attempts,
@@ -216,7 +220,7 @@ class MeasurementSessionNotifier
     final decision = BestRecordPolicy.evaluate(
       candidate: value,
       previousBest: existing?.bestValue,
-      recordType: _recordType,
+      lowerIsBetter: _event.scoreLowerIsBetter,
     );
 
     final now = DateTime.now();
@@ -250,8 +254,11 @@ class MeasurementSessionNotifier
       return decision;
     }
 
+    // 更新・順位なし（最新採用）は今回を採用。更新ならずは救済時のみ。
     final adoptCandidate =
-        decision.isImproved || (decision.isNotImproved && forceAdopt);
+        decision.isImproved ||
+        decision.isRecorded ||
+        (decision.isNotImproved && forceAdopt);
     final base = existing.record;
     final newValue = adoptCandidate ? value : existing.bestValue;
     final droppedValue = adoptCandidate ? existing.bestValue : value;

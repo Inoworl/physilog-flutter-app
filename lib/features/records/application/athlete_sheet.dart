@@ -55,6 +55,8 @@ AthleteSheet buildAthleteSheet({
   final sortOrderByKey = <String, int>{};
   final byDay = <DateTime, Map<String, MeasurementRecord>>{};
   final allTimeBest = <String, double>{};
+  // 順位をつけない種目（scoreDirection=none）のkey。PB強調の対象外。
+  final noneKeys = <String>{};
 
   for (final record in records) {
     final key = keyOf(record);
@@ -65,15 +67,23 @@ AthleteSheet buildAthleteSheet({
         : eventByName[record.eventType];
     final recordType =
         event?.recordType ?? _inferType(record.effectiveRecordUnit);
+    // ベスト方向は種目マスタの scoreDirection を使う（単位推測に頼らない）。
+    // 種目マスタが無い旧記録のみ、単位からの推測で補完する。
+    // ※ none（null）を潰さないため、event がある場合は scoreLowerIsBetter を優先。
+    final bool? lowerIsBetter = event != null
+        ? event.scoreLowerIsBetter
+        : _inferType(record.effectiveRecordUnit).lowerIsBetter;
     final name =
         event?.name ?? (record.eventType.isEmpty ? '未設定' : record.eventType);
     columnMeta[key] = DailyEventColumn(
       key: key,
       name: name,
       recordType: recordType,
+      lowerIsBetter: lowerIsBetter,
     );
     sortOrderByKey[key] = event?.sortOrder ?? (1 << 20);
 
+    if (lowerIsBetter == null) noneKeys.add(key);
     final day = DateTime(
       record.measuredAt.year,
       record.measuredAt.month,
@@ -86,16 +96,22 @@ AthleteSheet buildAthleteSheet({
       dayMap[key] = record;
     } else {
       final cur = existing.effectiveRecordValue;
-      final better = recordType.lowerIsBetter ? value < cur : value > cur;
-      if (better) dayMap[key] = record;
+      // 順位なしは最新（あとで計測したもの）、それ以外はベストを残す。
+      final keep = lowerIsBetter == null
+          ? !record.measuredAt.isBefore(existing.measuredAt)
+          : (lowerIsBetter ? value < cur : value > cur);
+      if (keep) dayMap[key] = record;
     }
 
-    final best = allTimeBest[key];
-    if (best == null) {
-      allTimeBest[key] = value;
-    } else {
-      final better = recordType.lowerIsBetter ? value < best : value > best;
-      if (better) allTimeBest[key] = value;
+    // 順位なし種目はベストの概念を持たないので allTimeBest に入れない。
+    if (lowerIsBetter != null) {
+      final best = allTimeBest[key];
+      if (best == null) {
+        allTimeBest[key] = value;
+      } else {
+        final better = lowerIsBetter ? value < best : value > best;
+        if (better) allTimeBest[key] = value;
+      }
     }
   }
 
@@ -113,7 +129,10 @@ AthleteSheet buildAthleteSheet({
     byDay[day]!.forEach((key, record) {
       final value = record.effectiveRecordValue;
       final best = allTimeBest[key];
-      final isPb = best == null || (value - best).abs() < 1e-9;
+      // 順位なし種目はPB強調しない。
+      final isPb = noneKeys.contains(key)
+          ? false
+          : (best == null || (value - best).abs() < 1e-9);
       cells[key] = DailyCell(
         recordId: record.id,
         value: value,

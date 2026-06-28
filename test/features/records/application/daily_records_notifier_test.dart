@@ -43,16 +43,19 @@ Event _event({
   required String name,
   required EventRecordType type,
   required int sortOrder,
+  String? unit,
+  EventScoreDirection? scoreDirection,
 }) {
   final now = DateTime(2026, 1, 1);
   return Event(
     id: id,
     userId: 'u1',
     name: name,
-    unit: type.defaultUnit,
+    unit: unit ?? type.defaultUnit,
     recordType: type,
     measurementMethod: type.defaultMeasurementMethod,
     sortOrder: sortOrder,
+    scoreDirection: scoreDirection,
     createdAt: now,
     updatedAt: now,
   );
@@ -325,6 +328,49 @@ void main() {
     final older = sessions[1].rows.single; // 5/30 = 7.41
     expect(newer.cells['id:e50']!.isPersonalBest, isTrue);
     expect(older.cells['id:e50']!.isPersonalBest, isFalse);
+  });
+
+  test('順位なし種目は同日複数で最新を残し、PB強調もランキングもしない', () {
+    final weightEvents = [
+      _event(
+        id: 'e9',
+        name: '体重',
+        type: EventRecordType.distance,
+        sortOrder: 0,
+        unit: 'kg',
+        scoreDirection: EventScoreDirection.none,
+      ),
+    ];
+    final session = buildDailySessions([
+      _rec(
+        id: 'r1',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'e9',
+        eventType: '体重',
+        value: 60.5,
+        unit: 'kg',
+        measuredAt: DateTime(2026, 6, 1, 9),
+      ),
+      _rec(
+        id: 'r2',
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        eventId: 'e9',
+        eventType: '体重',
+        value: 60.0,
+        unit: 'kg',
+        measuredAt: DateTime(2026, 6, 1, 18),
+      ),
+    ], weightEvents).single;
+
+    final cell = session.rows.single.cells['id:e9']!;
+    // 同日複数は最新（18時）を残す。
+    expect(cell.value, 60.0);
+    // 順位なしはPB強調しない。
+    expect(cell.isPersonalBest, isFalse);
+    // 列のベスト方向は null（ランキング対象外）。
+    expect(session.columns.single.lowerIsBetter, isNull);
   });
 
   test('距離は大きい方が自己ベスト', () {

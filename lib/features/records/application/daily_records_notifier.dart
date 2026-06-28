@@ -35,11 +35,16 @@ class DailyEventColumn {
     required this.key,
     required this.name,
     required this.recordType,
+    required this.lowerIsBetter,
   });
 
   final String key;
   final String name;
   final EventRecordType recordType;
+
+  /// ベスト方向。小さい=true／大きい=false／順位なし=null。
+  /// 種目の scoreDirection から解決した値（単位推測に頼らない）。
+  final bool? lowerIsBetter;
 }
 
 /// 日別シートの行（選手）。
@@ -134,12 +139,31 @@ List<DailySession> buildDailySessions(
     return event?.sortOrder ?? 1 << 30;
   }
 
+  // ベスト方向（小さい=true／大きい=false／順位なし=null）。
+  // 種目マスタの scoreDirection を使い、単位推測には頼らない（旧記録のみ補完）。
+  bool? scoreLowerIsBetterOf(MeasurementRecord record) {
+    final byId = record.eventId == null ? null : eventById[record.eventId];
+    final event = byId ?? eventByName[record.eventType];
+    if (event != null) return event.scoreLowerIsBetter;
+    return _inferRecordTypeFromUnit(record.effectiveRecordUnit).lowerIsBetter;
+  }
+
+  // 順位をつけない種目（scoreDirection=none）のkey。ランキング・PBの対象外。
+  final noneEventKeys = <String>{};
+  for (final record in records) {
+    if (scoreLowerIsBetterOf(record) == null) {
+      noneEventKeys.add(_eventKey(record));
+    }
+  }
+
   // 全期間ベスト（選手key + 種目key -> 最良値）。PB判定に使う。
+  // 順位なし種目はベストの概念を持たないので集計しない。
   final allTimeBest = <String, double>{};
   for (final record in records) {
+    final lowerIsBetter = scoreLowerIsBetterOf(record);
+    if (lowerIsBetter == null) continue;
     final key = '${_athleteKey(record)}|${_eventKey(record)}';
     final value = record.effectiveRecordValue;
-    final lowerIsBetter = recordTypeOf(record).lowerIsBetter;
     final current = allTimeBest[key];
     if (current == null ||
         (lowerIsBetter ? value < current : value > current)) {
@@ -172,6 +196,7 @@ List<DailySession> buildDailySessions(
           key: key,
           name: record.eventType.isEmpty ? '未設定' : record.eventType,
           recordType: recordTypeOf(record),
+          lowerIsBetter: scoreLowerIsBetterOf(record),
         ),
       );
     }
@@ -197,14 +222,17 @@ List<DailySession> buildDailySessions(
         nameByKey[aKey] = name.isEmpty ? '未登録' : name;
       }
       final existing = dayBest[aKey]![eKey];
-      final lowerIsBetter = recordTypeOf(record).lowerIsBetter;
+      final lowerIsBetter = scoreLowerIsBetterOf(record);
       if (existing == null) {
         dayBest[aKey]![eKey] = record;
       } else {
         final cur = existing.effectiveRecordValue;
         final val = record.effectiveRecordValue;
-        final better = lowerIsBetter ? val < cur : val > cur;
-        if (better) dayBest[aKey]![eKey] = record;
+        // 順位なしは「最新（あとで計測したもの）」を残す。それ以外はベスト。
+        final keep = lowerIsBetter == null
+            ? !record.measuredAt.isBefore(existing.measuredAt)
+            : (lowerIsBetter ? val < cur : val > cur);
+        if (keep) dayBest[aKey]![eKey] = record;
       }
     }
 
@@ -216,7 +244,10 @@ List<DailySession> buildDailySessions(
       dayBest[aKey]!.forEach((eKey, record) {
         final value = record.effectiveRecordValue;
         final best = allTimeBest['$aKey|$eKey'];
-        final isPb = best == null || (value - best).abs() < 1e-9;
+        // 順位なし種目はPB強調しない。
+        final isPb = noneEventKeys.contains(eKey)
+            ? false
+            : (best == null || (value - best).abs() < 1e-9);
         cells[eKey] = DailyCell(
           recordId: record.id,
           value: value,
