@@ -8,6 +8,7 @@ import 'package:physi_log/features/measurement/application/measurement_session_n
 import 'package:physi_log/features/measurement/application/min_sec_input.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_keypad.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_summary_sheet.dart';
+import 'package:physi_log/features/measurement/presentation/widgets/session_video_loop.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
@@ -42,6 +43,9 @@ class _MeasurementSessionScreenState
 
   /// タイム種目で「分:秒」入力にしているか（既定は秒）。
   bool _timeMode = false;
+
+  /// 動画種目でも手入力ループに切り替えているか（撮る暇がない時の保険）。
+  bool _manualOverride = false;
 
   Event get _event => widget.event;
   SessionArgs get _args => SessionArgs(event: widget.event, date: widget.date);
@@ -203,13 +207,19 @@ class _MeasurementSessionScreenState
               ),
             );
           }
-          // 初期選択：最初の未計測選手。
-          _selectedAthleteId ??= athletes
-              .firstWhere(
-                (a) => !session.hasMeasured(a.id),
-                orElse: () => athletes.first,
-              )
-              .id;
+          final isVideo =
+              _event.measurementMethod == EventMeasurementMethod.video;
+          final useVideoLoop = isVideo && !_manualOverride;
+
+          if (!useVideoLoop) {
+            // 初期選択：最初の未計測選手（手入力ループでのみ使う）。
+            _selectedAthleteId ??= athletes
+                .firstWhere(
+                  (a) => !session.hasMeasured(a.id),
+                  orElse: () => athletes.first,
+                )
+                .id;
+          }
 
           return Column(
             children: [
@@ -217,50 +227,63 @@ class _MeasurementSessionScreenState
                 measured: session.measuredCount,
                 total: athletes.length,
                 date: widget.date,
-                isVideoEvent:
-                    _event.measurementMethod == EventMeasurementMethod.video,
               ),
-              if (_feedback != null)
-                _ResultBanner(
-                  feedback: _feedback!,
-                  unit: _event.unit,
-                  onAdopt: _adoptLast,
-                  onClose: () => setState(() => _feedback = null),
-                ),
-              Expanded(
-                child: _RosterList(
-                  athletes: athletes,
-                  session: session,
-                  selectedAthleteId: _selectedAthleteId,
-                  onSelect: _selectAthlete,
-                ),
-              ),
-              if (_isTimeEvent)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xs,
+              if (useVideoLoop)
+                SessionVideoLoop(
+                  event: _event,
+                  args: _args,
+                  roster: athletes,
+                  onSwitchToManual: () =>
+                      setState(() => _manualOverride = true),
+                )
+              else ...[
+                if (isVideo)
+                  _BackToVideoBar(
+                    onBackToVideo: () =>
+                        setState(() => _manualOverride = false),
                   ),
-                  child: SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('秒')),
-                      ButtonSegment(value: true, label: Text('分:秒')),
-                    ],
-                    selected: {_timeMode},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (selected) => setState(() {
-                      _timeMode = selected.first;
-                      _input = '';
-                    }),
+                if (_feedback != null)
+                  _ResultBanner(
+                    feedback: _feedback!,
+                    unit: _event.unit,
+                    onAdopt: _adoptLast,
+                    onClose: () => setState(() => _feedback = null),
+                  ),
+                Expanded(
+                  child: _RosterList(
+                    athletes: athletes,
+                    session: session,
+                    selectedAthleteId: _selectedAthleteId,
+                    onSelect: _selectAthlete,
                   ),
                 ),
-              SessionKeypad(
-                input: _timeMode ? MinSecInput.format(_input) : _input,
-                unit: _timeMode ? '分:秒' : _event.unit,
-                allowDecimal: !_isInteger && !_timeMode,
-                onKey: _onKey,
-                onSave: () => _save(athletes),
-              ),
+                if (_isTimeEvent)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xs,
+                    ),
+                    child: SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('秒')),
+                        ButtonSegment(value: true, label: Text('分:秒')),
+                      ],
+                      selected: {_timeMode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (selected) => setState(() {
+                        _timeMode = selected.first;
+                        _input = '';
+                      }),
+                    ),
+                  ),
+                SessionKeypad(
+                  input: _timeMode ? MinSecInput.format(_input) : _input,
+                  unit: _timeMode ? '分:秒' : _event.unit,
+                  allowDecimal: !_isInteger && !_timeMode,
+                  onKey: _onKey,
+                  onSave: () => _save(athletes),
+                ),
+              ],
             ],
           );
         },
@@ -274,13 +297,11 @@ class _ProgressHeader extends StatelessWidget {
     required this.measured,
     required this.total,
     required this.date,
-    required this.isVideoEvent,
   });
 
   final int measured;
   final int total;
   final DateTime date;
-  final bool isVideoEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -293,22 +314,39 @@ class _ProgressHeader extends StatelessWidget {
         vertical: AppSpacing.sm,
       ),
       color: AppColors.primaryLight.withValues(alpha: 0.10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Text(
+        '$dateText ・ 計測済み $measured人 ／ 残り $remaining人',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+  }
+}
+
+/// 動画種目で手入力に切り替えているとき、動画計測へ戻す案内バー。
+class _BackToVideoBar extends StatelessWidget {
+  const _BackToVideoBar({required this.onBackToVideo});
+
+  final VoidCallback onBackToVideo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.warning.withValues(alpha: 0.12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
+      child: Row(
         children: [
-          Text(
-            '$dateText ・ 計測済み $measured人 ／ 残り $remaining人',
-            style: Theme.of(context).textTheme.titleMedium,
+          const Expanded(child: Text('手入力モードです')),
+          TextButton.icon(
+            onPressed: onBackToVideo,
+            icon: const Icon(Icons.videocam, size: 18),
+            label: const Text('動画計測に戻る'),
           ),
-          if (isVideoEvent) ...[
-            const SizedBox(height: 2),
-            Text(
-              '動画からの連続計測は準備中です。タイムを手入力できます。',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-            ),
-          ],
         ],
       ),
     );
