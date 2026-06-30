@@ -227,6 +227,12 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
   Widget build(BuildContext context) {
     ref.listen<VideoImportState>(videoImportProvider, _handleImportState);
 
+    // 動画プレイヤー／計測状態は autoDispose。動画選択の段階でも watch して
+    // 生かしておかないと、圧縮完了後に呼ぶ initializeVideo の初期化中（非同期）に
+    // プロバイダが破棄され、コントローラが捨てられて「読み込み中」のまま止まる。
+    ref.watch(videoPlayerProvider);
+    ref.watch(measurementProvider);
+
     return _step == _VideoStep.pickVideo
         ? _buildPickVideo(context)
         : _buildMeasuring(context);
