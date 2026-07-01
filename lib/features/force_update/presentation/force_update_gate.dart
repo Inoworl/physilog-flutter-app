@@ -13,12 +13,15 @@ class ForceUpdateGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isForceUpdateRequired = ref.watch(isForceUpdateRequiredProvider);
 
-    return Stack(
-      children: [
-        child,
-        if (isForceUpdateRequired)
-          const Positioned.fill(child: _ForceUpdateOverlay()),
-      ],
+    return PopScope<void>(
+      canPop: !isForceUpdateRequired,
+      child: Stack(
+        children: [
+          child,
+          if (isForceUpdateRequired)
+            const Positioned.fill(child: _ForceUpdateOverlay()),
+        ],
+      ),
     );
   }
 }
@@ -46,26 +49,28 @@ class _ForceUpdateOverlay extends ConsumerWidget {
       _ => 'ストア',
     };
 
-    return ColoredBox(
-      color: Colors.black54,
-      child: SafeArea(
-        child: Center(
-          child: AlertDialog(
-            title: Text(title),
-            content: Text(content),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              ElevatedButton.icon(
-                onPressed: storeUrl == null || storeUrl.trim().isEmpty
-                    ? null
-                    : () => _launchStore(context, storeUrl),
-                icon: const Icon(Icons.open_in_new),
-                label: Text('$storeName へ'),
-              ),
-            ],
+    return Stack(
+      children: [
+        const ModalBarrier(color: Colors.black54, dismissible: false),
+        SafeArea(
+          child: Center(
+            child: AlertDialog(
+              title: Text(title),
+              content: Text(content),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                ElevatedButton.icon(
+                  onPressed: storeUrl == null || storeUrl.trim().isEmpty
+                      ? null
+                      : () => _launchStore(context, storeUrl),
+                  icon: const Icon(Icons.open_in_new),
+                  label: Text('$storeName へ'),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 
