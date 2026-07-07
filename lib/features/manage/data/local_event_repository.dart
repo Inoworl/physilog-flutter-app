@@ -12,11 +12,15 @@ class LocalEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     final b = await box;
     final events = b.values
         .map((m) => Event.fromJson(Map<String, dynamic>.from(m)))
         .where((event) => event.userId == userId)
+        .where((event) => includeDeleted || event.deletedAt == null)
         .toList();
     events.sort((a, b) => a.name.compareTo(b.name));
     return events;

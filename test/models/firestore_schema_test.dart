@@ -98,6 +98,9 @@ void main() {
       unorderedEquals([
         'name',
         'unit',
+        'recordType',
+        'measurementMethod',
+        'scoreDirection',
         'sortOrder',
         'deletedAt',
         'createdAt',
@@ -106,6 +109,11 @@ void main() {
     );
     expect(data['name'], '100m');
     expect(data['unit'], '秒');
+    // 既定（記録の型を指定しない既存種目）はタイム/動画計測として保存される
+    expect(data['recordType'], 'time');
+    expect(data['measurementMethod'], 'video');
+    // 既定のベスト方向はタイムなので「小さいほど良い（lower）」
+    expect(data['scoreDirection'], 'lower');
     expect(data['sortOrder'], 0);
     expect(data['deletedAt'], isNull);
   });

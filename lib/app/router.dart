@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/presentation/manage_screen.dart';
+import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/measurement_screen.dart';
+import 'package:physi_log/features/measurement/presentation/measurement_session_screen.dart';
+import 'package:physi_log/features/measurement/presentation/session_setup_screen.dart';
 import 'package:physi_log/features/records/presentation/record_detail_screen.dart';
 import 'package:physi_log/features/records/presentation/record_edit_screen.dart';
 import 'package:physi_log/features/records/presentation/records_tab_screen.dart';
@@ -63,7 +66,7 @@ final router = GoRouter(
                 final view = state.uri.queryParameters['view'];
                 final initialViewMode = view == 'sheet'
                     ? RecordsViewMode.sheet
-                    : RecordsViewMode.list;
+                    : RecordsViewMode.daily;
 
                 return RecordsTabScreen(
                   initialViewMode: initialViewMode,
@@ -117,6 +120,40 @@ final router = GoRouter(
           reverseTransitionDuration: const Duration(milliseconds: 300),
         );
       },
+    ),
+    GoRoute(
+      path: '/session',
+      name: 'measurementSessionSetup',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SessionSetupScreen(),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+      routes: [
+        GoRoute(
+          path: 'run',
+          name: 'measurementSession',
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder: (context, state) {
+            final args = state.extra as SessionArgs;
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: MeasurementSessionScreen(
+                event: args.event,
+                date: args.date,
+              ),
+              transitionsBuilder: _slideFromRight,
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
+            );
+          },
+        ),
+      ],
     ),
     GoRoute(
       path: '/settings',

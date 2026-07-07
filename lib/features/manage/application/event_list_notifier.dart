@@ -54,15 +54,29 @@ class EventListNotifier extends StateNotifier<EventListState> {
     await loadEvents();
   }
 
-  Future<Event?> addEvent(String name) async {
+  Future<Event?> addEvent(
+    String name, {
+    EventRecordType recordType = EventRecordType.time,
+    EventMeasurementMethod? measurementMethod,
+    String? unit,
+    EventScoreDirection? scoreDirection,
+  }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
 
+    final resolvedUnit = (unit == null || unit.trim().isEmpty)
+        ? recordType.defaultUnit
+        : unit.trim();
     final now = DateTime.now();
     final event = Event(
       id: _uuid.v4(),
       userId: _userId,
       name: trimmed,
+      unit: resolvedUnit,
+      recordType: recordType,
+      measurementMethod:
+          measurementMethod ?? recordType.defaultMeasurementMethod,
+      scoreDirection: scoreDirection,
       createdAt: now,
       updatedAt: now,
     );
@@ -72,9 +86,17 @@ class EventListNotifier extends StateNotifier<EventListState> {
     return event;
   }
 
+  /// 種目を更新する。
+  ///
+  /// 記録の型・単位（[Event.recordType]/[Event.unit]）は作成後に変更しない。
+  /// 既存記録を別単位で再解釈してしまう事故を防ぐため。ベスト方向
+  /// （[Event.scoreDirection]）は記録があっても変更してよい（順位の向きが
+  /// 変わるだけで値の意味は変わらない）。
   Future<Event?> updateEvent({
     required String eventId,
     required String name,
+    EventMeasurementMethod? measurementMethod,
+    EventScoreDirection? scoreDirection,
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
@@ -89,7 +111,12 @@ class EventListNotifier extends StateNotifier<EventListState> {
     }
     if (existing == null) return null;
 
-    final updated = existing.copyWith(name: trimmed, updatedAt: DateTime.now());
+    final updated = existing.copyWith(
+      name: trimmed,
+      measurementMethod: measurementMethod ?? existing.measurementMethod,
+      scoreDirection: scoreDirection ?? existing.scoreDirection,
+      updatedAt: DateTime.now(),
+    );
     await _repository.updateEvent(updated);
     await loadEvents();
     return updated;

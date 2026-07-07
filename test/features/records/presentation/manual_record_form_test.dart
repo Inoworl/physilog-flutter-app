@@ -45,6 +45,13 @@ class _FakeRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    return savedRecords.where((record) => record.userId == userId).toList();
+  }
+
+  @override
   Future<void> saveRecord(MeasurementRecord record) async {
     savedRecords.add(record);
   }
@@ -101,7 +108,10 @@ class _FakeEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     return _events.where((event) => event.userId == userId).toList();
   }
 
@@ -119,314 +129,114 @@ class _FakeEventRepository implements EventRepository {
   }
 }
 
-void main() {
-  testWidgets('手動記録フォーム送信で記録値入力から値と単位を分解して保存する', (tester) async {
-    final fakeRepository = _FakeRecordRepository();
-    final fakeAthleteRepository = _FakeAthleteRepository([
-      Athlete(
-        id: 'athlete-1',
-        userId: 'test-user-id',
-        name: '山田太郎',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-    final fakeEventRepository = _FakeEventRepository([
-      Event(
-        id: 'event-1',
-        userId: 'test-user-id',
-        name: '50m走',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
+Event _event({
+  required EventRecordType recordType,
+  required String unit,
+  String name = '種目',
+}) {
+  return Event(
+    id: 'event-1',
+    userId: 'test-user-id',
+    name: name,
+    unit: unit,
+    recordType: recordType,
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+  );
+}
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          recordRepositoryProvider.overrideWithValue(fakeRepository),
-          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
-          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: FilledButton(
-                  onPressed: () => ManualRecordForm.show(context),
-                  child: const Text('open'),
-                ),
+Future<void> _openForm(
+  WidgetTester tester, {
+  required _FakeRecordRepository records,
+  required Event event,
+}) async {
+  final athletes = _FakeAthleteRepository([
+    Athlete(
+      id: 'athlete-1',
+      userId: 'test-user-id',
+      name: '山田太郎',
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+    ),
+  ]);
+  final events = _FakeEventRepository([event]);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        recordRepositoryProvider.overrideWithValue(records),
+        athleteRepositoryProvider.overrideWithValue(athletes),
+        eventRepositoryProvider.overrideWithValue(events),
+        currentUserIdProvider.overrideWithValue('test-user-id'),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: FilledButton(
+                onPressed: () => ManualRecordForm.show(context),
+                child: const Text('open'),
               ),
             ),
           ),
         ),
       ),
+    ),
+  );
+
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('キーパッドで入力した値を種目の単位で保存する', (tester) async {
+    final records = _FakeRecordRepository();
+    await _openForm(
+      tester,
+      records: records,
+      event: _event(recordType: EventRecordType.count, unit: '回', name: '腕立て'),
     );
 
-    await tester.tap(find.text('open'));
+    final list = find.byType(ListView).last;
+    await tester.dragUntilVisible(
+      find.widgetWithText(OutlinedButton, '1'),
+      list,
+      const Offset(0, -200),
+    );
+    await tester.tap(find.widgetWithText(OutlinedButton, '1'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(OutlinedButton, '5'));
+    await tester.pump();
+
+    final submit = find.widgetWithText(FilledButton, '記録する');
+    await tester.dragUntilVisible(submit, list, const Offset(0, -200));
+    await tester.tap(submit, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
-        break;
-      }
-    }
-    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(2));
-
-    expect(find.widgetWithText(TextFormField, '単位'), findsNothing);
-
-    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '１５回');
-    await tester.drag(find.byType(ListView).last, const Offset(0, -300));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextFormField, 'メモ'), 'テストメモ');
-
-    final formList = find.byType(ListView).last;
-    for (var i = 0; i < 8; i++) {
-      await tester.drag(formList, const Offset(0, -300));
-      await tester.pumpAndSettle();
-    }
-
-    final submitButton = find.widgetWithText(FilledButton, '記録する');
-    expect(submitButton, findsOneWidget);
-    await tester.tap(submitButton, warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    expect(fakeRepository.savedRecords.length, 1);
-    final saved = fakeRepository.savedRecords.single;
-    expect(saved.userId, 'test-user-id');
-    expect(saved.athleteId, 'athlete-1');
+    expect(records.savedRecords, hasLength(1));
+    final saved = records.savedRecords.single;
     expect(saved.athleteName, '山田太郎');
-    expect(saved.eventType, '50m走');
+    expect(saved.eventType, '腕立て');
     expect(saved.recordValue, 15);
     expect(saved.recordUnit, '回');
     expect(saved.formattedRecordValue, '15回');
     expect(saved.durationMs, 0);
-    expect(saved.startMs, 0);
-    expect(saved.endMs, 0);
-    expect(saved.memo, 'テストメモ');
   });
 
-  testWidgets('手動記録フォームは数値を含まない記録値を保存しない', (tester) async {
-    final fakeRepository = _FakeRecordRepository();
-    final fakeAthleteRepository = _FakeAthleteRepository([
-      Athlete(
-        id: 'athlete-1',
-        userId: 'test-user-id',
-        name: '山田太郎',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-    final fakeEventRepository = _FakeEventRepository([
-      Event(
-        id: 'event-1',
-        userId: 'test-user-id',
-        name: '50m走',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          recordRepositoryProvider.overrideWithValue(fakeRepository),
-          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
-          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: FilledButton(
-                  onPressed: () => ManualRecordForm.show(context),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+  testWidgets('記録値を入れずに保存しても記録は作られない', (tester) async {
+    final records = _FakeRecordRepository();
+    await _openForm(
+      tester,
+      records: records,
+      event: _event(recordType: EventRecordType.distance, unit: 'cm'),
     );
 
-    await tester.tap(find.text('open'));
+    final list = find.byType(ListView).last;
+    final submit = find.widgetWithText(FilledButton, '記録する');
+    await tester.dragUntilVisible(submit, list, const Offset(0, -200));
+    await tester.tap(submit, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '棄権');
-
-    final formList = find.byType(ListView).last;
-    for (var i = 0; i < 8; i++) {
-      await tester.drag(formList, const Offset(0, -300));
-      await tester.pumpAndSettle();
-    }
-
-    await tester.tap(
-      find.widgetWithText(FilledButton, '記録する'),
-      warnIfMissed: false,
-    );
-    await tester.pumpAndSettle();
-
-    expect(fakeRepository.savedRecords, isEmpty);
-  });
-
-  testWidgets('手動記録フォームは単位なしの記録値を保存できる', (tester) async {
-    final fakeRepository = _FakeRecordRepository();
-    final fakeAthleteRepository = _FakeAthleteRepository([
-      Athlete(
-        id: 'athlete-1',
-        userId: 'test-user-id',
-        name: '山田太郎',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-    final fakeEventRepository = _FakeEventRepository([
-      Event(
-        id: 'event-1',
-        userId: 'test-user-id',
-        name: '50m走',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          recordRepositoryProvider.overrideWithValue(fakeRepository),
-          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
-          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: FilledButton(
-                  onPressed: () => ManualRecordForm.show(context),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
-
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '15');
-
-    final formList = find.byType(ListView).last;
-    for (var i = 0; i < 8; i++) {
-      await tester.drag(formList, const Offset(0, -300));
-      await tester.pumpAndSettle();
-    }
-
-    await tester.tap(
-      find.widgetWithText(FilledButton, '記録する'),
-      warnIfMissed: false,
-    );
-    await tester.pumpAndSettle();
-
-    expect(fakeRepository.savedRecords, hasLength(1));
-    final saved = fakeRepository.savedRecords.single;
-    expect(saved.recordValue, 15);
-    expect(saved.recordUnit, isNull);
-    expect(saved.formattedRecordValue, '15');
-  });
-
-  testWidgets('手動記録フォームは分秒表記を秒に変換して保存できる', (tester) async {
-    final fakeRepository = _FakeRecordRepository();
-    final fakeAthleteRepository = _FakeAthleteRepository([
-      Athlete(
-        id: 'athlete-1',
-        userId: 'test-user-id',
-        name: '山田太郎',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-    final fakeEventRepository = _FakeEventRepository([
-      Event(
-        id: 'event-1',
-        userId: 'test-user-id',
-        name: '1500m',
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          recordRepositoryProvider.overrideWithValue(fakeRepository),
-          athleteRepositoryProvider.overrideWithValue(fakeAthleteRepository),
-          eventRepositoryProvider.overrideWithValue(fakeEventRepository),
-          currentUserIdProvider.overrideWithValue('test-user-id'),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: FilledButton(
-                  onPressed: () => ManualRecordForm.show(context),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
-
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-      if (find.byType(DropdownButtonFormField<String>).evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    await tester.enterText(find.widgetWithText(TextFormField, '記録値'), '1分02秒');
-
-    final formList = find.byType(ListView).last;
-    for (var i = 0; i < 8; i++) {
-      await tester.drag(formList, const Offset(0, -300));
-      await tester.pumpAndSettle();
-    }
-
-    await tester.tap(
-      find.widgetWithText(FilledButton, '記録する'),
-      warnIfMissed: false,
-    );
-    await tester.pumpAndSettle();
-
-    expect(fakeRepository.savedRecords, hasLength(1));
-    final saved = fakeRepository.savedRecords.single;
-    expect(saved.recordValue, 62);
-    expect(saved.recordUnit, '秒');
-    expect(saved.durationMs, 62000);
-    expect(saved.formattedRecordValue, '1分02秒');
+    expect(records.savedRecords, isEmpty);
   });
 }

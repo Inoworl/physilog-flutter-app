@@ -13,8 +13,14 @@ class InMemoryEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
-    return _events.where((event) => event.userId == userId).toList()
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
+    return _events
+        .where((event) => event.userId == userId)
+        .where((event) => includeDeleted || event.deletedAt == null)
+        .toList()
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 

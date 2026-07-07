@@ -42,6 +42,19 @@ class LocalRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    final b = await box;
+    final records = b.values
+        .map((m) => MeasurementRecord.fromJson(Map<String, dynamic>.from(m)))
+        .where((r) => r.userId == userId)
+        .toList();
+    records.sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+    return records;
+  }
+
+  @override
   Future<MeasurementRecord?> getRecord({
     required String userId,
     required String id,

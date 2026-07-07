@@ -54,7 +54,10 @@ class _FakeEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     return _events.where((event) => event.userId == userId).toList();
   }
 
@@ -103,6 +106,13 @@ class _FakeRecordRepository implements RecordRepository {
     RecordFilter? filter,
     int limit = 20,
     MeasurementRecord? lastRecord,
+  }) async {
+    return _records.where((record) => record.userId == userId).toList();
+  }
+
+  @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
   }) async {
     return _records.where((record) => record.userId == userId).toList();
   }

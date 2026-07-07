@@ -4,6 +4,71 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'event.freezed.dart';
 part 'event.g.dart';
 
+/// 記録の型。表示単位・キーパッド・ベスト判定の方向を決める。
+enum EventRecordType {
+  @JsonValue('time')
+  time('秒', 'タイム（秒）', lowerIsBetter: true),
+  @JsonValue('count')
+  count('回', '回数（回）', lowerIsBetter: false),
+  @JsonValue('distance')
+  distance('cm', '距離（cm）', lowerIsBetter: false);
+
+  const EventRecordType(
+    this.defaultUnit,
+    this.label, {
+    required this.lowerIsBetter,
+  });
+
+  /// 既定の表示単位（秒 / 回 / cm）。
+  final String defaultUnit;
+
+  /// フォームなどで表示するラベル。
+  final String label;
+
+  /// ベスト判定の方向。タイムは小さいほど良い、回数・距離は大きいほど良い。
+  final bool lowerIsBetter;
+
+  /// 記録の型に応じた既定の計測方法。タイムは動画計測、それ以外は手入力。
+  EventMeasurementMethod get defaultMeasurementMethod => this == time
+      ? EventMeasurementMethod.video
+      : EventMeasurementMethod.manual;
+}
+
+/// 計測方法。計測会モードのループ分岐に使う。
+enum EventMeasurementMethod {
+  @JsonValue('video')
+  video('動画から計測'),
+  @JsonValue('manual')
+  manual('手入力');
+
+  const EventMeasurementMethod(this.label);
+
+  /// フォームなどで表示するラベル。
+  final String label;
+}
+
+/// ベスト判定の方向。種目ごとに選べるようにし、単位推測に頼らない。
+enum EventScoreDirection {
+  @JsonValue('higher')
+  higher('大きいほど良い'),
+  @JsonValue('lower')
+  lower('小さいほど良い'),
+  @JsonValue('none')
+  none('順位をつけない');
+
+  const EventScoreDirection(this.label);
+
+  /// フォームなどで表示するラベル。
+  final String label;
+
+  /// ベスト比較・ランキングに使う向き。none は比較しない（null）。
+  bool? get lowerIsBetter => switch (this) {
+    EventScoreDirection.lower => true,
+    EventScoreDirection.higher => false,
+    EventScoreDirection.none => null,
+  };
+}
+
 @freezed
 class Event with _$Event {
   const factory Event({
@@ -11,6 +76,11 @@ class Event with _$Event {
     required String userId,
     required String name,
     @Default('秒') String unit,
+    @Default(EventRecordType.time) EventRecordType recordType,
+    @Default(EventMeasurementMethod.video)
+    EventMeasurementMethod measurementMethod,
+    // 明示設定が無い旧種目は null。effectiveScoreDirection で recordType から導出する。
+    EventScoreDirection? scoreDirection,
     @Default(0) int sortOrder,
     DateTime? deletedAt,
     required DateTime createdAt,
@@ -36,10 +106,26 @@ class Event with _$Event {
     });
   }
 
+  /// 実効ベスト方向。明示設定が無ければ記録の型から導出する（旧種目の移行）。
+  EventScoreDirection get effectiveScoreDirection =>
+      scoreDirection ??
+      (recordType.lowerIsBetter
+          ? EventScoreDirection.lower
+          : EventScoreDirection.higher);
+
+  /// ベスト比較に使う向き。none（順位をつけない）のときは null。
+  bool? get scoreLowerIsBetter => effectiveScoreDirection.lowerIsBetter;
+
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'unit': unit,
+      // enum の name は @JsonValue と一致させてあるため、fromFirestore 側の
+      // 生成 fromJson と読み書き対称になる。
+      'recordType': recordType.name,
+      'measurementMethod': measurementMethod.name,
+      // 旧種目も次回保存時に明示的な方向が入るよう、実効値を書き出す。
+      'scoreDirection': effectiveScoreDirection.name,
       'sortOrder': sortOrder,
       'deletedAt': deletedAt == null ? null : Timestamp.fromDate(deletedAt!),
       'createdAt': Timestamp.fromDate(createdAt),

@@ -13,7 +13,16 @@ class FirestoreEventRepository implements EventRepository {
   }
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
+    if (includeDeleted) {
+      // 削除済みも含める。並び順は呼び出し側（日別集計）で整えるため指定しない
+      // （複合インデックスを不要にする）。
+      final snapshot = await _collection(userId).get();
+      return snapshot.docs.map((doc) => Event.fromFirestore(doc)).toList();
+    }
     final snapshot = await _collection(userId)
         .where('deletedAt', isNull: true)
         .orderBy('sortOrder')

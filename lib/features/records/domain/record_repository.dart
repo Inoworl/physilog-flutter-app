@@ -10,6 +10,9 @@ abstract class RecordRepository {
     MeasurementRecord? lastRecord,
   });
 
+  /// 日別シートなど、全記録をまとめて扱う用途向け。measuredAt 降順で返す。
+  Future<List<MeasurementRecord>> getAllRecords({required String userId});
+
   Future<MeasurementRecord?> getRecord({
     required String userId,
     required String id,

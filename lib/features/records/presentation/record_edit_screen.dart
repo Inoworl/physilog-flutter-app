@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
+import 'package:physi_log/features/records/presentation/widgets/value_keypad_field.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/models/measurement_record.dart';
-import 'package:physi_log/models/record_value_input.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
@@ -31,9 +32,10 @@ class RecordEditScreen extends ConsumerStatefulWidget {
 class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _athleteNameController;
-  late TextEditingController _recordValueController;
   late TextEditingController _memoController;
   String? _selectedEventType;
+  double? _recordValue;
+  late DateTime _measuredDate;
   bool _initialized = false;
   bool _isSaving = false;
 
@@ -41,7 +43,6 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   void dispose() {
     if (_initialized) {
       _athleteNameController.dispose();
-      _recordValueController.dispose();
       _memoController.dispose();
     }
     super.dispose();
@@ -50,12 +51,49 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
   void _initControllers(MeasurementRecord record) {
     if (!_initialized) {
       _athleteNameController = TextEditingController(text: record.athleteName);
-      _recordValueController = TextEditingController(
-        text: record.recordValueInputText,
-      );
       _memoController = TextEditingController(text: record.memo);
       _selectedEventType = record.eventType;
+      _recordValue = record.recordValue;
+      _measuredDate = record.measuredAt;
       _initialized = true;
+    }
+  }
+
+  /// 種目マスタが無いときに、記録の単位から型を推測する。
+  EventRecordType _inferRecordType(String unit) {
+    if (unit == '回') return EventRecordType.count;
+    if (unit == 'cm' || unit == 'm' || unit == 'mm' || unit == 'km') {
+      return EventRecordType.distance;
+    }
+    return EventRecordType.time;
+  }
+
+  Event? _eventByName(List<Event> events, String? name) {
+    for (final event in events) {
+      if (event.name == name) return event;
+    }
+    return null;
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _measuredDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      // 日付だけ差し替え、元の時刻は保つ。
+      setState(() {
+        _measuredDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _measuredDate.hour,
+          _measuredDate.minute,
+          _measuredDate.second,
+        );
+      });
     }
   }
 
@@ -107,6 +145,8 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
       _selectedEventType = eventOptions.isEmpty ? null : eventOptions.first;
     }
 
+    final dateText = DateFormat('yyyy/MM/dd').format(_measuredDate);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -150,37 +190,53 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
                   )
                   .toList(),
               onChanged: (value) {
-                setState(() => _selectedEventType = value);
+                setState(() {
+                  _selectedEventType = value;
+                  _recordValue = null;
+                });
               },
               validator: (value) => value == null ? '種目を選択してください' : null,
             ),
             const SizedBox(height: 16),
             if (!record.hasVideoReference) ...[
-              TextFormField(
-                controller: _recordValueController,
-                decoration: const InputDecoration(
-                  labelText: '記録値',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.timer),
-                  hintText: '例: 12.34秒 / 15回 / 5m',
-                ),
-                keyboardType: TextInputType.text,
-                validator: (value) {
-                  final parsed = RecordValueInput.parse(value ?? '');
-                  switch (parsed) {
-                    case EmptyRecordValueInput():
-                      return '記録値を入力してください';
-                    case InvalidRecordValueInput():
-                      return parsed.validationMessage;
-                    case ValidRecordValueInput():
-                      return null;
-                    case TimeRecordValueInput():
-                      return null;
-                  }
+              Builder(
+                builder: (context) {
+                  final events = eventState.maybeWhen(
+                    loaded: (events) => events,
+                    orElse: () => const <Event>[],
+                  );
+                  final event = _eventByName(events, _selectedEventType);
+                  final recordType =
+                      event?.recordType ??
+                      _inferRecordType(record.effectiveRecordUnit);
+                  final unit = event?.unit ?? record.effectiveRecordUnit;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '記録値',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      ValueKeypadField(
+                        key: ValueKey('$_selectedEventType|$unit'),
+                        recordType: recordType,
+                        unit: unit,
+                        initialValue: _recordValue,
+                        onChanged: (value) => _recordValue = value,
+                      ),
+                    ],
+                  );
                 },
               ),
               const SizedBox(height: 16),
             ],
+            OutlinedButton.icon(
+              onPressed: _selectDate,
+              icon: const Icon(Icons.calendar_today),
+              label: Text('測定日: $dateText'),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _memoController,
               decoration: const InputDecoration(
@@ -232,17 +288,22 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
 
     try {
       final isManualRecord = !record.hasVideoReference;
-      final parsedRecordValue = isManualRecord
-          ? RecordValueInput.parse(_recordValueController.text)
-          : null;
-      if (isManualRecord && parsedRecordValue?.recordValue == null) {
+      if (isManualRecord && (_recordValue == null || _recordValue! <= 0)) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
+          setState(() => _isSaving = false);
+        }
         return;
       }
-      final recordValue = isManualRecord
-          ? parsedRecordValue!.recordValue!
-          : record.recordValue;
+      final events = ref
+          .read(eventListNotifierProvider)
+          .maybeWhen(loaded: (events) => events, orElse: () => const <Event>[]);
+      final recordValue = isManualRecord ? _recordValue : record.recordValue;
       final recordUnit = isManualRecord
-          ? parsedRecordValue!.recordUnit
+          ? (_eventByName(events, _selectedEventType)?.unit ??
+                record.effectiveRecordUnit)
           : record.recordUnit;
       final durationMs = isManualRecord
           ? (recordUnit == '秒' ? (recordValue! * 1000).round() : 0)
@@ -255,6 +316,7 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         durationMs: isManualRecord ? durationMs : record.durationMs,
         recordValue: recordValue,
         recordUnit: recordUnit,
+        measuredAt: _measuredDate,
         memo: _memoController.text.trim(),
         updatedAt: DateTime.now(),
       );

@@ -38,6 +38,13 @@ class _FakeRecordRepository implements RecordRepository {
   }
 
   @override
+  Future<List<MeasurementRecord>> getAllRecords({
+    required String userId,
+  }) async {
+    return [];
+  }
+
+  @override
   Future<void> saveRecord(MeasurementRecord record) async {}
 
   @override
@@ -79,7 +86,10 @@ class _FakeEventRepository implements EventRepository {
   }) async {}
 
   @override
-  Future<List<Event>> getEvents({required String userId}) async {
+  Future<List<Event>> getEvents({
+    required String userId,
+    bool includeDeleted = false,
+  }) async {
     return [
       Event(
         id: 'event-1',
