@@ -1,0 +1,95 @@
+# RevenueCat catalog source of truth for PhysiLog.
+#
+# Secret API keys must not be stored in this file. Pass a RevenueCat API v2
+# secret key through REVENUECAT_API_KEY when applying changes.
+#
+# Notes:
+# - prod is the existing RevenueCat project "Physilog".
+# - dev is the RevenueCat project "Physilog Dev" with a Test Store app.
+# - JPY prices are the intended store prices from PR #75. RevenueCat Test Store
+#   product creation API currently does not expose a currency/price field, so
+#   the sync script keeps these as metadata/documentation and only sends fields
+#   accepted by the RevenueCat API v2 product endpoint.
+
+environments:
+  dev:
+    project_id: b9208054
+    app_id: app4d5c71b3b2
+    app_note: RevenueCat Test Store app for Physilog Dev
+  prod:
+    project_id: ec10fe6b
+    app_id:
+    app_note: Set the App Store or Google Play RevenueCat app id before applying product sync to prod.
+
+entitlements:
+  - id: personal_family
+    display_name: Personal Family
+  - id: team
+    display_name: Team
+
+products:
+  - id: personal_family_monthly
+    display_name: Personal Family Monthly
+    title: Personal Family Monthly
+    type: subscription
+    duration: P1M
+    entitlement_id: personal_family
+    intended_price:
+      currency: JPY
+      amount: 100
+
+  - id: personal_family_yearly
+    display_name: Personal Family Yearly
+    title: Personal Family Yearly
+    type: subscription
+    duration: P1Y
+    entitlement_id: personal_family
+    intended_price:
+      currency: JPY
+      amount: 1000
+
+  - id: team_monthly
+    display_name: Team Monthly
+    title: Team Monthly
+    type: subscription
+    duration: P1M
+    entitlement_id: team
+    intended_price:
+      currency: JPY
+      amount: 980
+    manual_setup:
+      trial: 2 week free trial
+
+  - id: team_yearly
+    display_name: Team Yearly
+    title: Team Yearly
+    type: subscription
+    duration: P1Y
+    entitlement_id: team
+    intended_price:
+      currency: JPY
+      amount: 8980
+    manual_setup:
+      trial: 2 week free trial
+
+offering:
+  id: default
+  display_name: Default
+  current: true
+  packages:
+    - id: personal_family_monthly
+      display_name: Personal Family Monthly
+      product_id: personal_family_monthly
+      position: 1
+    - id: personal_family_yearly
+      display_name: Personal Family Yearly
+      product_id: personal_family_yearly
+      position: 2
+    - id: team_monthly
+      display_name: Team Monthly
+      product_id: team_monthly
+      position: 3
+    - id: team_yearly
+      display_name: Team Yearly
+      product_id: team_yearly
+      position: 4

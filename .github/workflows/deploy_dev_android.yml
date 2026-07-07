@@ -40,10 +40,11 @@ jobs:
           DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
           PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
           DEV_DART_DEFINE_JSON_BASE64: ${{ secrets.DEV_DART_DEFINE_JSON_BASE64 }}
+          REVENUECAT_DEV_ANDROID_API_KEY: ${{ secrets.REVENUECAT_DEV_ANDROID_API_KEY }}
         run: |
           set -euo pipefail
           missing=0
-          for name in DEV_GOOGLE_SERVICES_JSON_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 DEV_DART_DEFINE_JSON_BASE64; do
+          for name in DEV_GOOGLE_SERVICES_JSON_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 DEV_DART_DEFINE_JSON_BASE64 REVENUECAT_DEV_ANDROID_API_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error ::Missing required secret: $name"
               missing=1
@@ -58,6 +59,7 @@ jobs:
           echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
           echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
           echo "$DEV_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/dev_dart_define.json
+          ruby -rjson -e 'path = "dart_define/dev_dart_define.json"; data = JSON.parse(File.read(path)); data["REVENUECAT_ANDROID_API_KEY"] = ENV.fetch("REVENUECAT_DEV_ANDROID_API_KEY"); File.write(path, JSON.pretty_generate(data))'
 
       - name: Generate dev launcher icons
         run: |
