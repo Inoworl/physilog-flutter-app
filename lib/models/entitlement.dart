@@ -7,9 +7,9 @@ part 'entitlement.g.dart';
 class EntitlementPlans {
   const EntitlementPlans._();
 
-  static const pro = 'pro';
-  static const organizationPro = 'organization_pro';
-  static const earlySupporterPro = 'early_supporter_pro';
+  static const legacyPersonalFamily = 'legacy_personal_family';
+  static const legacyTeam = 'legacy_team';
+  static const manualTeam = 'manual_team';
 }
 
 class EntitlementSources {
@@ -86,27 +86,15 @@ class Entitlement with _$Entitlement {
     return expiresAt == null || expiresAt!.isAfter(at);
   }
 
-  bool hasProAccessAt(DateTime at) {
-    if (!isActiveAt(at)) {
-      return false;
-    }
-    return switch (plan) {
-      EntitlementPlans.pro ||
-      EntitlementPlans.organizationPro ||
-      EntitlementPlans.earlySupporterPro => true,
-      _ => false,
-    };
+  bool hasLegacyPersonalFamilyAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.legacyPersonalFamily;
   }
 
-  bool hasPersonalProAccessAt(DateTime at) {
-    return isActiveAt(at) && plan == EntitlementPlans.pro;
+  bool hasLegacyTeamAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.legacyTeam;
   }
 
-  bool hasEarlySupporterProAccessAt(DateTime at) {
-    return isActiveAt(at) && plan == EntitlementPlans.earlySupporterPro;
-  }
-
-  bool hasOrganizationAccessAt(DateTime at) {
-    return isActiveAt(at) && plan == EntitlementPlans.organizationPro;
+  bool hasManualTeamAccessAt(DateTime at) {
+    return isActiveAt(at) && plan == EntitlementPlans.manualTeam;
   }
 }

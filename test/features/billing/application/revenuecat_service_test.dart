@@ -43,21 +43,40 @@ void main() {
       ]);
     });
 
-    test('pro Entitlementの有効状態を確認する', () async {
+    test('personal_family Entitlementの有効状態を確認する', () async {
       final client = _FakeRevenueCatClient(
-        activeEntitlementIds: {RevenueCatCatalog.proEntitlementId},
+        activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
       );
       final service = RevenueCatService(
         client: client,
         platform: RevenueCatPlatform.ios,
       );
 
-      final hasLifetimePro = await service.hasLifetimePro();
+      final hasPersonalFamily = await service.hasPersonalFamilyEntitlement();
+      final hasTeam = await service.hasTeamEntitlement();
 
-      expect(hasLifetimePro, isTrue);
+      expect(hasPersonalFamily, isTrue);
+      expect(hasTeam, isFalse);
       expect(client.checkedEntitlementIds, [
-        RevenueCatCatalog.proEntitlementId,
+        RevenueCatCatalog.personalFamilyEntitlementId,
+        RevenueCatCatalog.teamEntitlementId,
       ]);
+    });
+
+    test('team Entitlementの有効状態を確認する', () async {
+      final client = _FakeRevenueCatClient(
+        activeEntitlementIds: {RevenueCatCatalog.teamEntitlementId},
+      );
+      final service = RevenueCatService(
+        client: client,
+        platform: RevenueCatPlatform.ios,
+      );
+
+      final hasPersonalFamily = await service.hasPersonalFamilyEntitlement();
+      final hasTeam = await service.hasTeamEntitlement();
+
+      expect(hasPersonalFamily, isFalse);
+      expect(hasTeam, isTrue);
     });
   });
 }

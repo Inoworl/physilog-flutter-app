@@ -1,19 +1,32 @@
 # RevenueCat 課金基盤メモ
 
-最終更新: 2026-06-18
+最終更新: 2026-07-07
 
 ## 目的
 
-PhysiLog の利用権を、無料ユーザー、個人PRO、団体PROの3段階で扱えるようにする。個人PROの購入状態は RevenueCat の `pro` Entitlement で判定し、団体PROと配信初期ユーザー特典は Firestore の entitlement で管理する。
+PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスクリプションで扱えるようにする。購入状態は RevenueCat entitlement を正とし、Firestore entitlement はサーバー側・管理者側の特別付与(グランドファザリング、手動付与)に使う。
 
-## 利用権
+旧方針の「7日無料トライアル + 買い切り `lifetime_pro`」および「`pro` / `organization_pro` / `early_supporter_pro`」は採用しない。
 
-| 種別 | 管理元 | 判定 | 利用範囲 |
+## プラン
+
+| プラン | 上限 / 機能 | 価格案 | 備考 |
 | --- | --- | --- | --- |
-| 無料ユーザー | entitlementなし | `canUsePro = false` | 簡易機能のみ |
-| 個人PRO | RevenueCat または Firestore | `pro` | 個人向けPRO機能 |
-| 団体PRO | Firestore | `organization_pro` | 個人向けPRO機能 + 団体機能 |
-| 配信初期ユーザー特典 | Firestore | `early_supporter_pro` | 無料で個人PRO相当 |
+| Free | 選手1人 / 種目3つ | 無料 | 体験・入口用 |
+| 個人・家族 | 選手5人 / 種目無制限 | 月100円 / 年1,000円 | 個人利用、家族利用向け |
+| Team | 無制限 + 計測会 + 成長共有 + CSV | 月980円 / 年8,980円前後 | 本命。2週間無料あり |
+
+## プラン別 capability
+
+単純な `isPro` ではなく、プラン別 capability として扱う。判定は `PlanCapabilities` がドメイン層で持つ。
+
+| Capability | Free | 個人・家族 | Team |
+| --- | --- | --- | --- |
+| 選手数 | 1人 | 5人 | 無制限 |
+| 種目数 | 3つ | 無制限 | 無制限 |
+| 計測会 | 不可 | 不可 | 可 |
+| 成長共有 | 不可 | 不可 | 可 |
+| CSV | 不可 | 不可 | 可 |
 
 ## 現在の実装範囲
 
@@ -21,66 +34,87 @@ PhysiLog の利用権を、無料ユーザー、個人PRO、団体PROの3段階�
 - アプリ起動時に Firebase Auth UID を RevenueCat の App User ID として設定する。
 - RevenueCat の public SDK key は `REVENUECAT_IOS_API_KEY` / `REVENUECAT_ANDROID_API_KEY` の dart-define から取得する。
 - APIキー未設定、Firebase未設定、非モバイル環境ではアプリ起動を継続する。
-- RevenueCat の `pro` Entitlement は `RevenueCatService.hasLifetimePro()` で取得する。
+- RevenueCat の `personal_family` / `team` Entitlement は `RevenueCatService.hasPersonalFamilyEntitlement()` / `hasTeamEntitlement()` で取得する。
 - Firestore の `users/{uid}/entitlements/current` はアプリから読み取りのみ許可し、書き込みは拒否する。
-- `ProAccessPolicy` は RevenueCat の個人PRO、Firestore の団体PRO、Firestore の配信初期ユーザー特典を合成して判定する。
+- `PlanAccessPolicy` は RevenueCat の購入状態と Firestore の legacy / manual entitlement を合成し、`PlanTier`(free / personalFamily / team)を解決する。Team 判定を個人・家族より優先する。
 
-## RevenueCat 側の設定案
+## RevenueCat 側の設定
 
-- Entitlement ID: `pro`
-- Product ID: 初期の買い切り案では `lifetime_pro`
-- Offering: 初期リリースでは個人PRO商品1件を表示する構成にする。
+- Entitlement ID:
+  - `personal_family`: 個人・家族プラン
+  - `team`: Team プラン
+- Product ID:
+  - `personal_family_monthly`
+  - `personal_family_yearly`
+  - `team_monthly`
+  - `team_yearly`
+- Offering:
+  - `default`: 個人・家族と Team を表示する通常オファリング
+- Team の2週間無料は、RevenueCat 側の仕組みではなく App Store Connect / Google Play Console の introductory offer(無料トライアル)として各サブスクリプション商品に設定する。RevenueCat は store 側のトライアル状態をそのまま entitlement 判定に反映する。
 - Test Store: 開発・テスト用に使う。Test Store API key をストア提出ビルドに入れない。
 - Production: iOS / Android それぞれの app-specific public SDK key を dart-define 経由で設定する。
 
-将来サブスクリプションへ変える場合も、アプリ側の判定は `pro` Entitlement を維持する。商品IDだけを `monthly_pro` などへ追加・変更する。
-
 ## Firestore 側の entitlement
 
-`users/{uid}/entitlements/current` に現在の利用権を保存する。
+RevenueCat の購入状態は RevenueCat entitlement を正とする。Firestore の `users/{uid}/entitlements/current` は、サーバー側・管理者側の特別付与だけに使う。
 
 ```json
 {
-  "plan": "early_supporter_pro",
-  "source": "promo",
+  "plan": "manual_team",
+  "source": "manual",
   "status": "active",
   "grantedAt": "serverTimestamp",
   "updatedAt": "serverTimestamp"
 }
 ```
 
-- `plan = pro`: 個人PRO。RevenueCat Webhookや管理者付与で使う。
-- `plan = organization_pro`: 団体PRO。団体契約や学校単位の付与で使う。
-- `plan = early_supporter_pro`: 配信開始から1週間以内に初回利用したユーザーへの無料PRO特典。
+- `plan = legacy_personal_family`: 値上げ前の個人・家族プラン据え置き(グランドファザリング)。
+- `plan = legacy_team`: 値上げ前の Team プラン据え置き(グランドファザリング)。
+- `plan = manual_team`: 管理者が手動付与する Team 相当権限。
 - `source = store`: RevenueCat / Store由来。
 - `source = manual`: 管理者の手動付与。
-- `source = promo`: 配信初期ユーザー特典やキャンペーン。
+- `source = promo`: キャンペーン付与。
 
-アプリは entitlement を作成・更新しない。初期DL特典の付与は、`users/{uid}.createdAt` が配信開始から1週間以内かをサーバ/Admin 側で判定して行う。
+アプリは entitlement を作成・更新しない。付与・更新は Admin / サーバー側で行う。
 
-## Pro 判定
+## グランドファザリング設計
+
+将来の値上げ時に、値上げ前からの契約者を旧価格相当の扱いで据え置くための仕組み。
+
+- 値上げ時、据え置き対象ユーザーへ Admin / サーバー側で `legacy_personal_family` または `legacy_team` を付与する。
+- アプリ側は RevenueCat entitlement と Firestore legacy entitlement のどちらが有効でも同じ `PlanTier` に解決するため、価格改定によるコード変更を局所化できる。
+- ストア側の価格据え置き(既存サブスクライバー価格の維持)を使う場合も、Firestore legacy entitlement を併用して判定を安定させる。
+
+## プラン判定
 
 ```dart
-final canUsePro =
-    hasRevenueCatPro || hasEarlySupporterPro || hasOrganizationPro;
+final tier = PlanAccessStatus(
+  hasRevenueCatPersonalFamily: ...,
+  hasRevenueCatTeam: ...,
+  hasLegacyPersonalFamily: ...,
+  hasLegacyTeam: ...,
+  hasManualTeam: ...,
+).tier;
 
-final canUseOrganizationFeatures = hasOrganizationPro;
+final capabilities = PlanCapabilities.forTier(tier);
 ```
 
-- `hasRevenueCatPro`: RevenueCat の `pro` Entitlement が active。
-- `hasEarlySupporterPro`: Firestore の current entitlement が `early_supporter_pro` かつ active。
-- `hasOrganizationPro`: Firestore の current entitlement が `organization_pro` かつ active。
+- `hasRevenueCatPersonalFamily`: RevenueCat の `personal_family` Entitlement が active。
+- `hasRevenueCatTeam`: RevenueCat の `team` Entitlement が active。
+- `hasLegacyPersonalFamily` / `hasLegacyTeam` / `hasManualTeam`: Firestore の current entitlement が該当 plan かつ active。
+- Team 系がひとつでも有効なら `PlanTier.team`、次に個人・家族系が有効なら `PlanTier.personalFamily`、いずれもなければ `PlanTier.free`。
 
 ## 初期スコープ外
 
-- 購入画面の最終UI
+- 課金画面の最終UI
 - 購入復元UI
+- App Store / Google Play の本番商品作成
 - RevenueCat Webhook による Firestore 同期
-- 団体メンバー管理
-- AI回数券などの consumable 商品
+- チームメンバー管理の詳細実装
+- 学校向け請求・見積・請求書払い対応
 
 ## 運用メモ
 
 - RevenueCat の public SDK key は公開前提のキーだが、ストア提出ビルドには Test Store API key を入れない。
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
-- 「配信開始から1週間以内」はストアのダウンロード日時ではなく、Firebase Auth / Firestore の初回ユーザー作成日時を基準にする。
+- Team の2週間無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。

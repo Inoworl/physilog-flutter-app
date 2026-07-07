@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
 import 'package:physi_log/models/entitlement.dart';
 import 'package:physi_log/providers/app_providers.dart';
@@ -37,7 +38,7 @@ void main() {
     expect(container.read(useFirestoreProvider), isFalse);
   });
 
-  test('isPremiumEnabledProviderは個人PRO entitlementならtrueを返す', () async {
+  test('currentPlanTierProviderは据え置き個人・家族entitlementなら個人・家族プランを返す', () async {
     final now = DateTime(2026, 5, 27, 10);
     final container = ProviderContainer(
       overrides: [
@@ -47,7 +48,7 @@ void main() {
             Entitlement(
               id: 'current',
               userId: 'firebase-user-id',
-              plan: EntitlementPlans.pro,
+              plan: EntitlementPlans.legacyPersonalFamily,
               source: EntitlementSources.manual,
               status: EntitlementStatuses.active,
               grantedAt: now,
@@ -61,11 +62,15 @@ void main() {
 
     await container.read(currentEntitlementProvider.future);
 
-    expect(container.read(isPremiumEnabledProvider), isTrue);
+    expect(container.read(currentPlanTierProvider), PlanTier.personalFamily);
+    expect(
+      container.read(planCapabilitiesProvider),
+      PlanCapabilities.personalFamily,
+    );
   });
 
   test(
-    'isPremiumEnabledProviderはRevenueCatのpro entitlementならtrueを返す',
+    'currentPlanTierProviderはRevenueCatのpersonal_family entitlementなら個人・家族プランを返す',
     () async {
       final container = ProviderContainer(
         overrides: [
@@ -73,20 +78,41 @@ void main() {
           entitlementRepositoryProvider.overrideWithValue(
             const _FakeEntitlementRepository(null),
           ),
-          hasRevenueCatProProvider.overrideWith((ref) async => true),
+          hasRevenueCatPersonalFamilyProvider.overrideWith((ref) async => true),
         ],
       );
       addTearDown(container.dispose);
 
       await container.read(currentEntitlementProvider.future);
-      await container.read(hasRevenueCatProProvider.future);
+      await container.read(hasRevenueCatPersonalFamilyProvider.future);
 
-      expect(container.read(isPremiumEnabledProvider), isTrue);
-      expect(container.read(isOrganizationProEnabledProvider), isFalse);
+      expect(container.read(currentPlanTierProvider), PlanTier.personalFamily);
     },
   );
 
-  test('isOrganizationProEnabledProviderは団体PRO entitlementならtrueを返す', () async {
+  test(
+    'currentPlanTierProviderはRevenueCatのteam entitlementならTeamプランを返す',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('firebase-user-id'),
+          entitlementRepositoryProvider.overrideWithValue(
+            const _FakeEntitlementRepository(null),
+          ),
+          hasRevenueCatTeamProvider.overrideWith((ref) async => true),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(currentEntitlementProvider.future);
+      await container.read(hasRevenueCatTeamProvider.future);
+
+      expect(container.read(currentPlanTierProvider), PlanTier.team);
+      expect(container.read(planCapabilitiesProvider), PlanCapabilities.team);
+    },
+  );
+
+  test('currentPlanTierProviderは手動付与Team entitlementならTeamプランを返す', () async {
     final now = DateTime(2026, 5, 27, 10);
     final container = ProviderContainer(
       overrides: [
@@ -96,7 +122,7 @@ void main() {
             Entitlement(
               id: 'current',
               userId: 'firebase-user-id',
-              plan: EntitlementPlans.organizationPro,
+              plan: EntitlementPlans.manualTeam,
               source: EntitlementSources.manual,
               status: EntitlementStatuses.active,
               grantedAt: now,
@@ -110,11 +136,10 @@ void main() {
 
     await container.read(currentEntitlementProvider.future);
 
-    expect(container.read(isPremiumEnabledProvider), isTrue);
-    expect(container.read(isOrganizationProEnabledProvider), isTrue);
+    expect(container.read(currentPlanTierProvider), PlanTier.team);
   });
 
-  test('isPremiumEnabledProviderはentitlement未付与ならfalseを返す', () async {
+  test('currentPlanTierProviderはentitlement未付与ならFreeプランを返す', () async {
     final container = ProviderContainer(
       overrides: [
         currentUserIdProvider.overrideWithValue('firebase-user-id'),
@@ -127,7 +152,8 @@ void main() {
 
     await container.read(currentEntitlementProvider.future);
 
-    expect(container.read(isPremiumEnabledProvider), isFalse);
+    expect(container.read(currentPlanTierProvider), PlanTier.free);
+    expect(container.read(planCapabilitiesProvider), PlanCapabilities.free);
   });
 }
 

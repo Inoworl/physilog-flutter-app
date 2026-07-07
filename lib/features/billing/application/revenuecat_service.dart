@@ -65,8 +65,14 @@ class RevenueCatService {
     return true;
   }
 
-  Future<bool> hasLifetimePro() {
-    return _client.hasActiveEntitlement(RevenueCatCatalog.proEntitlementId);
+  Future<bool> hasPersonalFamilyEntitlement() {
+    return _client.hasActiveEntitlement(
+      RevenueCatCatalog.personalFamilyEntitlementId,
+    );
+  }
+
+  Future<bool> hasTeamEntitlement() {
+    return _client.hasActiveEntitlement(RevenueCatCatalog.teamEntitlementId);
   }
 
   RevenueCatPlatform? _currentPlatform() {
