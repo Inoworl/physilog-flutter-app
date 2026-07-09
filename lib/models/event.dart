@@ -89,16 +89,6 @@ class Event with _$Event {
 
   const Event._();
 
-  /// 実効ベスト方向。明示設定が無ければ記録の型から導出する（旧種目の移行）。
-  EventScoreDirection get effectiveScoreDirection =>
-      scoreDirection ??
-      (recordType.lowerIsBetter
-          ? EventScoreDirection.lower
-          : EventScoreDirection.higher);
-
-  /// ベスト比較に使う向き。none（順位をつけない）のときは null。
-  bool? get scoreLowerIsBetter => effectiveScoreDirection.lowerIsBetter;
-
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
 
   factory Event.fromFirestore(DocumentSnapshot doc) {
@@ -115,6 +105,16 @@ class Event with _$Event {
             .toIso8601String(),
     });
   }
+
+  /// 実効ベスト方向。明示設定が無ければ記録の型から導出する（旧種目の移行）。
+  EventScoreDirection get effectiveScoreDirection =>
+      scoreDirection ??
+      (recordType.lowerIsBetter
+          ? EventScoreDirection.lower
+          : EventScoreDirection.higher);
+
+  /// ベスト比較に使う向き。none（順位をつけない）のときは null。
+  bool? get scoreLowerIsBetter => effectiveScoreDirection.lowerIsBetter;
 
   Map<String, dynamic> toFirestore() {
     return {

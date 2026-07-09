@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
+import 'package:physi_log/features/billing/application/revenuecat_service.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/entitlements/data/firestore_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/data/no_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
@@ -94,10 +96,47 @@ final currentEntitlementProvider = FutureProvider<Entitlement?>((ref) async {
       .getCurrentEntitlement(userId: userId);
 });
 
-final isPremiumEnabledProvider = Provider<bool>((ref) {
+final revenueCatServiceProvider = Provider<RevenueCatService>((ref) {
+  return const RevenueCatService();
+});
+
+final hasRevenueCatPersonalFamilyProvider = FutureProvider<bool>((ref) async {
+  if (!ref.watch(useFirestoreProvider)) {
+    return false;
+  }
+  return ref.watch(revenueCatServiceProvider).hasPersonalFamilyEntitlement();
+});
+
+final hasRevenueCatTeamProvider = FutureProvider<bool>((ref) async {
+  if (!ref.watch(useFirestoreProvider)) {
+    return false;
+  }
+  return ref.watch(revenueCatServiceProvider).hasTeamEntitlement();
+});
+
+final planAccessStatusProvider = Provider<PlanAccessStatus>((ref) {
+  final now = DateTime.now();
   final entitlement = ref.watch(currentEntitlementProvider);
-  return entitlement.maybeWhen(
-    data: (value) => value?.isActiveAt(DateTime.now()) ?? false,
-    orElse: () => false,
+  final revenueCatPersonalFamily = ref.watch(
+    hasRevenueCatPersonalFamilyProvider,
   );
+  final revenueCatTeam = ref.watch(hasRevenueCatTeamProvider);
+  final currentEntitlement = entitlement.valueOrNull;
+
+  return const PlanAccessPolicy().evaluate(
+    hasRevenueCatPersonalFamily: revenueCatPersonalFamily.valueOrNull ?? false,
+    hasRevenueCatTeam: revenueCatTeam.valueOrNull ?? false,
+    hasLegacyPersonalFamily:
+        currentEntitlement?.hasLegacyPersonalFamilyAccessAt(now) ?? false,
+    hasLegacyTeam: currentEntitlement?.hasLegacyTeamAccessAt(now) ?? false,
+    hasManualTeam: currentEntitlement?.hasManualTeamAccessAt(now) ?? false,
+  );
+});
+
+final currentPlanTierProvider = Provider<PlanTier>((ref) {
+  return ref.watch(planAccessStatusProvider).tier;
+});
+
+final planCapabilitiesProvider = Provider<PlanCapabilities>((ref) {
+  return ref.watch(planAccessStatusProvider).capabilities;
 });

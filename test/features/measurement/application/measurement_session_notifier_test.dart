@@ -42,6 +42,7 @@ class _InMemoryRecordRepository implements RecordRepository {
     return records.take(limit).toList();
   }
 
+  @override
   Future<List<MeasurementRecord>> getAllRecords({
     required String userId,
   }) async {

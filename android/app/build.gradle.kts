@@ -4,12 +4,18 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val isGoogleServicesEnabledBuild =
+    gradle.startParameter.taskNames.none { taskName ->
+        taskName.contains("Mock", ignoreCase = true)
+    }
+
+if (isGoogleServicesEnabledBuild) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 val keystoreProperties = Properties()
@@ -80,6 +86,11 @@ android {
         create("prod") {
             dimension = "env"
             // Prod uses the default applicationId / label.
+        }
+        create("mock") {
+            dimension = "env"
+            applicationIdSuffix = ".mock"
+            manifestPlaceholders["appLabel"] = "PhysiLog Mock"
         }
     }
 }

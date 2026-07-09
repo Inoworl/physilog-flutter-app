@@ -1,0 +1,60 @@
+name: RevenueCat Catalog
+
+on:
+  pull_request:
+    paths:
+      - "tools/revenuecat/**"
+      - ".github/workflows/revenuecat_catalog.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "RevenueCat environment"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+      mode:
+        description: "Run mode"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+jobs:
+  test:
+    name: Test catalog sync script
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run RevenueCat catalog tests
+        run: ruby tools/revenuecat/sync_revenuecat_catalog_test.rb
+
+  sync:
+    name: Sync RevenueCat catalog
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync catalog
+        env:
+          REVENUECAT_DEV_SECRET_API_KEY: ${{ secrets.REVENUECAT_DEV_SECRET_API_KEY }}
+          REVENUECAT_PROD_SECRET_API_KEY: ${{ secrets.REVENUECAT_PROD_SECRET_API_KEY }}
+        run: |
+          set -euo pipefail
+          args=(--env "${{ inputs.environment }}")
+          if [ "${{ inputs.mode }}" = "apply" ]; then
+            args+=(--apply)
+          else
+            args+=(--dry-run)
+          fi
+          ruby tools/revenuecat/sync_revenuecat_catalog.rb "${args[@]}"
