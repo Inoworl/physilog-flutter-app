@@ -14,7 +14,7 @@ PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスク�
 | --- | --- | --- | --- |
 | Free | 選手1人 / 種目3つ | 無料 | 体験・入口用 |
 | 個人・家族 | 選手5人 / 種目無制限 | 月100円 / 年1,000円 | 個人利用、家族利用向け |
-| Team | 無制限 + 計測会 + 成長共有 + CSV | 月980円 / 年8,980円前後 | 本命。2週間無料あり |
+| Team | 無制限 + 計測会 + 成長共有 + CSV | 月980円 / 年8,980円前後 | 本命。1ヶ月無料あり |
 
 ## プラン別 capability
 
@@ -50,7 +50,7 @@ PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスク�
   - `team_yearly`
 - Offering:
   - `default`: 個人・家族と Team を表示する通常オファリング
-- Team の2週間無料は、RevenueCat 側の仕組みではなく App Store Connect / Google Play Console の introductory offer(無料トライアル)として各サブスクリプション商品に設定する。RevenueCat は store 側のトライアル状態をそのまま entitlement 判定に反映する。
+- Team の1ヶ月無料は、RevenueCat 側の仕組みではなく App Store Connect / Google Play Console の introductory offer(無料トライアル)として各サブスクリプション商品に設定する。RevenueCat は store 側のトライアル状態をそのまま entitlement 判定に反映する。
 - Test Store: 開発・テスト用に使う。Test Store API key をストア提出ビルドに入れない。
 - Production: iOS / Android それぞれの app-specific public SDK key を dart-define 経由で設定する。
 
@@ -117,4 +117,4 @@ final capabilities = PlanCapabilities.forTier(tier);
 
 - RevenueCat の public SDK key は公開前提のキーだが、ストア提出ビルドには Test Store API key を入れない。
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
-- Team の2週間無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。
+- Team の1ヶ月無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。

@@ -58,7 +58,7 @@ products:
       currency: JPY
       amount: 980
     manual_setup:
-      trial: 2 week free trial
+      trial: 1 month free trial
 
   - id: team_yearly
     display_name: Team Yearly
@@ -70,7 +70,7 @@ products:
       currency: JPY
       amount: 8980
     manual_setup:
-      trial: 2 week free trial
+      trial: 1 month free trial
 
 offering:
   id: default

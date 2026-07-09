@@ -78,5 +78,5 @@ ruby tools/revenuecat/sync_revenuecat_catalog_test.rb
 RevenueCat Test StoreのProduct作成APIには、現時点で価格通貨を指定するフィールドがありません。
 このため、YAMLの `intended_price` はストア価格の正本メモとして扱います。
 
-Teamプランの2週間無料トライアルも、本番ではApp Store Connect / Google Play Console側の
+Teamプランの1ヶ月無料トライアルも、本番ではApp Store Connect / Google Play Console側の
 introductory offerとして設定してください。
