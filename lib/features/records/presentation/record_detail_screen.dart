@@ -94,6 +94,40 @@ class RecordDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // セット内訳（ウェイト等）
+          if (record.hasSets) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.fitness_center, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'セット（${record.setCount}セット）',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final set in record.sets)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          set.formatted,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // 詳細情報
           Card(
             child: Column(

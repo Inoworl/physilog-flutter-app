@@ -11,7 +11,9 @@ enum EventRecordType {
   @JsonValue('count')
   count('回', '回数（回）', lowerIsBetter: false),
   @JsonValue('distance')
-  distance('cm', '距離（cm）', lowerIsBetter: false);
+  distance('cm', '距離（cm）', lowerIsBetter: false),
+  @JsonValue('weight')
+  weight('kg', '重量（kg・セット）', lowerIsBetter: false);
 
   const EventRecordType(
     this.defaultUnit,

@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:physi_log/models/record_set.dart';
 import 'package:physi_log/models/record_value_input.dart';
 
 part 'measurement_record.freezed.dart';
@@ -23,6 +24,7 @@ class MeasurementRecord with _$MeasurementRecord {
     @Default('') String memo,
     String? videoRef,
     double? fps,
+    @Default(<RecordSet>[]) List<RecordSet> sets,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) = _MeasurementRecord;
@@ -49,6 +51,7 @@ class MeasurementRecord with _$MeasurementRecord {
       'memo': data['note'] as String? ?? '',
       'videoRef': data['videoRef'] as String?,
       'fps': (data['fps'] as num?)?.toDouble(),
+      'sets': data['sets'] ?? const <dynamic>[],
       'measuredAt': (data['recordedAt'] as Timestamp)
           .toDate()
           .toIso8601String(),
@@ -74,6 +77,8 @@ class MeasurementRecord with _$MeasurementRecord {
       if (unit != null && unit.isNotEmpty) 'unit': unit,
       if (videoRef != null) 'videoRef': videoRef,
       if (fps != null) 'fps': fps,
+      if (sets.isNotEmpty)
+        'sets': sets.map((s) => {'weight': s.weight, 'reps': s.reps}).toList(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -82,6 +87,15 @@ class MeasurementRecord with _$MeasurementRecord {
   bool get hasVideoReference => videoRef != null && videoRef!.trim().isNotEmpty;
 
   bool get hasRecordValue => recordValue != null;
+
+  /// ウェイト等でセット（重さ×回数）を持つか。
+  bool get hasSets => sets.isNotEmpty;
+
+  /// セット数。
+  int get setCount => sets.length;
+
+  /// 「60kg×10 / 70kg×8 / 80kg×5」のようなセット一覧表示。
+  String get formattedSets => sets.map((s) => s.formatted).join(' / ');
 
   double get effectiveRecordValue {
     if (hasRecordValue) {
