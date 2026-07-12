@@ -6,6 +6,7 @@ import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
 import 'package:physi_log/models/athlete.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -70,21 +71,45 @@ class _GreetingSection extends StatelessWidget {
   }
 }
 
-class _StartSessionButton extends StatelessWidget {
+class _StartSessionButton extends ConsumerWidget {
   const _StartSessionButton();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final capabilities = ref.watch(planCapabilitiesProvider);
+
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: FilledButton.icon(
-        onPressed: () => context.pushNamed('measurementSessionSetup'),
+        onPressed: () async {
+          if (!capabilities.canUseMeasurementSessions) {
+            await _showTeamFeatureDialog(context);
+            return;
+          }
+          context.pushNamed('measurementSessionSetup');
+        },
         icon: const Icon(Icons.groups),
         label: const Text('計測会を開始（チームでまとめて計測）'),
       ),
     );
   }
+}
+
+Future<void> _showTeamFeatureDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Teamプラン限定機能です'),
+      content: const Text('計測会はTeamプランで利用できます。'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _QuickActionsSection extends StatelessWidget {
