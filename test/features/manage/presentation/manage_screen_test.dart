@@ -197,6 +197,78 @@ void main() {
     expect(find.text('種目を追加'), findsOneWidget);
     expect(find.text('現在のプランでは種目は3つまで登録できます。'), findsNothing);
   });
+
+  testWidgets('Teamプランでは選手が多くても選手追加フォームを開ける', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.team,
+        athletes: [for (var i = 1; i <= 6; i++) _athlete('athlete-$i', '選手$i')],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '追加').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('選手を追加'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Teamプランでは種目が多くても種目追加フォームを開ける', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.team,
+        events: [for (var i = 1; i <= 4; i++) _event('event-$i', '種目$i')],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '追加').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('種目を追加'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Freeプランで上限到達済みでも既存選手は編集と削除を開ける', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.free,
+        athletes: [_athlete('athlete-1', '太郎')],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('太郎'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('選手を編集'), findsOneWidget);
+    expect(find.text('この選手を削除'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Freeプランで上限到達済みでも既存種目は編集と削除を開ける', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.free,
+        events: [
+          _event('event-1', '50m走'),
+          _event('event-2', '100m走'),
+          _event('event-3', '立ち幅跳び'),
+        ],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('編集'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('種目を編集'), findsOneWidget);
+    expect(find.text('この種目を削除'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }
 
 Widget _buildManageScreen({
