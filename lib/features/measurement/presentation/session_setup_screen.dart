@@ -6,6 +6,7 @@ import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/models/event.dart';
+import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/widgets/empty_state.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
 import 'package:physi_log/shared/widgets/loading_state.dart';
@@ -38,6 +39,14 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   }
 
   void _startSession(Event event) {
+    final capabilities = ref.read(planCapabilitiesProvider);
+    if (!capabilities.canUseMeasurementSessions) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('計測会はTeamプランで利用できます')));
+      return;
+    }
+
     context.pushNamed(
       'measurementSession',
       extra: SessionArgs(event: event, date: _selectedDate),
@@ -46,6 +55,19 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final capabilities = ref.watch(planCapabilitiesProvider);
+
+    if (!capabilities.canUseMeasurementSessions) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('計測会を始める')),
+        body: const EmptyState(
+          icon: Icons.lock_outline,
+          title: '計測会はTeamプランで利用できます',
+          subtitle: '個人・家族プランでは、動画計測と手入力の記録追加を利用できます',
+        ),
+      );
+    }
+
     final eventState = ref.watch(eventListNotifierProvider);
     final dateText = DateFormat('M月d日').format(_selectedDate);
 

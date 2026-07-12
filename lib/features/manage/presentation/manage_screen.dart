@@ -8,6 +8,7 @@ import 'package:physi_log/features/manage/presentation/athlete_form_sheet.dart';
 import 'package:physi_log/features/manage/presentation/event_form_sheet.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
+import 'package:physi_log/providers/app_providers.dart';
 
 class ManageScreen extends ConsumerWidget {
   const ManageScreen({super.key});
@@ -16,6 +17,15 @@ class ManageScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final athleteState = ref.watch(athleteListNotifierProvider);
     final eventState = ref.watch(eventListNotifierProvider);
+    final capabilities = ref.watch(planCapabilitiesProvider);
+    final loadedAthletes = athleteState.maybeWhen<List<Athlete>?>(
+      loaded: (athletes) => athletes,
+      orElse: () => null,
+    );
+    final loadedEvents = eventState.maybeWhen<List<Event>?>(
+      loaded: (events) => events,
+      orElse: () => null,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -26,7 +36,23 @@ class ManageScreen extends ConsumerWidget {
             children: [
               _SectionHeader(
                 title: '選手',
-                onAdd: () => AthleteFormSheet.show(context),
+                onAdd: loadedAthletes == null
+                    ? null
+                    : () {
+                        final maxAthleteCount = capabilities.maxAthleteCount;
+                        if (!capabilities.canAddAthlete(
+                          loadedAthletes.length,
+                        )) {
+                          _showPlanLimitSnackBar(
+                            context,
+                            targetName: '選手',
+                            unit: '人',
+                            limit: maxAthleteCount!,
+                          );
+                          return;
+                        }
+                        AthleteFormSheet.show(context);
+                      },
               ),
               const SizedBox(height: 8),
               athleteState.when(
@@ -54,7 +80,21 @@ class ManageScreen extends ConsumerWidget {
               const SizedBox(height: 32),
               _SectionHeader(
                 title: '種目',
-                onAdd: () => EventFormSheet.show(context),
+                onAdd: loadedEvents == null
+                    ? null
+                    : () {
+                        final maxEventCount = capabilities.maxEventCount;
+                        if (!capabilities.canAddEvent(loadedEvents.length)) {
+                          _showPlanLimitSnackBar(
+                            context,
+                            targetName: '種目',
+                            unit: 'つ',
+                            limit: maxEventCount!,
+                          );
+                          return;
+                        }
+                        EventFormSheet.show(context);
+                      },
               ),
               const SizedBox(height: 8),
               eventState.when(
@@ -87,11 +127,22 @@ class ManageScreen extends ConsumerWidget {
   }
 }
 
+void _showPlanLimitSnackBar(
+  BuildContext context, {
+  required String targetName,
+  required String unit,
+  required int limit,
+}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('現在のプランでは$targetNameは$limit$unitまで登録できます')),
+  );
+}
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.onAdd});
 
   final String title;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {

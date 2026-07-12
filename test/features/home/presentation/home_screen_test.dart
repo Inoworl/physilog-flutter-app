@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
@@ -258,6 +259,79 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('動画取り込み画面'), findsOneWidget);
+  });
+
+  testWidgets('Homeの計測会開始ボタンはFreeプランではTeam限定メッセージを表示する', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/session',
+          name: 'measurementSessionSetup',
+          builder: (context, state) => const Scaffold(body: Text('計測会設定画面')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          planCapabilitiesProvider.overrideWithValue(PlanCapabilities.free),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('計測会を開始（チームでまとめて計測）'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('計測会はTeamプランで利用できます'), findsOneWidget);
+    expect(find.text('計測会設定画面'), findsNothing);
+  });
+
+  testWidgets('Homeの計測会開始ボタンはTeamプランなら計測会設定へ遷移する', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/session',
+          name: 'measurementSessionSetup',
+          builder: (context, state) => const Scaffold(body: Text('計測会設定画面')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          planCapabilitiesProvider.overrideWithValue(PlanCapabilities.team),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('計測会を開始（チームでまとめて計測）'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('計測会設定画面'), findsOneWidget);
   });
 
   testWidgets('Homeの選手名をタップすると対象選手の記録シートへ遷移する', (tester) async {
