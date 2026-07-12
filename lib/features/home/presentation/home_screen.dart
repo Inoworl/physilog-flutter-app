@@ -82,11 +82,9 @@ class _StartSessionButton extends ConsumerWidget {
       width: double.infinity,
       height: 56,
       child: FilledButton.icon(
-        onPressed: () {
+        onPressed: () async {
           if (!capabilities.canUseMeasurementSessions) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('計測会はTeamプランで利用できます')));
+            await _showTeamFeatureDialog(context);
             return;
           }
           context.pushNamed('measurementSessionSetup');
@@ -96,6 +94,22 @@ class _StartSessionButton extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showTeamFeatureDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Teamプラン限定機能です'),
+      content: const Text('計測会はTeamプランで利用できます。'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _QuickActionsSection extends StatelessWidget {

@@ -41,9 +41,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   void _startSession(Event event) {
     final capabilities = ref.read(planCapabilitiesProvider);
     if (!capabilities.canUseMeasurementSessions) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('計測会はTeamプランで利用できます')));
+      _showTeamFeatureDialog(context);
       return;
     }
 
@@ -136,6 +134,22 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
       ),
     );
   }
+}
+
+Future<void> _showTeamFeatureDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Teamプラン限定機能です'),
+      content: const Text('計測会はTeamプランで利用できます。'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _EventTile extends StatelessWidget {

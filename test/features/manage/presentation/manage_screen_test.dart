@@ -129,7 +129,10 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '追加').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('現在のプランでは選手は1人まで登録できます'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
+    expect(find.text('現在のプランでは選手は1人まで登録できます。'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
     expect(find.text('選手を追加'), findsNothing);
   });
 
@@ -145,7 +148,10 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '追加').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('現在のプランでは選手は5人まで登録できます'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
+    expect(find.text('現在のプランでは選手は5人まで登録できます。'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
     expect(find.text('選手を追加'), findsNothing);
   });
 
@@ -165,7 +171,10 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '追加').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('現在のプランでは種目は3つまで登録できます'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
+    expect(find.text('現在のプランでは種目は3つまで登録できます。'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
     expect(find.text('種目を追加'), findsNothing);
   });
 
@@ -186,7 +195,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('種目を追加'), findsOneWidget);
-    expect(find.text('現在のプランでは種目は3つまで登録できます'), findsNothing);
+    expect(find.text('現在のプランでは種目は3つまで登録できます。'), findsNothing);
   });
 }
 

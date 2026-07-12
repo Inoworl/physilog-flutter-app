@@ -294,7 +294,10 @@ void main() {
     await tester.tap(find.text('計測会を開始（チームでまとめて計測）'));
     await tester.pumpAndSettle();
 
-    expect(find.text('計測会はTeamプランで利用できます'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Teamプラン限定機能です'), findsOneWidget);
+    expect(find.text('計測会はTeamプランで利用できます。'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
     expect(find.text('計測会設定画面'), findsNothing);
   });
 

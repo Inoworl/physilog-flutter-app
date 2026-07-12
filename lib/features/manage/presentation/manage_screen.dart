@@ -43,7 +43,7 @@ class ManageScreen extends ConsumerWidget {
                         if (!capabilities.canAddAthlete(
                           loadedAthletes.length,
                         )) {
-                          _showPlanLimitSnackBar(
+                          _showPlanLimitDialog(
                             context,
                             targetName: '選手',
                             unit: '人',
@@ -85,7 +85,7 @@ class ManageScreen extends ConsumerWidget {
                     : () {
                         final maxEventCount = capabilities.maxEventCount;
                         if (!capabilities.canAddEvent(loadedEvents.length)) {
-                          _showPlanLimitSnackBar(
+                          _showPlanLimitDialog(
                             context,
                             targetName: '種目',
                             unit: 'つ',
@@ -127,14 +127,24 @@ class ManageScreen extends ConsumerWidget {
   }
 }
 
-void _showPlanLimitSnackBar(
+Future<void> _showPlanLimitDialog(
   BuildContext context, {
   required String targetName,
   required String unit,
   required int limit,
 }) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text('現在のプランでは$targetNameは$limit$unitまで登録できます')),
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('現在のプラン上限に達しています'),
+      content: Text('現在のプランでは$targetNameは$limit$unitまで登録できます。'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
   );
 }
 
