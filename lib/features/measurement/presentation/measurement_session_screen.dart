@@ -6,6 +6,7 @@ import 'package:physi_log/features/manage/application/athlete_list_notifier.dart
 import 'package:physi_log/features/measurement/application/best_record_policy.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/application/min_sec_input.dart';
+import 'package:physi_log/features/measurement/application/video_player_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_keypad.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_summary_sheet.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_video_loop.dart';
@@ -180,6 +181,12 @@ class _MeasurementSessionScreenState
       event: _event,
       entries: session.entries.values.toList(),
     );
+    // 動画種目の計測会を「終了」で抜けるときも、単発計測（MeasurementScreen._onBack
+    // 等）と同様に動画プレイヤーを明示解放する。コントローラ未初期化なら release() は
+    // 何もしない安全な呼び出し。
+    if (_event.measurementMethod == EventMeasurementMethod.video) {
+      await ref.read(videoPlayerProvider.notifier).release();
+    }
     if (!mounted) return;
     // サマリーを閉じたらホームへ戻る（セットアップ画面も含めてスタックを片付ける）。
     context.goNamed('home');

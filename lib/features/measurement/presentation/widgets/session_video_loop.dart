@@ -3,15 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
-import 'package:physi_log/features/measurement/application/best_record_policy.dart';
 import 'package:physi_log/features/measurement/application/measurement_notifier.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
+import 'package:physi_log/features/measurement/application/session_video_loop_notifier.dart';
 import 'package:physi_log/features/measurement/application/video_player_notifier.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/seek_controls.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_player_pick_sheet.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/time_display.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/video_player_widget.dart';
-import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/features/video_import/application/video_import_notifier.dart';
 import 'package:physi_log/features/video_import/presentation/widgets/compress_progress_dialog.dart';
 import 'package:physi_log/models/athlete.dart';
@@ -20,15 +19,15 @@ import 'package:physi_log/models/record_value_input.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:physi_log/shared/extensions/duration_extensions.dart';
 
-/// 動画ループの段階。動画を選ぶ → フレームを計測する、の2段。
-/// 選手選択はタイム確定後にシートで行うため段階には含めない。
-enum _VideoStep { pickVideo, measuring }
-
 /// 計測会モード（動画種目）の連続計測ループ。
 ///
 /// 動画を選ぶ → 開始/終了フレームでタイム確定 → 選手を選ぶ → 自動保存 → 次の動画、
-/// を1画面で回す。フレーム計測の状態は単発計測と同じ [measurementProvider] を流用し、
-/// 保存は計測会の [MeasurementSessionNotifier.recordAttempt]（動画対応済み）に委ねる。
+/// を1画面で回す。フレーム計測の状態は単発計測と同じ [measurementProvider] を流用する。
+///
+/// 状態遷移・保存・動画取り込み完了時の初期化などの副作用は
+/// [SessionVideoLoopNotifier]（application層）に寄せてあり、この Widget は
+/// 状態表示と、BuildContext に依存するUI副作用（シート・SnackBar・ダイアログ）
+/// だけを担う。
 class SessionVideoLoop extends ConsumerStatefulWidget {
   const SessionVideoLoop({
     super.key,
@@ -52,8 +51,6 @@ class SessionVideoLoop extends ConsumerStatefulWidget {
 class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
   final TransformationController _videoZoom = TransformationController();
 
-  _VideoStep _step = _VideoStep.pickVideo;
-  String? _videoPath;
   bool _compressDialogOpen = false;
 
   @override
@@ -66,7 +63,8 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       s is VideoImportPicking || s is VideoImportCompressing;
 
   void _handleImportState(VideoImportState? prev, VideoImportState next) {
-    // 圧縮中ダイアログの開閉は VideoImportScreen と同じ作法。
+    // 圧縮中ダイアログの開閉は VideoImportScreen と同じ作法。BuildContext に
+    // 依存するUI副作用なのでここに残す。
     if (next is VideoImportCompressing && !_compressDialogOpen) {
       _compressDialogOpen = true;
       showDialog<void>(
@@ -84,12 +82,11 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
 
     if (next is VideoImportCompleted) {
       _dismissCompressDialog();
-      _videoPath = next.filePath;
-      // フレーム計測状態を初期化してから動画を読み込む。
-      ref.read(measurementProvider.notifier).resetPositions();
-      ref.read(videoPlayerProvider.notifier).initializeVideo(next.filePath);
-      ref.read(videoImportProvider.notifier).reset();
-      if (mounted) setState(() => _step = _VideoStep.measuring);
+      // 計測状態初期化 → 動画初期化 → 取り込み状態リセット は notifier 側の
+      // ユースケースに一本化してある（VideoImportScreen と同じ手順）。
+      ref
+          .read(sessionVideoLoopProvider(widget.args).notifier)
+          .handleImportCompleted(next.filePath);
     }
 
     if (next is VideoImportError) {
@@ -127,8 +124,12 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
     );
     if (result == null || !mounted) return; // 閉じただけ＝計測継続
 
+    final loopNotifier = ref.read(
+      sessionVideoLoopProvider(widget.args).notifier,
+    );
+
     if (result.discard) {
-      await _resetForNextVideo();
+      await loopNotifier.resetForNextVideo();
       return;
     }
 
@@ -138,16 +139,14 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       orElse: () => widget.roster.first,
     );
 
-    final notifier = ref.read(measurementSessionProvider(widget.args).notifier);
-    final decision = await notifier.recordAttempt(
+    // 保存中は notifier 側でガードされ、二重タップしても二重保存されない。
+    final decision = await loopNotifier.recordAttempt(
       athleteId: athleteId,
       athleteName: athlete.name,
       value: value,
-      videoRef: _videoPath,
       fps: measure.fps,
     );
-    ref.invalidate(recordListNotifierProvider);
-    if (!mounted) return;
+    if (decision == null || !mounted) return;
 
     _showDecisionSnack(
       decision: decision,
@@ -156,7 +155,7 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       value: value,
       fps: measure.fps,
     );
-    await _resetForNextVideo();
+    await loopNotifier.resetForNextVideo();
   }
 
   void _showDecisionSnack({
@@ -183,21 +182,19 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       );
       message = '$athleteName：ベストは$bestTextのまま（今回 $valueText は不採用）';
       // 1本目のフレーム指定ミスなどの救済路。あとから今回値を採用できる。
-      final videoRef = _videoPath;
+      // recordAttempt側のisSavingガードにより、連打しても二重保存されない。
       action = SnackBarAction(
         label: '今回を採用',
         onPressed: () async {
           await ref
-              .read(measurementSessionProvider(widget.args).notifier)
+              .read(sessionVideoLoopProvider(widget.args).notifier)
               .recordAttempt(
                 athleteId: athleteId,
                 athleteName: athleteName,
                 value: value,
-                videoRef: videoRef,
                 fps: fps,
                 forceAdopt: true,
               );
-          ref.invalidate(recordListNotifierProvider);
         },
       );
     } else {
@@ -209,17 +206,11 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
     ).showSnackBar(SnackBar(content: Text(message), action: action));
   }
 
-  Future<void> _resetForNextVideo() async {
-    await ref.read(videoPlayerProvider.notifier).release();
-    ref.read(measurementProvider.notifier).resetPositions();
-    _videoPath = null;
-    if (mounted) setState(() => _step = _VideoStep.pickVideo);
-  }
-
   Future<void> _switchToManual() async {
-    await ref.read(videoPlayerProvider.notifier).release();
+    await ref
+        .read(sessionVideoLoopProvider(widget.args).notifier)
+        .prepareSwitchToManual();
     if (!mounted) return;
-    ref.read(measurementProvider.notifier).resetPositions();
     widget.onSwitchToManual();
   }
 
@@ -227,15 +218,17 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
   Widget build(BuildContext context) {
     ref.listen<VideoImportState>(videoImportProvider, _handleImportState);
 
+    final loopState = ref.watch(sessionVideoLoopProvider(widget.args));
+
     // 動画プレイヤー／計測状態は autoDispose。動画選択の段階でも watch して
     // 生かしておかないと、圧縮完了後に呼ぶ initializeVideo の初期化中（非同期）に
     // プロバイダが破棄され、コントローラが捨てられて「読み込み中」のまま止まる。
     ref.watch(videoPlayerProvider);
     ref.watch(measurementProvider);
 
-    return _step == _VideoStep.pickVideo
+    return loopState.step == SessionVideoLoopStep.pickVideo
         ? _buildPickVideo(context)
-        : _buildMeasuring(context);
+        : _buildMeasuring(context, loopState);
   }
 
   Widget _buildPickVideo(BuildContext context) {
@@ -288,14 +281,18 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
     );
   }
 
-  Widget _buildMeasuring(BuildContext context) {
+  Widget _buildMeasuring(
+    BuildContext context,
+    SessionVideoLoopState loopState,
+  ) {
     final videoState = ref.watch(videoPlayerProvider);
     final measure = ref.watch(measurementProvider);
     final theme = Theme.of(context);
 
     final hasVideo = videoState.isInitialized && videoState.controller != null;
     final frameDuration = Duration(milliseconds: (1000 / measure.fps).round());
-    final canPickAthlete = measure.calculatedTime != null;
+    final canPickAthlete =
+        measure.calculatedTime != null && !loopState.isSaving;
 
     if (videoState.error != null) {
       return Expanded(
@@ -308,7 +305,9 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
                 Text(videoState.error!, textAlign: TextAlign.center),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton(
-                  onPressed: _resetForNextVideo,
+                  onPressed: () => ref
+                      .read(sessionVideoLoopProvider(widget.args).notifier)
+                      .resetForNextVideo(),
                   child: const Text('別の動画を選ぶ'),
                 ),
               ],
@@ -464,7 +463,13 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: canPickAthlete ? _pickAthleteAndSave : null,
-                  icon: const Icon(Icons.how_to_reg),
+                  icon: loopState.isSaving
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.how_to_reg),
                   label: const Text('この記録の選手を選ぶ'),
                 ),
               ),
@@ -473,7 +478,9 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _resetForNextVideo,
+                      onPressed: () => ref
+                          .read(sessionVideoLoopProvider(widget.args).notifier)
+                          .resetForNextVideo(),
                       icon: const Icon(Icons.refresh),
                       label: const Text('別の動画を選ぶ'),
                     ),
