@@ -6,10 +6,20 @@ import 'package:physi_log/models/record_set.dart';
 ///
 /// 「セットを追加」で行を増やし、各行に重さ(kg)と回数を入れる。
 /// 入力が変わるたび、有効な行（重さ>0・回数>0）だけを [onChanged] に返す。
+/// 入力があるのに不正な行（片方だけ入力・0以下 等）がある場合は
+/// [onValidityChanged] に true を通知する。呼び出し側はこれを見て、
+/// 不完全な行を silently に無視したまま保存しないようブロックすること。
 class WeightSetsEditor extends StatefulWidget {
-  const WeightSetsEditor({super.key, required this.onChanged});
+  const WeightSetsEditor({
+    super.key,
+    required this.onChanged,
+    this.onValidityChanged,
+  });
 
   final ValueChanged<List<RecordSet>> onChanged;
+
+  /// 入力はあるが不正な行が存在するかどうかの通知（true＝存在する）。
+  final ValueChanged<bool>? onValidityChanged;
 
   @override
   State<WeightSetsEditor> createState() => _WeightSetsEditorState();
@@ -40,14 +50,23 @@ class _WeightSetsEditorState extends State<WeightSetsEditor> {
 
   void _emit() {
     final sets = <RecordSet>[];
+    var hasInvalidRow = false;
     for (final row in _rows) {
-      final weight = double.tryParse(row.weight.text.trim());
-      final reps = int.tryParse(row.reps.text.trim());
-      if (weight != null && weight > 0 && reps != null && reps > 0) {
+      final weightText = row.weight.text.trim();
+      final repsText = row.reps.text.trim();
+      final weight = double.tryParse(weightText);
+      final reps = int.tryParse(repsText);
+      final isValid = weight != null && weight > 0 && reps != null && reps > 0;
+      if (isValid) {
         sets.add(RecordSet(weight: weight, reps: reps));
+      } else if (weightText.isNotEmpty || repsText.isNotEmpty) {
+        // 片方だけ入力・0以下・不正な数値など、入力はあるが有効なセットに
+        // ならない行。silentlyに捨てず、呼び出し側へ不正行の存在を伝える。
+        hasInvalidRow = true;
       }
     }
     widget.onChanged(sets);
+    widget.onValidityChanged?.call(hasInvalidRow);
   }
 
   void _addRow() {

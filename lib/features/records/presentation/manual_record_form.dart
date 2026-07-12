@@ -38,6 +38,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   String? _selectedEventId;
   double? _recordValue;
   List<RecordSet> _sets = const [];
+  bool _hasInvalidSetRow = false;
   bool _isSaving = false;
 
   @override
@@ -111,6 +112,12 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     final double recordValue;
     final List<RecordSet> sets;
     if (isWeight) {
+      if (_hasInvalidSetRow) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('入力途中・不正なセットの行があります。修正するか空にしてください')),
+        );
+        return;
+      }
       if (_sets.isEmpty) {
         messenger.showSnackBar(
           const SnackBar(content: Text('1セット以上（重さ×回数）を入力してください')),
@@ -305,6 +312,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                         _selectedEventId = value;
                         _recordValue = null;
                         _sets = const [];
+                        _hasInvalidSetRow = false;
                       });
                     },
                     validator: (value) => value == null ? '種目を選択してください' : null,
@@ -321,6 +329,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                     WeightSetsEditor(
                       key: ValueKey('weight-${selectedEvent.id}'),
                       onChanged: (sets) => _sets = sets,
+                      onValidityChanged: (hasInvalidRow) =>
+                          _hasInvalidSetRow = hasInvalidRow,
                     ),
                   ] else ...[
                     Text('記録値', style: Theme.of(context).textTheme.titleSmall),
