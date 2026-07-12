@@ -27,6 +27,11 @@ class RecordDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncRecord = ref.watch(_recordDetailProvider(recordId));
 
+    final record = asyncRecord.valueOrNull;
+    // セット形式の記録は編集フォームが未対応（保存すると sets が古いまま不整合になる）。
+    // 編集導線自体を隠し、対応していない画面に迷い込ませない。
+    final canEdit = record == null || !record.hasSets;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('記録詳細'),
@@ -34,7 +39,8 @@ class RecordDetailScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             onSelected: (value) => _onMenuSelected(context, ref, value),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('編集')),
+              if (canEdit)
+                const PopupMenuItem(value: 'edit', child: Text('編集')),
               const PopupMenuItem(value: 'delete', child: Text('削除')),
             ],
           ),
@@ -94,6 +100,40 @@ class RecordDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // セット内訳（ウェイト等）
+          if (record.hasSets) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.fitness_center, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'セット（${record.setCount}セット）',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final set in record.sets)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          set.formatted,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // 詳細情報
           Card(
             child: Column(
@@ -128,34 +168,35 @@ class RecordDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          // ボトムアクション
-          Row(
-            children: [
-              if (record.hasVideoReference) ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.pushNamed(
-                      'measurement',
-                      extra: {'recordId': record.id},
+          // ボトムアクション（セット形式の記録は編集フォーム未対応のため編集導線を出さない）
+          if (!record.hasSets)
+            Row(
+              children: [
+                if (record.hasVideoReference) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.pushNamed(
+                        'measurement',
+                        extra: {'recordId': record.id},
+                      ),
+                      icon: const Icon(Icons.replay),
+                      label: const Text('再計測'),
                     ),
-                    icon: const Icon(Icons.replay),
-                    label: const Text('再計測'),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => context.pushNamed(
+                      'recordEdit',
+                      pathParameters: {'id': record.id},
+                    ),
+                    icon: const Icon(Icons.edit),
+                    label: const Text('編集'),
                   ),
                 ),
-                const SizedBox(width: 16),
               ],
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => context.pushNamed(
-                    'recordEdit',
-                    pathParameters: {'id': record.id},
-                  ),
-                  icon: const Icon(Icons.edit),
-                  label: const Text('編集'),
-                ),
-              ),
-            ],
-          ),
+            ),
         ],
       ),
     );

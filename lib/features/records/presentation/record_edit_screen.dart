@@ -106,7 +106,7 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         title: const Text('記録編集'),
         actions: [
           asyncRecord.maybeWhen(
-            data: (record) => record != null
+            data: (record) => record != null && !record.hasSets
                 ? TextButton(
                     onPressed: _isSaving ? null : () => _save(record),
                     child: const Text('保存'),
@@ -126,6 +126,13 @@ class _RecordEditScreenState extends ConsumerState<RecordEditScreen> {
         data: (record) {
           if (record == null) {
             return const ErrorState(message: '記録が見つかりません');
+          }
+          if (record.hasSets) {
+            // このフォームは単一 recordValue の編集のみを扱い、sets を編集状態に
+            // 持たない。誤って保存すると sets が古いまま残り、recordValue と
+            // 不整合になる（copyWithでsetsを指定しないため既存値が残留する）。
+            // ルート直接遷移からも保存できないよう、ここでブロックする。
+            return const ErrorState(message: 'セット形式の記録は現在編集に対応していません');
           }
           _initControllers(record);
           return _buildForm(context, record);

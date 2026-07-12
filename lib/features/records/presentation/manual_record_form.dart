@@ -6,9 +6,11 @@ import 'package:physi_log/features/manage/application/athlete_list_notifier.dart
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/features/records/presentation/widgets/value_keypad_field.dart';
+import 'package:physi_log/features/records/presentation/widgets/weight_sets_editor.dart';
 import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
+import 'package:physi_log/models/record_set.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/constants/app_constants.dart';
 import 'package:uuid/uuid.dart';
@@ -35,6 +37,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
   String? _selectedAthleteId;
   String? _selectedEventId;
   double? _recordValue;
+  List<RecordSet> _sets = const [];
+  bool _hasInvalidSetRow = false;
   bool _isSaving = false;
 
   @override
@@ -104,10 +108,33 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
       return;
     }
 
-    final recordValue = _recordValue;
-    if (recordValue == null || recordValue <= 0) {
-      messenger.showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
-      return;
+    final isWeight = selectedEvent.recordType == EventRecordType.weight;
+    final double recordValue;
+    final List<RecordSet> sets;
+    if (isWeight) {
+      if (_hasInvalidSetRow) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('入力途中・不正なセットの行があります。修正するか空にしてください')),
+        );
+        return;
+      }
+      if (_sets.isEmpty) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('1セット以上（重さ×回数）を入力してください')),
+        );
+        return;
+      }
+      // 代表値＝最大重量。既存の成長/ベスト/表示ロジックに乗せる。
+      recordValue = _sets.map((s) => s.weight).reduce((a, b) => a > b ? a : b);
+      sets = _sets;
+    } else {
+      final value = _recordValue;
+      if (value == null || value <= 0) {
+        messenger.showSnackBar(const SnackBar(content: Text('記録値を入力してください')));
+        return;
+      }
+      recordValue = value;
+      sets = const [];
     }
     final recordUnit = selectedEvent.unit;
     final durationMs = recordUnit == '秒' ? (recordValue * 1000).round() : 0;
@@ -140,6 +167,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
         recordUnit: recordUnit,
         measuredAt: measuredAt,
         memo: _memoController.text.trim(),
+        sets: sets,
         createdAt: now,
         updatedAt: now,
       );
@@ -283,6 +311,8 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                       setState(() {
                         _selectedEventId = value;
                         _recordValue = null;
+                        _sets = const [];
+                        _hasInvalidSetRow = false;
                       });
                     },
                     validator: (value) => value == null ? '種目を選択してください' : null,
@@ -290,14 +320,28 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 if (_findSelectedEvent(events) case final selectedEvent?) ...[
-                  Text('記録値', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: AppSpacing.sm),
-                  ValueKeypadField(
-                    key: ValueKey(selectedEvent.id),
-                    recordType: selectedEvent.recordType,
-                    unit: selectedEvent.unit,
-                    onChanged: (value) => _recordValue = value,
-                  ),
+                  if (selectedEvent.recordType == EventRecordType.weight) ...[
+                    Text(
+                      'セット（重さ×回数）',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    WeightSetsEditor(
+                      key: ValueKey('weight-${selectedEvent.id}'),
+                      onChanged: (sets) => _sets = sets,
+                      onValidityChanged: (hasInvalidRow) =>
+                          _hasInvalidSetRow = hasInvalidRow,
+                    ),
+                  ] else ...[
+                    Text('記録値', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: AppSpacing.sm),
+                    ValueKeypadField(
+                      key: ValueKey(selectedEvent.id),
+                      recordType: selectedEvent.recordType,
+                      unit: selectedEvent.unit,
+                      onChanged: (value) => _recordValue = value,
+                    ),
+                  ],
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 OutlinedButton.icon(
