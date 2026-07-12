@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/application/session_video_loop_notifier.dart';
+import 'package:physi_log/features/records/application/record_list_notifier.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/event.dart';
@@ -56,6 +57,19 @@ class _InMemoryRecordRepository implements RecordRepository {
   }
 }
 
+/// recordAttempt が呼ぶ ref.invalidate(recordListNotifierProvider) 用の無害な
+/// スタブ。本物は非autoDisposeでアプリが生きている間に非同期読み込みが解決するが、
+/// このテストのProviderContainerはテスト単位で作って捨てるため、読み込み完了前に
+/// disposeされてクラッシュする恐れがある。この notifier のテスト対象ではないため、
+/// loadRecords を no-op にして非同期の競合を根本的に無くす。
+class _NoopRecordListNotifier extends RecordListNotifier {
+  _NoopRecordListNotifier()
+    : super(_InMemoryRecordRepository(), 'user-1', const RecordFilter());
+
+  @override
+  Future<void> loadRecords() async {}
+}
+
 Event _event() {
   final now = DateTime(2026, 7, 1);
   return Event(
@@ -80,6 +94,11 @@ void main() {
         recordRepositoryProvider.overrideWithValue(repo),
         // authStateProvider（Firebase依存）を経由させないよう、userIdは直接固定する。
         currentUserIdProvider.overrideWithValue('user-1'),
+        // recordAttempt が invalidate するが、このテストの対象ではないため
+        // 非同期読み込みをno-opにして disposeタイミングとの競合を無くす。
+        recordListNotifierProvider.overrideWith(
+          (ref) => _NoopRecordListNotifier(),
+        ),
       ],
     );
     args = SessionArgs(event: _event(), date: DateTime(2026, 7, 1));
@@ -87,14 +106,7 @@ void main() {
     await container.read(measurementSessionProvider(args).notifier).restore();
   });
 
-  tearDown(() async {
-    // recordAttempt が呼ぶ ref.invalidate(recordListNotifierProvider) は
-    // 非同期の読み込みをfire-and-forgetで開始する（本番では非autoDisposeで
-    // アプリが生きている間に解決するため問題にならない）。テストでは
-    // dispose前にマイクロタスクを一巡させ、解決してから破棄する。
-    await Future<void>.delayed(Duration.zero);
-    container.dispose();
-  });
+  tearDown(() => container.dispose());
 
   test('recordAttempt は保存中の二重実行をブロックする（後勝ちは無視されnullを返す）', () async {
     final notifier = container.read(sessionVideoLoopProvider(args).notifier);
