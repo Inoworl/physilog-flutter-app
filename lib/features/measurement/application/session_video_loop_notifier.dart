@@ -59,14 +59,22 @@ class SessionVideoLoopNotifier extends StateNotifier<SessionVideoLoopState> {
   }
 
   /// 1試技を記録する。保存中は二重実行を防ぐため何もせず null を返す。
+  ///
+  /// [videoRef] は呼び出し側でタイム確定時点にキャプチャした動画パスを渡す。
+  /// 省略時は呼び出し時点の `state.videoPath` を使うが、「今回を採用」のように
+  /// 保存の間に `resetForNextVideo()` が挟まって `state.videoPath` が既に
+  /// null に戻っているケースでは、古いベスト動画のまま値だけ更新される
+  /// データ不整合になるため、呼び出し側からの明示指定を優先する。
   Future<BestAttemptDecision?> recordAttempt({
     required String athleteId,
     required String athleteName,
     required double value,
     required double fps,
+    String? videoRef,
     bool forceAdopt = false,
   }) async {
     if (state.isSaving) return null;
+    final resolvedVideoRef = videoRef ?? state.videoPath;
     state = SessionVideoLoopState(
       step: state.step,
       videoPath: state.videoPath,
@@ -79,7 +87,7 @@ class SessionVideoLoopNotifier extends StateNotifier<SessionVideoLoopState> {
             athleteId: athleteId,
             athleteName: athleteName,
             value: value,
-            videoRef: state.videoPath,
+            videoRef: resolvedVideoRef,
             fps: fps,
             forceAdopt: forceAdopt,
           );

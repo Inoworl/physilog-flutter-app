@@ -136,6 +136,37 @@ void main() {
     expect(saved.single.effectiveRecordValue, 7.2);
   });
 
+  test('videoRefを明示指定すると、resetForNextVideo後のstate.videoPathがnullでも'
+      '正しい動画参照で保存される（今回を採用のバグ回帰）', () async {
+    final notifier = container.read(sessionVideoLoopProvider(args).notifier);
+
+    // 1本目：動画Aで保存し、次の動画へ進む（state.videoPathはnullに戻る）。
+    await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.5,
+      fps: 60,
+      videoRef: '/tmp/videoA.mp4',
+    );
+    await notifier.resetForNextVideo();
+    expect(container.read(sessionVideoLoopProvider(args)).videoPath, isNull);
+
+    // 「今回を採用」相当：確定時点でキャプチャした動画Bの参照を明示して保存。
+    // state.videoPathが既にnullでも、引数のvideoRefが優先されること。
+    final decision = await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.2,
+      fps: 60,
+      videoRef: '/tmp/videoB.mp4',
+      forceAdopt: true,
+    );
+    expect(decision, isNotNull);
+
+    final saved = await repo.getRecords(userId: 'user-1');
+    expect(saved.single.videoRef, '/tmp/videoB.mp4');
+  });
+
   test('recordAttempt 完了後は isSaving が false に戻り、次の保存ができる', () async {
     final notifier = container.read(sessionVideoLoopProvider(args).notifier);
 

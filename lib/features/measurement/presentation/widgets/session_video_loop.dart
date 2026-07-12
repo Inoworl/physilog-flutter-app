@@ -140,12 +140,18 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       orElse: () => widget.roster.first,
     );
 
+    // タイム確定時点の動画パスをキャプチャする。resetForNextVideo() の後に
+    // 「今回を採用」が押されると state.videoPath は既に null に戻っているため、
+    // そちらに頼らずこの値を明示的に使い回す（値と動画参照のズレを防ぐ）。
+    final videoPath = ref.read(sessionVideoLoopProvider(widget.args)).videoPath;
+
     // 保存中は notifier 側でガードされ、二重タップしても二重保存されない。
     final decision = await loopNotifier.recordAttempt(
       athleteId: athleteId,
       athleteName: athlete.name,
       value: value,
       fps: measure.fps,
+      videoRef: videoPath,
     );
     if (decision == null || !mounted) return;
 
@@ -155,6 +161,7 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       athleteName: athlete.name,
       value: value,
       fps: measure.fps,
+      videoRef: videoPath,
     );
     await loopNotifier.resetForNextVideo();
   }
@@ -165,6 +172,7 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
     required String athleteName,
     required double value,
     required double fps,
+    required String? videoRef,
   }) {
     final unit = widget.event.unit;
     final valueText = RecordValueInput.formatDisplay(
@@ -184,6 +192,8 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       message = '$athleteName：ベストは$bestTextのまま（今回 $valueText は不採用）';
       // 1本目のフレーム指定ミスなどの救済路。あとから今回値を採用できる。
       // recordAttempt側のisSavingガードにより、連打しても二重保存されない。
+      // videoRefはタイム確定時点の値をそのまま使う（resetForNextVideo後は
+      // state.videoPathが既にnullに戻っているため、それには頼らない）。
       action = SnackBarAction(
         label: '今回を採用',
         onPressed: () async {
@@ -194,6 +204,7 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
                 athleteName: athleteName,
                 value: value,
                 fps: fps,
+                videoRef: videoRef,
                 forceAdopt: true,
               );
         },
