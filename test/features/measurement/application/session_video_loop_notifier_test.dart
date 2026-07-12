@@ -87,7 +87,14 @@ void main() {
     await container.read(measurementSessionProvider(args).notifier).restore();
   });
 
-  tearDown(() => container.dispose());
+  tearDown(() async {
+    // recordAttempt が呼ぶ ref.invalidate(recordListNotifierProvider) は
+    // 非同期の読み込みをfire-and-forgetで開始する（本番では非autoDisposeで
+    // アプリが生きている間に解決するため問題にならない）。テストでは
+    // dispose前にマイクロタスクを一巡させ、解決してから破棄する。
+    await Future<void>.delayed(Duration.zero);
+    container.dispose();
+  });
 
   test('recordAttempt は保存中の二重実行をブロックする（後勝ちは無視されnullを返す）', () async {
     final notifier = container.read(sessionVideoLoopProvider(args).notifier);
