@@ -167,6 +167,49 @@ void main() {
     expect(saved.single.videoRef, '/tmp/videoB.mp4');
   });
 
+  test('更新ならずの同じ試技を今回採用しても、試技数は重複せず採用値が不採用履歴に残らない', () async {
+    final notifier = container.read(sessionVideoLoopProvider(args).notifier);
+
+    // 1本目：現在のベストとなる動画Aの7.0秒を保存する。
+    await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.0,
+      fps: 60,
+      videoRef: '/tmp/videoA.mp4',
+    );
+
+    // 2本目：動画Bの7.5秒はベストを更新しないため、いったん不採用で保存される。
+    final notImproved = await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.5,
+      fps: 60,
+      videoRef: '/tmp/videoB.mp4',
+    );
+    expect(notImproved?.isNotImproved, isTrue);
+
+    // 実画面と同様、次の動画選択へ戻った後にSnackBarの「今回を採用」を押す。
+    await notifier.resetForNextVideo();
+    await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.5,
+      fps: 60,
+      videoRef: '/tmp/videoB.mp4',
+      forceAdopt: true,
+    );
+
+    final entry = container
+        .read(measurementSessionProvider(args))
+        .entryFor('a1');
+    expect(entry, isNotNull);
+    expect(entry!.bestValue, 7.5);
+    expect(entry.record.videoRef, '/tmp/videoB.mp4');
+    expect(entry.attemptCount, 2);
+    expect(entry.record.memo, isNot(contains('不採用: 7.5秒')));
+  });
+
   test('recordAttempt 完了後は isSaving が false に戻り、次の保存ができる', () async {
     final notifier = container.read(sessionVideoLoopProvider(args).notifier);
 
