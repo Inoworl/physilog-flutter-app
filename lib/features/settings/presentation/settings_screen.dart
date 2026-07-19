@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/providers/app_providers.dart';
 
 const _docsBaseUrl = String.fromEnvironment(
@@ -28,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final authUser = ref
         .watch(authStateProvider)
         .maybeWhen(data: (user) => user, orElse: () => null);
+    final planState = ref.watch(planAccessStateProvider);
     final registeredEmail = authUser?.email?.trim();
     final hasRegisteredEmail =
         registeredEmail != null && registeredEmail.isNotEmpty;
@@ -47,6 +50,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: 'アカウント',
               children: [
                 _AccountEmailStatus(email: registeredEmail),
+                const Divider(height: 1),
+                _PlanSettingsTile(
+                  state: planState,
+                  onTap: () => context.pushNamed('settingsPlan'),
+                ),
                 const Divider(height: 1),
                 if (hasRegisteredEmail) ...[
                   _SettingsTile(
@@ -354,6 +362,51 @@ class _AccountEmailStatus extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PlanSettingsTile extends StatelessWidget {
+  const _PlanSettingsTile({required this.state, required this.onTap});
+
+  final PlanAccessState state;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = switch (state) {
+      PlanAccessLoading() => '確認中...',
+      PlanAccessError() => '取得できませんでした',
+      PlanAccessReady(:final tier) => tier.label,
+    };
+
+    return ListTile(
+      isThreeLine: true,
+      leading: const Icon(
+        Icons.workspace_premium_outlined,
+        color: AppColors.primary,
+      ),
+      title: const Text('プランを確認・変更', style: AppTextStyles.cardTitle),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('現在のプラン', style: AppTextStyles.caption),
+          Text(
+            value,
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+extension on PlanTier {
+  String get label => switch (this) {
+    PlanTier.free => 'Free',
+    PlanTier.personalFamily => '個人・家族',
+    PlanTier.team => 'Team',
+  };
 }
 
 class _EmailAuthForm extends ConsumerStatefulWidget {

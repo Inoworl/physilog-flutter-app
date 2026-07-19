@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physi_log/features/billing/domain/revenuecat_environment.dart';
 
 void main() {
   group('RevenueCat environment setup', () {
@@ -36,6 +37,27 @@ void main() {
         environment,
         contains("String.fromEnvironment('REVENUECAT_ANDROID_API_KEY')"),
       );
+    });
+
+    test('releaseではTest Store keyを拒否する', () {
+      const environment = RevenueCatEnvironment(
+        iosApiKey: 'test_not-a-secret',
+        androidApiKey: '',
+      );
+
+      expect(
+        () =>
+            environment.apiKeyFor(RevenueCatPlatform.ios, isReleaseMode: true),
+        throwsA(isA<RevenueCatTestStoreKeyInReleaseException>()),
+      );
+    });
+
+    test('RevenueCat identityのライフサイクルをProviderで管理する', () {
+      final mainSource = File('lib/main.dart').readAsStringSync();
+      final appSource = File('lib/app/app.dart').readAsStringSync();
+
+      expect(mainSource, isNot(contains('_initializeRevenueCat')));
+      expect(appSource, contains('billingIdentitySyncProvider'));
     });
   });
 }

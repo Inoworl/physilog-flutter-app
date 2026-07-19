@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/features/manage/presentation/manage_screen.dart';
@@ -269,17 +270,57 @@ void main() {
     expect(find.text('この種目を削除'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
   });
+
+  testWidgets('プラン取得中は追加操作を無効化してFree上限を表示しない', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.free,
+        planState: const PlanAccessLoading(),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('プラン情報を確認中...'), findsOneWidget);
+    final addButtons = tester.widgetList<TextButton>(
+      find.widgetWithText(TextButton, '追加'),
+    );
+    expect(addButtons.every((button) => button.onPressed == null), isTrue);
+    expect(find.text('現在のプラン上限に達しています'), findsNothing);
+  });
+
+  testWidgets('プラン取得失敗時は再読み込みを表示してFree上限を表示しない', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.free,
+        planState: const PlanAccessError(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン情報の取得に失敗しました'), findsOneWidget);
+    expect(find.byTooltip('プラン情報を再読み込み'), findsOneWidget);
+    final addButtons = tester.widgetList<TextButton>(
+      find.widgetWithText(TextButton, '追加'),
+    );
+    expect(addButtons.every((button) => button.onPressed == null), isTrue);
+    expect(find.text('現在のプラン上限に達しています'), findsNothing);
+  });
 }
 
 Widget _buildManageScreen({
   required PlanCapabilities capabilities,
+  PlanAccessState? planState,
   List<Athlete> athletes = const [],
   List<Event> events = const [],
 }) {
   return ProviderScope(
     overrides: [
       currentUserIdProvider.overrideWithValue('test-user'),
-      planCapabilitiesProvider.overrideWithValue(capabilities),
+      planAccessStateProvider.overrideWithValue(
+        planState ?? _readyPlanState(capabilities),
+      ),
       athleteRepositoryProvider.overrideWithValue(
         _FakeAthleteRepository(athletes),
       ),
@@ -287,6 +328,20 @@ Widget _buildManageScreen({
       recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
     ],
     child: const MaterialApp(home: ManageScreen()),
+  );
+}
+
+PlanAccessReady _readyPlanState(PlanCapabilities capabilities) {
+  return PlanAccessReady(
+    PlanAccessStatus(
+      hasRevenueCatPersonalFamily:
+          capabilities.maxAthleteCount ==
+          PlanCapabilities.personalFamily.maxAthleteCount,
+      hasRevenueCatTeam: capabilities.canUseMeasurementSessions,
+      hasLegacyPersonalFamily: false,
+      hasLegacyTeam: false,
+      hasManualTeam: false,
+    ),
   );
 }
 

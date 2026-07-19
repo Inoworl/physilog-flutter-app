@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/models/event.dart';
@@ -39,7 +40,11 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   }
 
   void _startSession(Event event) {
-    final capabilities = ref.read(planCapabilitiesProvider);
+    final planState = ref.read(planAccessStateProvider);
+    if (planState is! PlanAccessReady) {
+      return;
+    }
+    final capabilities = planState.capabilities;
     if (!capabilities.canUseMeasurementSessions) {
       _showTeamFeatureDialog(context);
       return;
@@ -53,7 +58,26 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final capabilities = ref.watch(planCapabilitiesProvider);
+    final planState = ref.watch(planAccessStateProvider);
+
+    if (planState is PlanAccessLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('計測会を始める')),
+        body: const LoadingState(message: 'プラン情報を確認中...'),
+      );
+    }
+
+    if (planState is PlanAccessError) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('計測会を始める')),
+        body: ErrorState(
+          message: 'プラン情報の取得に失敗しました',
+          onRetry: () => ref.invalidate(planAccessStateStreamProvider),
+        ),
+      );
+    }
+
+    final capabilities = (planState as PlanAccessReady).capabilities;
 
     if (!capabilities.canUseMeasurementSessions) {
       return Scaffold(

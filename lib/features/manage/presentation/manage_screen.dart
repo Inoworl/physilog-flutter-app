@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/manage/presentation/athlete_form_sheet.dart';
@@ -17,7 +18,11 @@ class ManageScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final athleteState = ref.watch(athleteListNotifierProvider);
     final eventState = ref.watch(eventListNotifierProvider);
-    final capabilities = ref.watch(planCapabilitiesProvider);
+    final planState = ref.watch(planAccessStateProvider);
+    final capabilities = switch (planState) {
+      PlanAccessReady(:final capabilities) => capabilities,
+      _ => null,
+    };
     final loadedAthletes = athleteState.maybeWhen<List<Athlete>?>(
       loaded: (athletes) => athletes,
       orElse: () => null,
@@ -34,9 +39,15 @@ class ManageScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _PlanAccessNotice(
+                state: planState,
+                onRetry: () => ref.invalidate(planAccessStateStreamProvider),
+              ),
+              if (planState is! PlanAccessReady)
+                const SizedBox(height: AppSpacing.lg),
               _SectionHeader(
                 title: '選手',
-                onAdd: loadedAthletes == null
+                onAdd: loadedAthletes == null || capabilities == null
                     ? null
                     : () {
                         final maxAthleteCount = capabilities.maxAthleteCount;
@@ -80,7 +91,7 @@ class ManageScreen extends ConsumerWidget {
               const SizedBox(height: 32),
               _SectionHeader(
                 title: '種目',
-                onAdd: loadedEvents == null
+                onAdd: loadedEvents == null || capabilities == null
                     ? null
                     : () {
                         final maxEventCount = capabilities.maxEventCount;
@@ -124,6 +135,47 @@ class ManageScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _PlanAccessNotice extends StatelessWidget {
+  const _PlanAccessNotice({required this.state, required this.onRetry});
+
+  final PlanAccessState state;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (state) {
+      PlanAccessLoading() => Card(
+        child: ListTile(
+          leading: Semantics(
+            label: 'プラン情報を読み込み中',
+            liveRegion: true,
+            child: const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          title: const Text('プラン情報を確認中...'),
+        ),
+      ),
+      PlanAccessError() => Card(
+        child: ListTile(
+          leading: Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: const Text('プラン情報の取得に失敗しました'),
+          trailing: IconButton(
+            tooltip: 'プラン情報を再読み込み',
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+          ),
+        ),
+      ),
+      PlanAccessReady() => const SizedBox.shrink(),
+    };
   }
 }
 

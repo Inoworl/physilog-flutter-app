@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:physi_log/features/billing/presentation/plan_screen.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/presentation/manage_screen.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
@@ -163,6 +164,20 @@ final router = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const SettingsScreen(),
+          transitionsBuilder: _slideFromRight,
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/settings/plan',
+      name: 'settingsPlan',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const PlanScreen(),
           transitionsBuilder: _slideFromRight,
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 300),

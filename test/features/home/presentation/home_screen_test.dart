@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
@@ -278,7 +279,9 @@ void main() {
       ProviderScope(
         overrides: [
           currentUserIdProvider.overrideWithValue('test-user'),
-          planCapabilitiesProvider.overrideWithValue(PlanCapabilities.free),
+          planAccessStateProvider.overrideWithValue(
+            _readyPlanState(PlanTier.free),
+          ),
           athleteRepositoryProvider.overrideWithValue(
             _FakeAthleteRepository(const []),
           ),
@@ -318,7 +321,9 @@ void main() {
       ProviderScope(
         overrides: [
           currentUserIdProvider.overrideWithValue('test-user'),
-          planCapabilitiesProvider.overrideWithValue(PlanCapabilities.team),
+          planAccessStateProvider.overrideWithValue(
+            _readyPlanState(PlanTier.team),
+          ),
           athleteRepositoryProvider.overrideWithValue(
             _FakeAthleteRepository(const []),
           ),
@@ -335,6 +340,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('計測会設定画面'), findsOneWidget);
+  });
+
+  testWidgets('Homeはプラン取得中に計測会開始を無効化してFree扱いしない', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          planAccessStateProvider.overrideWithValue(const PlanAccessLoading()),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pump();
+
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'プラン情報を確認中...'),
+    );
+    expect(button.onPressed, isNull);
+    expect(find.text('Teamプラン限定機能です'), findsNothing);
+  });
+
+  testWidgets('Homeはプラン取得失敗時に再読み込みを表示してFree扱いしない', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          planAccessStateProvider.overrideWithValue(const PlanAccessError()),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, 'プラン情報を再読み込み'), findsOneWidget);
+    expect(find.text('Teamプラン限定機能です'), findsNothing);
   });
 
   testWidgets('Homeの選手名をタップすると対象選手の記録シートへ遷移する', (tester) async {
@@ -405,4 +457,16 @@ void main() {
     expect(find.text('シート'), findsOneWidget);
     expect(find.text('佐藤花子の記録はまだありません'), findsOneWidget);
   });
+}
+
+PlanAccessReady _readyPlanState(PlanTier tier) {
+  return PlanAccessReady(
+    PlanAccessStatus(
+      hasRevenueCatPersonalFamily: tier == PlanTier.personalFamily,
+      hasRevenueCatTeam: tier == PlanTier.team,
+      hasLegacyPersonalFamily: false,
+      hasLegacyTeam: false,
+      hasManualTeam: false,
+    ),
+  );
 }

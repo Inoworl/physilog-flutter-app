@@ -1,5 +1,14 @@
 enum RevenueCatPlatform { ios, android }
 
+class RevenueCatTestStoreKeyInReleaseException implements Exception {
+  const RevenueCatTestStoreKeyInReleaseException();
+
+  @override
+  String toString() {
+    return 'ReleaseビルドではRevenueCat Test Store keyを使用できません。';
+  }
+}
+
 class RevenueCatEnvironment {
   const RevenueCatEnvironment({
     required this.iosApiKey,
@@ -14,12 +23,21 @@ class RevenueCatEnvironment {
   final String iosApiKey;
   final String androidApiKey;
 
-  String? apiKeyFor(RevenueCatPlatform platform) {
+  String? apiKeyFor(
+    RevenueCatPlatform platform, {
+    bool isReleaseMode = const bool.fromEnvironment('dart.vm.product'),
+  }) {
     final apiKey = switch (platform) {
       RevenueCatPlatform.ios => iosApiKey,
       RevenueCatPlatform.android => androidApiKey,
     };
     final trimmedApiKey = apiKey.trim();
-    return trimmedApiKey.isEmpty ? null : trimmedApiKey;
+    if (trimmedApiKey.isEmpty) {
+      return null;
+    }
+    if (isReleaseMode && trimmedApiKey.startsWith('test_')) {
+      throw const RevenueCatTestStoreKeyInReleaseException();
+    }
+    return trimmedApiKey;
   }
 }

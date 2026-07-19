@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
 import 'package:physi_log/models/athlete.dart';
@@ -76,22 +77,43 @@ class _StartSessionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final capabilities = ref.watch(planCapabilitiesProvider);
+    final planState = ref.watch(planAccessStateProvider);
 
     return SizedBox(
       width: double.infinity,
       height: 56,
-      child: FilledButton.icon(
-        onPressed: () async {
-          if (!capabilities.canUseMeasurementSessions) {
-            await _showTeamFeatureDialog(context);
-            return;
-          }
-          context.pushNamed('measurementSessionSetup');
-        },
-        icon: const Icon(Icons.groups),
-        label: const Text('計測会を開始（チームでまとめて計測）'),
-      ),
+      child: switch (planState) {
+        PlanAccessLoading() => FilledButton.icon(
+          onPressed: null,
+          icon: Semantics(
+            label: 'プラン情報を読み込み中',
+            liveRegion: true,
+            child: const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          label: const Text('プラン情報を確認中...'),
+        ),
+        PlanAccessError() => FilledButton.icon(
+          onPressed: () => ref.invalidate(planAccessStateStreamProvider),
+          icon: const Icon(Icons.refresh),
+          label: const Text('プラン情報を再読み込み'),
+        ),
+        PlanAccessReady(:final capabilities) => FilledButton.icon(
+          onPressed: () async {
+            if (!capabilities.canUseMeasurementSessions) {
+              await _showTeamFeatureDialog(context);
+              return;
+            }
+            if (context.mounted) {
+              context.pushNamed('measurementSessionSetup');
+            }
+          },
+          icon: const Icon(Icons.groups),
+          label: const Text('計測会を開始（チームでまとめて計測）'),
+        ),
+      },
     );
   }
 }
