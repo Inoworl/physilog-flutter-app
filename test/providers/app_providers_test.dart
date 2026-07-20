@@ -1,6 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physi_log/features/billing/application/billing_controller.dart';
+import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
+import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
+import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
+import 'package:physi_log/features/billing/domain/billing_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/domain/revenuecat_catalog.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
 import 'package:physi_log/models/entitlement.dart';
 import 'package:physi_log/providers/app_providers.dart';
@@ -38,11 +48,161 @@ void main() {
     expect(container.read(useFirestoreProvider), isFalse);
   });
 
-  test('currentPlanTierProviderは据え置き個人・家族entitlementなら個人・家族プランを返す', () async {
+  test('localモードでは課金SDKを呼ばずFreeのready状態を返す', () async {
+    final repository = _FakeBillingRepository();
+    final container = ProviderContainer(
+      overrides: [billingRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(planAccessStateStreamProvider.future);
+
+    expect(state, isA<PlanAccessReady>());
+    expect((state as PlanAccessReady).tier, PlanTier.free);
+    expect(repository.identityCalls, isEmpty);
+    expect(repository.getCustomerAccessCalls, 0);
+  });
+
+  test('localモードではRevenueCatのRepositoryを選択しない', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    expect(
+      container.read(billingRepositoryProvider),
+      isNot(isA<RevenueCatBillingRepository>()),
+    );
+  });
+
+  test('firestoreモードではUIDを同期してRevenueCatのTeam権限を返す', () async {
+    final repository = _FakeBillingRepository(
+      customerAccess: BillingCustomerAccess(
+        activeEntitlementIds: {RevenueCatCatalog.teamEntitlementId},
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
+        currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        billingRepositoryProvider.overrideWithValue(repository),
+        entitlementRepositoryProvider.overrideWithValue(
+          const _FakeEntitlementRepository(null),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(planAccessStateStreamProvider.future);
+
+    expect(state, isA<PlanAccessReady>());
+    expect((state as PlanAccessReady).tier, PlanTier.team);
+    expect(repository.identityCalls, ['configure:firebase-user-id']);
+  });
+
+  test('プラン取得中はFreeではなくloading状態を返す', () {
+    final repository = _FakeBillingRepository(
+      customerAccessCompleter: Completer<BillingCustomerAccess>(),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
+        currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        billingRepositoryProvider.overrideWithValue(repository),
+        entitlementRepositoryProvider.overrideWithValue(
+          const _FakeEntitlementRepository(null),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(planAccessStateProvider), isA<PlanAccessLoading>());
+  });
+
+  test('RevenueCat取得失敗はFreeではなくerror状態を返す', () async {
+    final repository = _FakeBillingRepository(
+      getError: StateError('network error'),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
+        currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        billingRepositoryProvider.overrideWithValue(repository),
+        entitlementRepositoryProvider.overrideWithValue(
+          const _FakeEntitlementRepository(null),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(planAccessStateStreamProvider.future);
+
+    expect(state, isA<PlanAccessError>());
+  });
+
+  test('currentUserIdProvider変更でRevenueCat identityを再同期する', () async {
+    final testUserIdProvider = StateProvider<String?>((ref) => 'anonymous-a');
+    final repository = _FakeBillingRepository();
+    final container = ProviderContainer(
+      overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
+        currentUserIdProvider.overrideWith(
+          (ref) => ref.watch(testUserIdProvider),
+        ),
+        billingRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(billingIdentitySyncProvider.future);
+    container.read(testUserIdProvider.notifier).state = 'email-b';
+    await container.read(billingIdentitySyncProvider.future);
+    container.read(testUserIdProvider.notifier).state = 'anonymous-c';
+    await container.read(billingIdentitySyncProvider.future);
+
+    expect(repository.identityCalls, [
+      'configure:anonymous-a',
+      'identify:email-b',
+      'identify:anonymous-c',
+    ]);
+  });
+
+  test('billingControllerProviderはUID同期完了後に商品を取得する', () async {
+    final configureCompleter = Completer<void>();
+    final repository = _FakeBillingRepository(
+      configureCompleter: configureCompleter,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
+        currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        billingRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final subscription = container.listen<BillingState>(
+      billingControllerProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.fetchProductsCalls, 0);
+
+    configureCompleter.complete();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.fetchProductsCalls, 1);
+  });
+
+  test('据え置き個人・家族entitlementをRevenueCat権限と合成する', () async {
     final now = DateTime(2026, 5, 27, 10);
     final container = ProviderContainer(
       overrides: [
+        dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
         currentUserIdProvider.overrideWithValue('firebase-user-id'),
+        billingRepositoryProvider.overrideWithValue(_FakeBillingRepository()),
         entitlementRepositoryProvider.overrideWithValue(
           _FakeEntitlementRepository(
             Entitlement(
@@ -60,101 +220,68 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await container.read(currentEntitlementProvider.future);
+    final state = await container.read(planAccessStateStreamProvider.future);
 
-    expect(container.read(currentPlanTierProvider), PlanTier.personalFamily);
-    expect(
-      container.read(planCapabilitiesProvider),
-      PlanCapabilities.personalFamily,
-    );
+    expect(state, isA<PlanAccessReady>());
+    expect((state as PlanAccessReady).tier, PlanTier.personalFamily);
   });
+}
 
-  test(
-    'currentPlanTierProviderはRevenueCatのpersonal_family entitlementなら個人・家族プランを返す',
-    () async {
-      final container = ProviderContainer(
-        overrides: [
-          currentUserIdProvider.overrideWithValue('firebase-user-id'),
-          entitlementRepositoryProvider.overrideWithValue(
-            const _FakeEntitlementRepository(null),
-          ),
-          hasRevenueCatPersonalFamilyProvider.overrideWith((ref) async => true),
-        ],
-      );
-      addTearDown(container.dispose);
+class _FakeBillingRepository implements BillingRepository {
+  _FakeBillingRepository({
+    BillingCustomerAccess? customerAccess,
+    this.customerAccessCompleter,
+    this.configureCompleter,
+    this.getError,
+  }) : customerAccess =
+           customerAccess ??
+           BillingCustomerAccess(activeEntitlementIds: const {});
 
-      await container.read(currentEntitlementProvider.future);
-      await container.read(hasRevenueCatPersonalFamilyProvider.future);
+  final BillingCustomerAccess customerAccess;
+  final Completer<BillingCustomerAccess>? customerAccessCompleter;
+  final Completer<void>? configureCompleter;
+  final Object? getError;
+  final identityCalls = <String>[];
+  var getCustomerAccessCalls = 0;
+  var fetchProductsCalls = 0;
 
-      expect(container.read(currentPlanTierProvider), PlanTier.personalFamily);
-    },
-  );
+  @override
+  Future<void> configure({required String? appUserId}) async {
+    identityCalls.add('configure:$appUserId');
+    await configureCompleter?.future;
+  }
 
-  test(
-    'currentPlanTierProviderはRevenueCatのteam entitlementならTeamプランを返す',
-    () async {
-      final container = ProviderContainer(
-        overrides: [
-          currentUserIdProvider.overrideWithValue('firebase-user-id'),
-          entitlementRepositoryProvider.overrideWithValue(
-            const _FakeEntitlementRepository(null),
-          ),
-          hasRevenueCatTeamProvider.overrideWith((ref) async => true),
-        ],
-      );
-      addTearDown(container.dispose);
+  @override
+  Future<List<BillingProduct>> fetchProducts() async {
+    fetchProductsCalls++;
+    return const [];
+  }
 
-      await container.read(currentEntitlementProvider.future);
-      await container.read(hasRevenueCatTeamProvider.future);
+  @override
+  Future<BillingCustomerAccess> getCustomerAccess() async {
+    getCustomerAccessCalls++;
+    final error = getError;
+    if (error != null) {
+      throw error;
+    }
+    return customerAccessCompleter?.future ?? customerAccess;
+  }
 
-      expect(container.read(currentPlanTierProvider), PlanTier.team);
-      expect(container.read(planCapabilitiesProvider), PlanCapabilities.team);
-    },
-  );
+  @override
+  Future<void> identify(String appUserId) async {
+    identityCalls.add('identify:$appUserId');
+  }
 
-  test('currentPlanTierProviderは手動付与Team entitlementならTeamプランを返す', () async {
-    final now = DateTime(2026, 5, 27, 10);
-    final container = ProviderContainer(
-      overrides: [
-        currentUserIdProvider.overrideWithValue('firebase-user-id'),
-        entitlementRepositoryProvider.overrideWithValue(
-          _FakeEntitlementRepository(
-            Entitlement(
-              id: 'current',
-              userId: 'firebase-user-id',
-              plan: EntitlementPlans.manualTeam,
-              source: EntitlementSources.manual,
-              status: EntitlementStatuses.active,
-              grantedAt: now,
-              updatedAt: now,
-            ),
-          ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
+  @override
+  Future<BillingPurchaseResult> purchase(String packageId) async {
+    return const BillingPurchaseResult.cancelled();
+  }
 
-    await container.read(currentEntitlementProvider.future);
+  @override
+  Future<BillingCustomerAccess> restorePurchases() async => customerAccess;
 
-    expect(container.read(currentPlanTierProvider), PlanTier.team);
-  });
-
-  test('currentPlanTierProviderはentitlement未付与ならFreeプランを返す', () async {
-    final container = ProviderContainer(
-      overrides: [
-        currentUserIdProvider.overrideWithValue('firebase-user-id'),
-        entitlementRepositoryProvider.overrideWithValue(
-          const _FakeEntitlementRepository(null),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    await container.read(currentEntitlementProvider.future);
-
-    expect(container.read(currentPlanTierProvider), PlanTier.free);
-    expect(container.read(planCapabilitiesProvider), PlanCapabilities.free);
-  });
+  @override
+  Stream<BillingCustomerAccess> watchCustomerAccess() => const Stream.empty();
 }
 
 class _FakeEntitlementRepository implements EntitlementRepository {

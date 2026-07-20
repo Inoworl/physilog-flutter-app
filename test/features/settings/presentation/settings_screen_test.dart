@@ -6,10 +6,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/settings/presentation/settings_screen.dart';
 import 'package:physi_log/providers/app_providers.dart';
 
 void main() {
+  for (final (tier, label) in [
+    (PlanTier.free, 'Free'),
+    (PlanTier.personalFamily, '個人・家族'),
+    (PlanTier.team, 'Team'),
+  ]) {
+    testWidgets('設定画面は$labelプランをアカウント欄に表示する', (tester) async {
+      await tester.pumpWidget(_settingsApp(planState: _readyPlanState(tier)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('現在のプラン'), findsOneWidget);
+      expect(find.text(label), findsOneWidget);
+      expect(find.text('プランを確認・変更'), findsOneWidget);
+    });
+  }
+
+  testWidgets('設定画面はプラン取得中と取得失敗をFree表示にしない', (tester) async {
+    await tester.pumpWidget(_settingsApp(planState: const PlanAccessLoading()));
+    await tester.pumpAndSettle();
+    expect(find.text('確認中...'), findsOneWidget);
+    expect(find.text('Free'), findsNothing);
+
+    await tester.pumpWidget(_settingsApp(planState: const PlanAccessError()));
+    await tester.pumpAndSettle();
+    expect(find.text('取得できませんでした'), findsOneWidget);
+    expect(find.text('Free'), findsNothing);
+  });
+
+  testWidgets('プランを確認・変更からsettingsPlanへ遷移する', (tester) async {
+    await tester.pumpWidget(_settingsApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('プランを確認・変更'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
+  });
+
   testWidgets('設定画面は未登録メールと引き継ぎ導線を表示する', (tester) async {
     await tester.pumpWidget(_settingsApp());
     await tester.pumpAndSettle();
@@ -337,15 +376,18 @@ void main() {
   });
 }
 
-Widget _settingsApp({AuthService? authService}) {
-  return _settingsAppWithRoutes(authService: authService);
+Widget _settingsApp({AuthService? authService, PlanAccessState? planState}) {
+  return _settingsAppWithRoutes(authService: authService, planState: planState);
 }
 
 Widget _settingsAppWithHelpRoute() {
   return _settingsAppWithRoutes();
 }
 
-Widget _settingsAppWithRoutes({AuthService? authService}) {
+Widget _settingsAppWithRoutes({
+  AuthService? authService,
+  PlanAccessState? planState,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -363,6 +405,13 @@ Widget _settingsAppWithRoutes({AuthService? authService}) {
           return AccountEmailAuthScreen(
             mode: mode ?? AccountEmailAuthMode.register,
           );
+        },
+      ),
+      GoRoute(
+        path: '/settings/plan',
+        name: 'settingsPlan',
+        builder: (context, state) {
+          return const Scaffold(body: Center(child: Text('プラン画面')));
         },
       ),
       GoRoute(
@@ -386,8 +435,22 @@ Widget _settingsAppWithRoutes({AuthService? authService}) {
     overrides: [
       if (authService != null)
         authServiceProvider.overrideWithValue(authService),
+      if (planState != null)
+        planAccessStateProvider.overrideWithValue(planState),
     ],
     child: MaterialApp.router(routerConfig: router),
+  );
+}
+
+PlanAccessReady _readyPlanState(PlanTier tier) {
+  return PlanAccessReady(
+    PlanAccessStatus(
+      hasRevenueCatPersonalFamily: tier == PlanTier.personalFamily,
+      hasRevenueCatTeam: tier == PlanTier.team,
+      hasLegacyPersonalFamily: false,
+      hasLegacyTeam: false,
+      hasManualTeam: false,
+    ),
   );
 }
 

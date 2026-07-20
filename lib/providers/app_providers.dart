@@ -1,8 +1,16 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/features/auth/application/auth_service.dart';
-import 'package:physi_log/features/billing/application/revenuecat_service.dart';
+import 'package:physi_log/features/billing/application/billing_controller.dart';
+import 'package:physi_log/features/billing/application/billing_identity_sync.dart';
+import 'package:physi_log/features/billing/application/plan_access_controller.dart';
+import 'package:physi_log/features/billing/data/no_billing_repository.dart';
+import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
+import 'package:physi_log/features/billing/domain/billing_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/entitlements/data/firestore_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/data/no_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
@@ -96,47 +104,85 @@ final currentEntitlementProvider = FutureProvider<Entitlement?>((ref) async {
       .getCurrentEntitlement(userId: userId);
 });
 
-final revenueCatServiceProvider = Provider<RevenueCatService>((ref) {
-  return const RevenueCatService();
-});
-
-final hasRevenueCatPersonalFamilyProvider = FutureProvider<bool>((ref) async {
+final billingRepositoryProvider = Provider<BillingRepository>((ref) {
   if (!ref.watch(useFirestoreProvider)) {
-    return false;
+    return const NoBillingRepository();
   }
-  return ref.watch(revenueCatServiceProvider).hasPersonalFamilyEntitlement();
+  return RevenueCatBillingRepository();
 });
 
-final hasRevenueCatTeamProvider = FutureProvider<bool>((ref) async {
-  if (!ref.watch(useFirestoreProvider)) {
-    return false;
+final billingIdentitySyncServiceProvider = Provider<BillingIdentitySync>((ref) {
+  return BillingIdentitySync(repository: ref.watch(billingRepositoryProvider));
+});
+
+final billingIdentitySyncProvider = FutureProvider<void>((ref) async {
+  final useFirestore = ref.watch(useFirestoreProvider);
+  final userId = ref.watch(currentUserIdProvider);
+  if (!useFirestore || userId == null) {
+    return;
   }
-  return ref.watch(revenueCatServiceProvider).hasTeamEntitlement();
+
+  await ref.watch(billingIdentitySyncServiceProvider).synchronize(userId);
 });
 
-final planAccessStatusProvider = Provider<PlanAccessStatus>((ref) {
-  final now = DateTime.now();
-  final entitlement = ref.watch(currentEntitlementProvider);
-  final revenueCatPersonalFamily = ref.watch(
-    hasRevenueCatPersonalFamilyProvider,
-  );
-  final revenueCatTeam = ref.watch(hasRevenueCatTeamProvider);
-  final currentEntitlement = entitlement.valueOrNull;
+final planAccessStateStreamProvider = StreamProvider<PlanAccessState>((
+  ref,
+) async* {
+  final useFirestore = ref.watch(useFirestoreProvider);
+  final userId = ref.watch(currentUserIdProvider);
+  if (!useFirestore || userId == null) {
+    yield PlanAccessReady(
+      const PlanAccessPolicy().evaluate(
+        hasRevenueCatPersonalFamily: false,
+        hasRevenueCatTeam: false,
+        hasLegacyPersonalFamily: false,
+        hasLegacyTeam: false,
+        hasManualTeam: false,
+      ),
+    );
+    return;
+  }
 
-  return const PlanAccessPolicy().evaluate(
-    hasRevenueCatPersonalFamily: revenueCatPersonalFamily.valueOrNull ?? false,
-    hasRevenueCatTeam: revenueCatTeam.valueOrNull ?? false,
-    hasLegacyPersonalFamily:
-        currentEntitlement?.hasLegacyPersonalFamilyAccessAt(now) ?? false,
-    hasLegacyTeam: currentEntitlement?.hasLegacyTeamAccessAt(now) ?? false,
-    hasManualTeam: currentEntitlement?.hasManualTeamAccessAt(now) ?? false,
-  );
+  try {
+    await ref.watch(billingIdentitySyncProvider.future);
+    final entitlement = await ref.watch(currentEntitlementProvider.future);
+    final now = DateTime.now();
+    final controller = PlanAccessController(
+      repository: ref.watch(billingRepositoryProvider),
+    );
+
+    yield* controller.watchAccess(
+      hasLegacyPersonalFamily:
+          entitlement?.hasLegacyPersonalFamilyAccessAt(now) ?? false,
+      hasLegacyTeam: entitlement?.hasLegacyTeamAccessAt(now) ?? false,
+      hasManualTeam: entitlement?.hasManualTeamAccessAt(now) ?? false,
+    );
+  } on Object {
+    yield const PlanAccessError();
+  }
 });
 
-final currentPlanTierProvider = Provider<PlanTier>((ref) {
-  return ref.watch(planAccessStatusProvider).tier;
+final planAccessStateProvider = Provider<PlanAccessState>((ref) {
+  final asyncState = ref.watch(planAccessStateStreamProvider);
+  return switch (asyncState) {
+    AsyncData(:final value) => value,
+    AsyncError() => const PlanAccessError(),
+    _ => const PlanAccessLoading(),
+  };
 });
 
-final planCapabilitiesProvider = Provider<PlanCapabilities>((ref) {
-  return ref.watch(planAccessStatusProvider).capabilities;
-});
+final billingControllerProvider =
+    StateNotifierProvider.autoDispose<BillingController, BillingState>((ref) {
+      final controller = BillingController(
+        repository: ref.watch(billingRepositoryProvider),
+        onCustomerAccessChanged: (_) {
+          ref.invalidate(planAccessStateStreamProvider);
+        },
+      );
+      unawaited(
+        controller.initialize(
+          identitySync: ref.watch(billingIdentitySyncProvider.future),
+        ),
+      );
+      return controller;
+    });

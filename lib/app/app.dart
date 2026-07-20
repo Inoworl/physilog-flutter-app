@@ -11,6 +11,7 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(billingIdentitySyncProvider);
     final mode = ref.watch(dataStoreModeProvider).name;
     final userId = ref.watch(currentUserIdProvider) ?? 'null';
 
