@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/billing/application/billing_controller.dart';
@@ -17,6 +18,7 @@ class PlanScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final billingState = ref.watch(billingControllerProvider);
+    final authState = ref.watch(authStateProvider);
     final planState = ref.watch(planAccessStateProvider);
     final billingEnabled = ref.watch(useFirestoreProvider);
     final controller = ref.read(billingControllerProvider.notifier);
@@ -24,6 +26,31 @@ class PlanScreen extends ConsumerWidget {
 
     void retryCatalog() {
       ref.invalidate(billingIdentitySyncProvider);
+    }
+
+    Future<void> purchase(String packageId) async {
+      final user = authState.valueOrNull;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('アカウント情報を確認できませんでした。再度お試しください。')),
+        );
+        return;
+      }
+
+      final email = user.email?.trim();
+      final needsEmailRegistration =
+          user.isAnonymous || email == null || email.isEmpty;
+      if (needsEmailRegistration) {
+        final registered = await context.pushNamed<bool>(
+          'settingsAccountAuth',
+          pathParameters: {'mode': 'register'},
+        );
+        if (registered != true || !context.mounted) {
+          return;
+        }
+      }
+
+      await controller.purchase(packageId);
     }
 
     return Scaffold(
@@ -79,7 +106,7 @@ class PlanScreen extends ConsumerWidget {
                   ),
                 BillingCatalogStatus.loaded => _ProductList(
                   state: billingState,
-                  onPurchase: controller.purchase,
+                  onPurchase: purchase,
                 ),
               },
             ),

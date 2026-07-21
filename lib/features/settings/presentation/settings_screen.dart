@@ -653,7 +653,11 @@ class _EmailAuthFormState extends ConsumerState<_EmailAuthForm> {
       _currentPasswordController.clear();
 
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (_isRegisterMode) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.of(context).pop();
+      }
       messenger.showSnackBar(SnackBar(content: Text(_successMessage)));
     } catch (error) {
       if (!mounted) return;

@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/router.dart';
 import 'package:physi_log/features/billing/domain/billing_catalog_failure.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
@@ -102,6 +104,97 @@ void main() {
       _personalMonthly.packageId,
       _teamYearly.packageId,
     ]);
+  });
+
+  testWidgets('匿名ユーザーはメール登録完了前に購入できずキャンセルすると元画面へ戻る', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+    );
+
+    await tester.pumpWidget(
+      _planRouterApp(
+        repository: repository,
+        user: _FakeUser(uid: 'anonymous-uid', email: null, isAnonymous: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '個人・家族を購入'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('購入前メール登録'), findsOneWidget);
+    expect(repository.purchasePackageIds, isEmpty);
+
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('購入前メール登録'), findsNothing);
+    expect(find.text('プラン'), findsOneWidget);
+    expect(repository.purchasePackageIds, isEmpty);
+  });
+
+  testWidgets('匿名ユーザーはメール登録成功後に選択した商品の購入を再開する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+    );
+
+    await tester.pumpWidget(
+      _planRouterApp(
+        repository: repository,
+        user: _FakeUser(uid: 'anonymous-uid', email: null, isAnonymous: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '個人・家族を購入'));
+    await tester.pumpAndSettle();
+    expect(repository.purchasePackageIds, isEmpty);
+
+    await tester.tap(find.text('登録完了'));
+    await tester.pumpAndSettle();
+
+    expect(repository.purchasePackageIds, [_personalMonthly.packageId]);
+  });
+
+  testWidgets('メール登録済みユーザーは追加登録なしで直接購入できる', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+    );
+
+    await tester.pumpWidget(
+      _planRouterApp(
+        repository: repository,
+        user: _FakeUser(
+          uid: 'registered-uid',
+          email: 'coach@example.com',
+          isAnonymous: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '個人・家族を購入'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('購入前メール登録'), findsNothing);
+    expect(repository.purchasePackageIds, [_personalMonthly.packageId]);
+  });
+
+  testWidgets('認証ユーザーを確認できない場合は購入せず再試行を案内する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+    );
+
+    await tester.pumpWidget(
+      _planApp(repository: repository, authStream: Stream.value(null)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '個人・家族を購入'));
+    await tester.pumpAndSettle();
+
+    expect(repository.purchasePackageIds, isEmpty);
+    expect(find.text('アカウント情報を確認できませんでした。再度お試しください。'), findsOneWidget);
   });
 
   testWidgets('選択した支払い周期の商品がないプランは購入できない', (tester) async {
@@ -332,9 +425,23 @@ Widget _planApp({
   required FakeBillingRepository repository,
   PlanAccessState? planState,
   bool billingEnabled = true,
+  User? user,
+  Stream<User?>? authStream,
 }) {
   return ProviderScope(
     overrides: [
+      authStateProvider.overrideWith(
+        (ref) =>
+            authStream ??
+            Stream.value(
+              user ??
+                  _FakeUser(
+                    uid: 'registered-uid',
+                    email: 'coach@example.com',
+                    isAnonymous: false,
+                  ),
+            ),
+      ),
       useFirestoreProvider.overrideWithValue(billingEnabled),
       billingRepositoryProvider.overrideWithValue(repository),
       planAccessStateProvider.overrideWithValue(
@@ -345,9 +452,63 @@ Widget _planApp({
   );
 }
 
+Widget _planRouterApp({
+  required FakeBillingRepository repository,
+  required User user,
+}) {
+  final router = GoRouter(
+    initialLocation: '/settings/plan',
+    routes: [
+      GoRoute(
+        path: '/settings/plan',
+        name: 'settingsPlan',
+        builder: (context, state) => const PlanScreen(),
+      ),
+      GoRoute(
+        path: '/settings/account/:mode',
+        name: 'settingsAccountAuth',
+        builder: (context, state) => Scaffold(
+          appBar: AppBar(title: const Text('購入前メール登録')),
+          body: Column(
+            children: [
+              FilledButton(
+                onPressed: () => context.pop(true),
+                child: const Text('登録完了'),
+              ),
+              TextButton(
+                onPressed: () => context.pop(false),
+                child: const Text('キャンセル'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+
+  return ProviderScope(
+    overrides: [
+      authStateProvider.overrideWith((ref) => Stream.value(user)),
+      useFirestoreProvider.overrideWithValue(true),
+      billingRepositoryProvider.overrideWithValue(repository),
+      planAccessStateProvider.overrideWithValue(_readyPlanState(PlanTier.free)),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
 Widget _planAppWithLivePlan(FakeBillingRepository repository) {
   return ProviderScope(
     overrides: [
+      authStateProvider.overrideWith(
+        (ref) => Stream.value(
+          _FakeUser(
+            uid: 'test-user',
+            email: 'coach@example.com',
+            isAnonymous: false,
+          ),
+        ),
+      ),
       dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
       currentUserIdProvider.overrideWithValue('test-user'),
       billingRepositoryProvider.overrideWithValue(repository),
@@ -415,3 +576,20 @@ const _teamYearly = BillingProduct(
   title: 'Team 年額',
   priceText: '¥9,800',
 );
+
+class _FakeUser extends Fake implements User {
+  _FakeUser({
+    required this.uid,
+    required this.email,
+    required this.isAnonymous,
+  });
+
+  @override
+  final String uid;
+
+  @override
+  final String? email;
+
+  @override
+  final bool isAnonymous;
+}
