@@ -253,6 +253,41 @@ void main() {
     expect(find.text('引き継ぎ設定を保存しました'), findsOneWidget);
   });
 
+  testWidgets('メール登録画面は匿名アカウントへのリンク成功を呼び出し元へ返す', (tester) async {
+    final authService = _FakeAuthService(
+      user: _FakeUser(uid: 'anonymous-uid', email: null, isAnonymous: true),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authServiceProvider.overrideWithValue(authService)],
+        child: const MaterialApp(home: _AccountAuthResultHost()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('登録画面を開く'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'メールアドレス'),
+      'coach@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'パスワード'),
+      'password123',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'パスワード再入力'),
+      'password123',
+    );
+    await tester.ensureVisible(find.text('設定する'));
+    await tester.tap(find.text('設定する'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('result=true'), findsOneWidget);
+    expect(authService.linkedUserIdBeforeLink, 'anonymous-uid');
+  });
+
   testWidgets('パスワード表示トグルは登録フォームの入力表示を切り替える', (tester) async {
     await tester.pumpWidget(_settingsApp());
     await tester.pumpAndSettle();
@@ -604,4 +639,40 @@ class _FakeUser extends Fake implements User {
 
   @override
   final bool isAnonymous;
+}
+
+class _AccountAuthResultHost extends StatefulWidget {
+  const _AccountAuthResultHost();
+
+  @override
+  State<_AccountAuthResultHost> createState() => _AccountAuthResultHostState();
+}
+
+class _AccountAuthResultHostState extends State<_AccountAuthResultHost> {
+  bool? _result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          FilledButton(
+            onPressed: () async {
+              final result = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (context) => const AccountEmailAuthScreen(
+                    mode: AccountEmailAuthMode.register,
+                  ),
+                ),
+              );
+              if (!mounted) return;
+              setState(() => _result = result);
+            },
+            child: const Text('登録画面を開く'),
+          ),
+          Text('result=$_result'),
+        ],
+      ),
+    );
+  }
 }
