@@ -272,6 +272,11 @@ void main() {
           name: 'measurementSessionSetup',
           builder: (context, state) => const Scaffold(body: Text('計測会設定画面')),
         ),
+        GoRoute(
+          path: '/settings/plan',
+          name: 'settingsPlan',
+          builder: (context, state) => const Scaffold(body: Text('プラン画面')),
+        ),
       ],
     );
 
@@ -300,8 +305,59 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('Teamプラン限定機能です'), findsOneWidget);
     expect(find.text('計測会はTeamプランで利用できます。'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'キャンセル'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'プランを見る'), findsOneWidget);
     expect(find.text('計測会設定画面'), findsNothing);
+
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+    expect(find.text('プラン画面'), findsNothing);
+
+    await tester.tap(find.text('計測会を開始（チームでまとめて計測）'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('プランを見る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
+  });
+
+  testWidgets('Homeの計測会開始ボタンは個人・家族プランでもプラン画面へ進める', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+        GoRoute(
+          path: '/settings/plan',
+          name: 'settingsPlan',
+          builder: (context, state) => const Scaffold(body: Text('プラン画面')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserIdProvider.overrideWithValue('test-user'),
+          planAccessStateProvider.overrideWithValue(
+            _readyPlanState(PlanTier.personalFamily),
+          ),
+          athleteRepositoryProvider.overrideWithValue(
+            _FakeAthleteRepository(const []),
+          ),
+          eventRepositoryProvider.overrideWithValue(_FakeEventRepository()),
+          recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('計測会を開始（チームでまとめて計測）'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('プランを見る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
   });
 
   testWidgets('Homeの計測会開始ボタンはTeamプランなら計測会設定へ遷移する', (tester) async {

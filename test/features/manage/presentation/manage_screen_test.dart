@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
@@ -133,7 +134,33 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
     expect(find.text('現在のプランでは選手は1人まで登録できます。'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'キャンセル'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'プランを見る'), findsOneWidget);
+    expect(find.text('選手を追加'), findsNothing);
+
+    await tester.tap(find.text('プランを見る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
+  });
+
+  testWidgets('上限ダイアログをキャンセルすると管理画面に留まる', (tester) async {
+    await tester.pumpWidget(
+      _buildManageScreen(
+        capabilities: PlanCapabilities.free,
+        athletes: [_athlete('athlete-1', '太郎')],
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, '追加').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('キャンセル'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ManageScreen), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('プラン画面'), findsNothing);
     expect(find.text('選手を追加'), findsNothing);
   });
 
@@ -152,8 +179,14 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
     expect(find.text('現在のプランでは選手は5人まで登録できます。'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'キャンセル'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'プランを見る'), findsOneWidget);
     expect(find.text('選手を追加'), findsNothing);
+
+    await tester.tap(find.text('プランを見る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
   });
 
   testWidgets('Freeプランで種目上限に達している場合は種目追加フォームを開かない', (tester) async {
@@ -175,8 +208,14 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('現在のプラン上限に達しています'), findsOneWidget);
     expect(find.text('現在のプランでは種目は3つまで登録できます。'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'OK'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'キャンセル'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'プランを見る'), findsOneWidget);
     expect(find.text('種目を追加'), findsNothing);
+
+    await tester.tap(find.text('プランを見る'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン画面'), findsOneWidget);
   });
 
   testWidgets('個人・家族プランでは種目数が3つ以上でも種目追加フォームを開ける', (tester) async {
@@ -315,6 +354,18 @@ Widget _buildManageScreen({
   List<Athlete> athletes = const [],
   List<Event> events = const [],
 }) {
+  final router = GoRouter(
+    routes: [
+      GoRoute(path: '/', builder: (context, state) => const ManageScreen()),
+      GoRoute(
+        path: '/settings/plan',
+        name: 'settingsPlan',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('プラン画面'))),
+      ),
+    ],
+  );
+
   return ProviderScope(
     overrides: [
       currentUserIdProvider.overrideWithValue('test-user'),
@@ -327,7 +378,7 @@ Widget _buildManageScreen({
       eventRepositoryProvider.overrideWithValue(_FakeEventRepository(events)),
       recordRepositoryProvider.overrideWithValue(_FakeRecordRepository()),
     ],
-    child: const MaterialApp(home: ManageScreen()),
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
