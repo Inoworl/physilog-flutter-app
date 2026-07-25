@@ -325,10 +325,7 @@ void main() {
         request.previousProductId,
         RevenueCatCatalog.personalFamilyMonthlyProductId,
       );
-      expect(
-        request.replacementMode,
-        BillingReplacementMode.withTimeProration,
-      );
+      expect(request.replacementMode, BillingReplacementMode.withTimeProration);
     });
 
     test('iOSの変更購入はStoreKitへ委ねAndroid固有情報を渡さない', () async {

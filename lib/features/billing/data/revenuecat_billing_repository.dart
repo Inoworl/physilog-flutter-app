@@ -345,8 +345,8 @@ class PurchasesRevenueCatGateway implements RevenueCatGateway {
 
   BillingStore _toBillingStore(purchases.Store store) {
     return switch (store) {
-      purchases.Store.appStore || purchases.Store.macAppStore =>
-        BillingStore.appStore,
+      purchases.Store.appStore ||
+      purchases.Store.macAppStore => BillingStore.appStore,
       purchases.Store.playStore => BillingStore.playStore,
       purchases.Store.testStore => BillingStore.testStore,
       _ => BillingStore.other,

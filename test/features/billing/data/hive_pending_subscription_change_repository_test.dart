@@ -18,7 +18,9 @@ void main() {
 
   tearDown(() async {
     if (Hive.isBoxOpen(HivePendingSubscriptionChangeRepository.boxName)) {
-      final box = Hive.box<Map>(HivePendingSubscriptionChangeRepository.boxName);
+      final box = Hive.box<Map>(
+        HivePendingSubscriptionChangeRepository.boxName,
+      );
       await box.clear();
       await box.close();
     }

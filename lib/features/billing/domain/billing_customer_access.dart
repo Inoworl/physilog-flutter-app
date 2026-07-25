@@ -63,10 +63,7 @@ class BillingCustomerAccess {
     return other is BillingCustomerAccess &&
         other.activeEntitlementIds.length == activeEntitlementIds.length &&
         other.activeEntitlementIds.containsAll(activeEntitlementIds) &&
-        _subscriptionsEqual(
-          other.activeSubscriptions,
-          activeSubscriptions,
-        ) &&
+        _subscriptionsEqual(other.activeSubscriptions, activeSubscriptions) &&
         other.managementUrl == managementUrl;
   }
 
