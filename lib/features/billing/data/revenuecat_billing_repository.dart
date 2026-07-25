@@ -7,9 +7,10 @@ import 'package:purchases_flutter/purchases_flutter.dart' as purchases;
 import '../domain/billing_catalog_failure.dart';
 import '../domain/billing_customer_access.dart';
 import '../domain/billing_product.dart';
+import '../domain/billing_purchase_request.dart';
 import '../domain/billing_purchase_result.dart';
 import '../domain/billing_repository.dart';
-import '../domain/plan_access_policy.dart';
+import '../domain/billing_subscription.dart';
 import '../domain/revenuecat_catalog.dart';
 import '../domain/revenuecat_environment.dart';
 
@@ -28,9 +29,49 @@ class RevenueCatPackageSnapshot {
 }
 
 class RevenueCatCustomerSnapshot {
-  const RevenueCatCustomerSnapshot({required this.activeEntitlementIds});
+  const RevenueCatCustomerSnapshot({
+    required this.activeEntitlementIds,
+    this.activeSubscriptions = const [],
+    this.managementUrl,
+  });
 
   final Set<String> activeEntitlementIds;
+  final List<RevenueCatEntitlementSnapshot> activeSubscriptions;
+  final String? managementUrl;
+}
+
+class RevenueCatEntitlementSnapshot {
+  const RevenueCatEntitlementSnapshot({
+    required this.entitlementId,
+    required this.productId,
+    required this.store,
+    required this.isActive,
+    required this.willRenew,
+    this.expiresAt,
+    this.unsubscribeDetectedAt,
+    this.billingIssueDetectedAt,
+  });
+
+  final String entitlementId;
+  final String productId;
+  final BillingStore store;
+  final bool isActive;
+  final bool willRenew;
+  final DateTime? expiresAt;
+  final DateTime? unsubscribeDetectedAt;
+  final DateTime? billingIssueDetectedAt;
+}
+
+class RevenueCatPurchaseRequest {
+  const RevenueCatPurchaseRequest({
+    required this.packageId,
+    this.previousProductId,
+    this.replacementMode,
+  });
+
+  final String packageId;
+  final String? previousProductId;
+  final BillingReplacementMode? replacementMode;
 }
 
 enum RevenueCatGatewayFailure { cancelled, failed }
@@ -91,7 +132,9 @@ abstract interface class RevenueCatGateway {
 
   Future<List<RevenueCatPackageSnapshot>> fetchPackages(String offeringId);
 
-  Future<RevenueCatCustomerSnapshot> purchase(String packageId);
+  Future<RevenueCatCustomerSnapshot> purchase(
+    RevenueCatPurchaseRequest request,
+  );
 
   Future<RevenueCatCustomerSnapshot> restorePurchases();
 
@@ -219,15 +262,29 @@ class PurchasesRevenueCatGateway implements RevenueCatGateway {
   }
 
   @override
-  Future<RevenueCatCustomerSnapshot> purchase(String packageId) async {
-    final package = _packagesById[packageId];
+  Future<RevenueCatCustomerSnapshot> purchase(
+    RevenueCatPurchaseRequest request,
+  ) async {
+    final package = _packagesById[request.packageId];
     if (package == null) {
       throw const RevenueCatGatewayException.failed();
     }
 
     try {
+      final previousProductId = request.previousProductId;
+      final productChangeInfo = previousProductId == null
+          ? null
+          : purchases.StoreProductChangeInfo(
+              previousProductId,
+              replacementMode: revenueCatStoreReplacementModeFor(
+                request.replacementMode,
+              ),
+            );
       final result = await purchases.Purchases.purchase(
-        purchases.PurchaseParams.package(package),
+        purchases.PurchaseParams.package(
+          package,
+          productChangeInfo: productChangeInfo,
+        ),
       );
       return _toCustomerSnapshot(result.customerInfo);
     } on PlatformException catch (error) {
@@ -264,8 +321,52 @@ class PurchasesRevenueCatGateway implements RevenueCatGateway {
   ) {
     return RevenueCatCustomerSnapshot(
       activeEntitlementIds: customerInfo.entitlements.active.keys.toSet(),
+      activeSubscriptions: customerInfo.entitlements.active.values
+          .map(_toEntitlementSnapshot)
+          .toList(growable: false),
+      managementUrl: customerInfo.managementURL,
     );
   }
+
+  RevenueCatEntitlementSnapshot _toEntitlementSnapshot(
+    purchases.EntitlementInfo entitlement,
+  ) {
+    return RevenueCatEntitlementSnapshot(
+      entitlementId: entitlement.identifier,
+      productId: entitlement.productIdentifier,
+      store: _toBillingStore(entitlement.store),
+      isActive: entitlement.isActive,
+      willRenew: entitlement.willRenew,
+      expiresAt: _parseDate(entitlement.expirationDate),
+      unsubscribeDetectedAt: _parseDate(entitlement.unsubscribeDetectedAt),
+      billingIssueDetectedAt: _parseDate(entitlement.billingIssueDetectedAt),
+    );
+  }
+
+  BillingStore _toBillingStore(purchases.Store store) {
+    return switch (store) {
+      purchases.Store.appStore || purchases.Store.macAppStore =>
+        BillingStore.appStore,
+      purchases.Store.playStore => BillingStore.playStore,
+      purchases.Store.testStore => BillingStore.testStore,
+      _ => BillingStore.other,
+    };
+  }
+
+  DateTime? _parseDate(String? value) {
+    return value == null ? null : DateTime.tryParse(value);
+  }
+}
+
+purchases.StoreReplacementMode? revenueCatStoreReplacementModeFor(
+  BillingReplacementMode? mode,
+) {
+  return switch (mode) {
+    BillingReplacementMode.withTimeProration =>
+      purchases.StoreReplacementMode.withTimeProration,
+    BillingReplacementMode.deferred => purchases.StoreReplacementMode.deferred,
+    null => null,
+  };
 }
 
 class RevenueCatBillingRepository implements BillingRepository {
@@ -330,9 +431,17 @@ class RevenueCatBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     try {
-      final snapshot = await _gateway.purchase(packageId);
+      final platform = _platform ?? _currentPlatform();
+      final isAndroid = platform == RevenueCatPlatform.android;
+      final snapshot = await _gateway.purchase(
+        RevenueCatPurchaseRequest(
+          packageId: request.packageId,
+          previousProductId: isAndroid ? request.previousProductId : null,
+          replacementMode: isAndroid ? request.replacementMode : null,
+        ),
+      );
       return BillingPurchaseResult.purchased(_toCustomerAccess(snapshot));
     } on RevenueCatGatewayException catch (error) {
       return switch (error.failure) {
@@ -357,29 +466,29 @@ class RevenueCatBillingRepository implements BillingRepository {
   BillingCustomerAccess _toCustomerAccess(RevenueCatCustomerSnapshot snapshot) {
     return BillingCustomerAccess(
       activeEntitlementIds: snapshot.activeEntitlementIds,
+      activeSubscriptions: snapshot.activeSubscriptions
+          .map(
+            (subscription) => BillingSubscription.fromProduct(
+              entitlementId: subscription.entitlementId,
+              productId: subscription.productId,
+              store: subscription.store,
+              isActive: subscription.isActive,
+              willRenew: subscription.willRenew,
+              expiresAt: subscription.expiresAt,
+              unsubscribeDetectedAt: subscription.unsubscribeDetectedAt,
+              billingIssueDetectedAt: subscription.billingIssueDetectedAt,
+            ),
+          )
+          .whereType<BillingSubscription>()
+          .toList(growable: false),
+      managementUrl: snapshot.managementUrl,
     );
   }
 
   BillingProduct? _toBillingProduct(RevenueCatPackageSnapshot package) {
-    final productConfiguration = switch (package.productId) {
-      RevenueCatCatalog.personalFamilyMonthlyProductId => (
-        tier: PlanTier.personalFamily,
-        period: BillingPeriod.monthly,
-      ),
-      RevenueCatCatalog.personalFamilyYearlyProductId => (
-        tier: PlanTier.personalFamily,
-        period: BillingPeriod.yearly,
-      ),
-      RevenueCatCatalog.teamMonthlyProductId => (
-        tier: PlanTier.team,
-        period: BillingPeriod.monthly,
-      ),
-      RevenueCatCatalog.teamYearlyProductId => (
-        tier: PlanTier.team,
-        period: BillingPeriod.yearly,
-      ),
-      _ => null,
-    };
+    final productConfiguration = billingConfigurationForProduct(
+      package.productId,
+    );
     if (productConfiguration == null) {
       return null;
     }

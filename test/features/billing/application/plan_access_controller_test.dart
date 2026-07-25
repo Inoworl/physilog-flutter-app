@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/billing/application/plan_access_controller.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
 import 'package:physi_log/features/billing/domain/billing_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
@@ -108,7 +109,7 @@ class _FakeBillingRepository implements BillingRepository {
   Future<void> identify(String appUserId) async {}
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     return const BillingPurchaseResult.cancelled();
   }
 

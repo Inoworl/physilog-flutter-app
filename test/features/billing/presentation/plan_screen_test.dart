@@ -9,11 +9,15 @@ import 'package:physi_log/app/router.dart';
 import 'package:physi_log/features/billing/domain/billing_catalog_failure.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
+import 'package:physi_log/features/billing/domain/billing_subscription.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/billing/domain/revenuecat_catalog.dart';
 import 'package:physi_log/features/billing/presentation/plan_screen.dart';
+import 'package:physi_log/features/billing/presentation/subscription_management_launcher.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
 import 'package:physi_log/models/entitlement.dart';
 import 'package:physi_log/providers/app_providers.dart';
@@ -288,6 +292,9 @@ void main() {
         overrides: [
           useFirestoreProvider.overrideWithValue(true),
           billingRepositoryProvider.overrideWithValue(repository),
+          pendingSubscriptionChangeRepositoryProvider.overrideWithValue(
+            FakePendingSubscriptionChangeRepository(),
+          ),
           planAccessStateProvider.overrideWithValue(
             _readyPlanState(PlanTier.free),
           ),
@@ -419,6 +426,244 @@ void main() {
     expect(find.text('個人・家族'), findsNWidgets(2));
     expect(find.text('Free'), findsNothing);
   });
+
+  testWidgets('現在の商品詳細を表示して再購入を無効にする', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [
+        _personalMonthly,
+        _personalYearly,
+        _teamMonthly,
+        _teamYearly,
+      ],
+      currentAccess: _personalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('個人・家族・月額'), findsOneWidget);
+    expect(
+      find.text('商品ID: ${RevenueCatCatalog.personalFamilyMonthlyProductId}'),
+      findsOneWidget,
+    );
+    expect(find.text('Test Store'), findsOneWidget);
+    expect(find.text('有効期限: 2026年8月1日'), findsOneWidget);
+
+    final currentButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, '利用中'),
+    );
+    expect(currentButton.onPressed, isNull);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(FilledButton, 'Teamへアップグレード'), findsOneWidget);
+  });
+
+  testWidgets('解約検知後も期限内は利用中として終了予定と請求問題を表示する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+      currentAccess: _cancelledPersonalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(FilledButton, '利用中'), findsOneWidget);
+    expect(find.text('更新: 有効期限で終了予定'), findsOneWidget);
+    expect(find.text('支払い情報を確認してください'), findsOneWidget);
+    expect(find.text('有効期限: 2026年8月1日'), findsOneWidget);
+  });
+
+  testWidgets('個人・家族からTeamへの即時アップグレードを確認して実行する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly, _teamMonthly],
+      currentAccess: _personalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Teamへアップグレード'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Teamへアップグレード'), findsNWidgets(2));
+    expect(
+      find.text('変更はすぐに反映されます。ストアの確認画面で差額と請求タイミングを確認してください。'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '変更する'));
+    await tester.pumpAndSettle();
+
+    final request = repository.purchaseRequests.single;
+    expect(request.changeType, SubscriptionChangeType.upgrade);
+    expect(
+      request.previousProductId,
+      RevenueCatCatalog.personalFamilyMonthlyProductId,
+    );
+    expect(request.replacementMode, BillingReplacementMode.withTimeProration);
+  });
+
+  testWidgets('Teamから個人・家族への変更を次回更新として案内する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly, _teamMonthly],
+      currentAccess: _teamMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.team),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '個人・家族へ変更'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('個人・家族へ変更'), findsNWidgets(2));
+    expect(find.text('変更は次回更新時に反映されます。それまでは現在のプランを利用できます。'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '変更する'));
+    await tester.pumpAndSettle();
+
+    final request = repository.purchaseRequests.single;
+    expect(request.changeType, SubscriptionChangeType.downgrade);
+    expect(request.replacementMode, BillingReplacementMode.deferred);
+  });
+
+  testWidgets('同一Tierの月額から年額への変更を次回更新として案内する', (tester) async {
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly, _personalYearly],
+      currentAccess: _personalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('年額'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '年額へ変更'));
+    await tester.pumpAndSettle();
+    expect(find.text('変更は次回更新時に反映されます。それまでは現在のプランを利用できます。'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '変更する'));
+    await tester.pumpAndSettle();
+
+    final request = repository.purchaseRequests.single;
+    expect(request.changeType, SubscriptionChangeType.periodChange);
+    expect(request.replacementMode, BillingReplacementMode.deferred);
+  });
+
+  testWidgets('保存済みの変更予約を再起動後も表示する', (tester) async {
+    final pendingRepository = FakePendingSubscriptionChangeRepository()
+      ..changes['registered-uid'] = PendingSubscriptionChange(
+        previousProductId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+        targetProductId: RevenueCatCatalog.teamYearlyProductId,
+        createdAt: DateTime.utc(2026, 7, 22),
+      );
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly, _teamYearly],
+      currentAccess: _personalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        pendingChangeRepository: pendingRepository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('変更予約中'), findsOneWidget);
+    expect(find.text('次回: Team・年額'), findsOneWidget);
+    expect(find.text('反映状況は契約管理画面で確認してください。'), findsOneWidget);
+  });
+
+  testWidgets('契約管理ボタンからStoreの管理URLを外部で開く', (tester) async {
+    final launcher = _FakeSubscriptionManagementLauncher();
+    final repository = FakeBillingRepository(
+      products: const [_personalMonthly],
+      currentAccess: _personalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        managementLauncher: launcher,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, '契約を管理'));
+    await tester.pumpAndSettle();
+
+    expect(launcher.openedUris, [Uri.parse('https://store.example/manage')]);
+  });
+
+  testWidgets('契約管理URLがない場合はStoreのアカウント設定を案内する', (tester) async {
+    final missingUrlRepository = FakeBillingRepository(
+      products: const [_personalMonthly],
+      currentAccess: _personalMonthlyAccessWithoutManagementUrl,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: missingUrlRepository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, '契約を管理'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('契約管理画面を開けません。購入したストアのアカウント設定から確認してください。'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('契約管理画面の起動に失敗した場合は再試行を案内する', (tester) async {
+    final launcher = _FakeSubscriptionManagementLauncher()..shouldOpen = false;
+    await tester.pumpWidget(
+      _planApp(
+        repository: FakeBillingRepository(
+          products: const [_personalMonthly],
+          currentAccess: _personalMonthlyAccess,
+        ),
+        managementLauncher: launcher,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, '契約を管理'));
+    await tester.pumpAndSettle();
+    expect(find.text('契約管理画面を開けませんでした。時間をおいて再度お試しください。'), findsOneWidget);
+  });
 }
 
 Widget _planApp({
@@ -427,6 +672,8 @@ Widget _planApp({
   bool billingEnabled = true,
   User? user,
   Stream<User?>? authStream,
+  PendingSubscriptionChangeRepository? pendingChangeRepository,
+  SubscriptionManagementLauncher? managementLauncher,
 }) {
   return ProviderScope(
     overrides: [
@@ -444,6 +691,13 @@ Widget _planApp({
       ),
       useFirestoreProvider.overrideWithValue(billingEnabled),
       billingRepositoryProvider.overrideWithValue(repository),
+      currentUserIdProvider.overrideWithValue('registered-uid'),
+      pendingSubscriptionChangeRepositoryProvider.overrideWithValue(
+        pendingChangeRepository ?? FakePendingSubscriptionChangeRepository(),
+      ),
+      subscriptionManagementLauncherProvider.overrideWithValue(
+        managementLauncher ?? _FakeSubscriptionManagementLauncher(),
+      ),
       planAccessStateProvider.overrideWithValue(
         planState ?? _readyPlanState(PlanTier.free),
       ),
@@ -491,6 +745,13 @@ Widget _planRouterApp({
       authStateProvider.overrideWith((ref) => Stream.value(user)),
       useFirestoreProvider.overrideWithValue(true),
       billingRepositoryProvider.overrideWithValue(repository),
+      currentUserIdProvider.overrideWithValue(user.uid),
+      pendingSubscriptionChangeRepositoryProvider.overrideWithValue(
+        FakePendingSubscriptionChangeRepository(),
+      ),
+      subscriptionManagementLauncherProvider.overrideWithValue(
+        _FakeSubscriptionManagementLauncher(),
+      ),
       planAccessStateProvider.overrideWithValue(_readyPlanState(PlanTier.free)),
     ],
     child: MaterialApp.router(routerConfig: router),
@@ -512,6 +773,12 @@ Widget _planAppWithLivePlan(FakeBillingRepository repository) {
       dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
       currentUserIdProvider.overrideWithValue('test-user'),
       billingRepositoryProvider.overrideWithValue(repository),
+      pendingSubscriptionChangeRepositoryProvider.overrideWithValue(
+        FakePendingSubscriptionChangeRepository(),
+      ),
+      subscriptionManagementLauncherProvider.overrideWithValue(
+        _FakeSubscriptionManagementLauncher(),
+      ),
       entitlementRepositoryProvider.overrideWithValue(
         const _NoEntitlementRepository(),
       ),
@@ -593,3 +860,72 @@ class _FakeUser extends Fake implements User {
   @override
   final bool isAnonymous;
 }
+
+class _FakeSubscriptionManagementLauncher
+    implements SubscriptionManagementLauncher {
+  bool shouldOpen = true;
+  final openedUris = <Uri>[];
+
+  @override
+  Future<bool> open(Uri uri) async {
+    openedUris.add(uri);
+    return shouldOpen;
+  }
+}
+
+final _personalMonthlyAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
+  activeSubscriptions: [
+    BillingSubscription(
+      entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+      productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+      tier: PlanTier.personalFamily,
+      period: BillingPeriod.monthly,
+      store: BillingStore.testStore,
+      isActive: true,
+      willRenew: true,
+      expiresAt: DateTime.utc(2026, 8, 1),
+    ),
+  ],
+  managementUrl: 'https://store.example/manage',
+);
+
+final _personalMonthlyAccessWithoutManagementUrl = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
+  activeSubscriptions: _personalMonthlyAccess.activeSubscriptions,
+);
+
+final _cancelledPersonalMonthlyAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
+  activeSubscriptions: [
+    BillingSubscription(
+      entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+      productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+      tier: PlanTier.personalFamily,
+      period: BillingPeriod.monthly,
+      store: BillingStore.testStore,
+      isActive: true,
+      willRenew: false,
+      expiresAt: DateTime.utc(2026, 8, 1),
+      unsubscribeDetectedAt: DateTime.utc(2026, 7, 24),
+      billingIssueDetectedAt: DateTime.utc(2026, 7, 24),
+    ),
+  ],
+  managementUrl: 'https://store.example/manage',
+);
+
+final _teamMonthlyAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.teamEntitlementId},
+  activeSubscriptions: const [
+    BillingSubscription(
+      entitlementId: RevenueCatCatalog.teamEntitlementId,
+      productId: RevenueCatCatalog.teamMonthlyProductId,
+      tier: PlanTier.team,
+      period: BillingPeriod.monthly,
+      store: BillingStore.testStore,
+      isActive: true,
+      willRenew: true,
+    ),
+  ],
+  managementUrl: 'https://store.example/manage',
+);

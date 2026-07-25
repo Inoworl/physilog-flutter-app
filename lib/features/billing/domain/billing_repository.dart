@@ -1,5 +1,6 @@
 import 'billing_customer_access.dart';
 import 'billing_product.dart';
+import 'billing_purchase_request.dart';
 import 'billing_purchase_result.dart';
 
 abstract interface class BillingRepository {
@@ -9,7 +10,7 @@ abstract interface class BillingRepository {
 
   Future<List<BillingProduct>> fetchProducts();
 
-  Future<BillingPurchaseResult> purchase(String packageId);
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request);
 
   Future<BillingCustomerAccess> restorePurchases();
 
