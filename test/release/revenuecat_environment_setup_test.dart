@@ -69,6 +69,8 @@ void main() {
       expect(runbook, contains('prod用Service AccountはPhysiLogだけ'));
       expect(runbook, contains('dev用Service AccountからPhysiLogのアプリ権限を削除'));
       expect(runbook, contains('売上閲覧と注文管理はアカウント全体'));
+      expect(runbook, contains('最大36時間'));
+      expect(runbook, contains('購入検証だけが権限不足'));
     });
 
     test('App Storeの設定完了と購入可能状態を区別する', () {
@@ -79,7 +81,9 @@ void main() {
       expect(runbook, contains('通常の月額／年額商品は`UPFRONT`'));
       expect(runbook, contains('12か月契約を月払いする`MONTHLY`'));
       expect(runbook, contains('日本（`JPN`）'));
-      expect(runbook, contains('`MISSING_METADATA`のまま購入検証をPASSにしない'));
+      expect(runbook, contains('親Subscription APIの`MISSING_METADATA`だけで'));
+      expect(runbook, contains('画面上で8商品すべてが「提出準備中」'));
+      expect(runbook, contains('新しいアプリバージョンとともに提出'));
       expect(runbook, contains('最大1時間'));
     });
   });

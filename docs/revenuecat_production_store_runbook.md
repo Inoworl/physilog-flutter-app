@@ -52,8 +52,10 @@ App Store Connect APIまたは画面で次を読み戻す。
 - 月額商品には月額画面、年額商品には年額画面のApp Review Screenshotがあり、asset状態が`COMPLETE`である。
 
 Appleは商品メタデータのSandbox反映に最大1時間かかる場合があるとしている。
-アップロードやAPI読み戻しが成功しても、商品状態が`MISSING_METADATA`のまま購入検証をPASSにしない。
-状態が`PREPARE_FOR_SUBMISSION`以降へ変わり、Sandboxで商品を取得できてから実測を開始する。
+現行APIでは親Subscriptionの`state`とSubscription Versionの`state`が別に返る。
+親Subscription APIの`MISSING_METADATA`だけで不足と判定せず、最新Versionが`PREPARE_FOR_SUBMISSION`で、
+App Store Connect画面も「提出準備中」であることを確認する。画面上の必須項目が揃っていても、
+Sandboxで商品を取得できるまでは購入検証をPASSにしない。
 
 ### 現在のApp Store Connect設定（2026-09-07）
 
@@ -62,7 +64,10 @@ Appleは商品メタデータのSandbox反映に最大1時間かかる場合が�
 - Team月額／年額へ日本向け1か月Free Trialを設定済み。
 - 日本語のグループ名、商品名、説明と、支払い周期別のApp Review Screenshotを設定済み。
 - API読み戻しでは8商品すべての値と画像assetの`COMPLETE`を確認済み。
-- 商品状態は設定直後の読み戻しでは`MISSING_METADATA`。反映待ちか残項目かを再確認するまで購入可能とは扱わない。
+- 最新Subscription Versionは8商品すべて`PREPARE_FOR_SUBMISSION`で、画面上で8商品すべてが「提出準備中」であることを確認済み。
+- 親Subscription APIの`state`は`MISSING_METADATA`のまま残るため、現行Versionと画面の状態を正とする。
+- 最初のサブスクリプショングループは新しいアプリバージョンとともに提出する必要がある。
+- App Store Connectには最新のApple Developer Program契約への同意警告が出ている。Account Holderの同意後に審査提出とSandbox／TestFlight実測を行う。
 
 ## Google Play Console
 
@@ -84,6 +89,11 @@ Service Accountのアプリ権限は環境ごとに分離する。
 
 既存のdev用Service AccountにはPhysiLogとPhysiLog Devの両方が登録されている。prod credentialをRevenueCatで検証してから、dev用Service AccountからPhysiLogのアプリ権限を削除する。切り替え前に削除して購入検証を停止させない。
 
+Google Play Service Credentialは、新規作成や権限変更からRevenueCatで有効になるまで最大36時間かかる場合がある。
+商品カタログとSubscription／Base Planの検証が成功し、購入検証だけが権限不足の場合は、
+権限の付け直しや鍵の再作成を直ちに行わず、Project IDとPlay Consoleの付与内容を読み戻してから再検証する。
+3検証がすべて成功するまでは、切り替え元credentialの対象アプリ権限を削除しない。
+
 RevenueCatのGoogle store identifierは`<subscription_id>:<base_plan_id>`形式にする。
 `Valid credentials`だけでは環境分離を確認できない。Credentials Validation Detailsを開き、
 次のProject IDと購入・商品・Base Planの3検証を確認する。
@@ -95,6 +105,15 @@ RevenueCatのGoogle store identifierは`<subscription_id>:<base_plan_id>`形式�
 
 Play Consoleのアカウント権限は複数アプリへ作用するため、別環境のService Accountでも
 検証項目だけは成功する場合がある。Project ID不一致を成功として扱わない。
+
+### 現在のGoogle Play credential設定（2026-09-07）
+
+- prod用Service AccountをPlay Consoleへ招待済みで、状態は有効。
+- prod用Service Accountの対象アプリはPhysiLog（`com.inoworl.physilog`）だけ。
+- アプリ情報閲覧、ストア表示管理、売上・注文閲覧、注文・定期購入管理を画面で読み戻し済み。
+- RevenueCat prod AndroidへProject ID `physilog-cb6cd`のcredentialを保存済み。
+- RevenueCatの3検証中、商品カタログとSubscription／Base Planは成功。購入検証はPlay権限の反映待ち。
+- Google Payments販売アカウントが未選択のため、Subscription／Base Plan作成は未着手。
 
 ## RevenueCat
 
