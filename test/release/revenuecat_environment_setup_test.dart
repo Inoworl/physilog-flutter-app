@@ -70,5 +70,17 @@ void main() {
       expect(runbook, contains('dev用Service AccountからPhysiLogのアプリ権限を削除'));
       expect(runbook, contains('売上閲覧と注文管理はアカウント全体'));
     });
+
+    test('App Storeの設定完了と購入可能状態を区別する', () {
+      final runbook = File(
+        'docs/revenuecat_production_store_runbook.md',
+      ).readAsStringSync();
+
+      expect(runbook, contains('通常の月額／年額商品は`UPFRONT`'));
+      expect(runbook, contains('12か月契約を月払いする`MONTHLY`'));
+      expect(runbook, contains('日本（`JPN`）'));
+      expect(runbook, contains('`MISSING_METADATA`のまま購入検証をPASSにしない'));
+      expect(runbook, contains('最大1時間'));
+    });
   });
 }

@@ -36,6 +36,34 @@ Test Storeの公開SDKキー、secret API key、ストア秘密鍵を配信物�
 In-App Purchaseキーは一度しかダウンロードできない。内容をログ、Issue、PR、Gitへ出さず、
 承認された秘密情報保管先へ直ちに保存する。
 
+### 料金プランタイプと反映確認
+
+通常の月額／年額商品は`UPFRONT`を選ぶ。これは契約期間ごとにその期間分を前払いする
+通常の自動更新サブスクリプションである。12か月契約を月払いする`MONTHLY`は別の料金形態であり、
+今回の4商品には使用しない。
+
+初期検証ではdev／prodとも提供地域を日本（`JPN`）だけに限定し、
+`availableInNewTerritories`を無効にする。価格と無料トライアルを設定した後は、
+App Store Connect APIまたは画面で次を読み戻す。
+
+- Team月額／年額はSubscription Level 1、個人・家族月額／年額はLevel 2である。
+- 4商品の期間、JPY価格、`UPFRONT`、日本だけの提供地域が正本と一致する。
+- Team月額／年額だけに1か月のFree Trialがあり、個人・家族にはIntroductory Offerがない。
+- 月額商品には月額画面、年額商品には年額画面のApp Review Screenshotがあり、asset状態が`COMPLETE`である。
+
+Appleは商品メタデータのSandbox反映に最大1時間かかる場合があるとしている。
+アップロードやAPI読み戻しが成功しても、商品状態が`MISSING_METADATA`のまま購入検証をPASSにしない。
+状態が`PREPARE_FOR_SUBMISSION`以降へ変わり、Sandboxで商品を取得できてから実測を開始する。
+
+### 現在のApp Store Connect設定（2026-09-07）
+
+- dev／prodの各Appへ`PhysiLog Plans`グループと4商品を作成済み。
+- 日本向け`UPFRONT`の価格を、個人・家族 月額100円／年額1,000円、Team 月額980円／年額8,980円で設定済み。
+- Team月額／年額へ日本向け1か月Free Trialを設定済み。
+- 日本語のグループ名、商品名、説明と、支払い周期別のApp Review Screenshotを設定済み。
+- API読み戻しでは8商品すべての値と画像assetの`COMPLETE`を確認済み。
+- 商品状態は設定直後の読み戻しでは`MISSING_METADATA`。反映待ちか残項目かを再確認するまで購入可能とは扱わない。
+
 ## Google Play Console
 
 1. デベロッパーアカウントのGoogle Payments販売アカウントを設定する。
