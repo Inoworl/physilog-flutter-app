@@ -49,6 +49,16 @@ In-App Purchaseキーは一度しかダウンロードできない。内容を�
 9. Internal testing trackへ検証ビルドを配信し、テスターを登録する。
 
 RevenueCatのGoogle store identifierは`<subscription_id>:<base_plan_id>`形式にする。
+`Valid credentials`だけでは環境分離を確認できない。Credentials Validation Detailsを開き、
+次のProject IDと購入・商品・Base Planの3検証を確認する。
+
+| RevenueCat environment | Expected service account Project ID |
+| --- | --- |
+| dev | `physilog-dev` |
+| prod | `physilog-cb6cd` |
+
+Play Consoleのアカウント権限は複数アプリへ作用するため、別環境のService Accountでも
+検証項目だけは成功する場合がある。Project ID不一致を成功として扱わない。
 
 ## RevenueCat
 
