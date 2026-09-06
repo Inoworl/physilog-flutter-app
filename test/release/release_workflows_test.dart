@@ -239,6 +239,59 @@ void main() {
       expect(prodYaml, contains('PROD_FIREBASE_PROJECT_ID'));
       expect(prodYaml, contains('firebase deploy --only hosting'));
     });
+
+    test('配信workflowはplatform別RevenueCat public SDK keyを検証して注入する', () {
+      final workflows = {
+        '.github/workflows/deploy_dev_ios.yml': (
+          secret: 'REVENUECAT_DEV_IOS_API_KEY',
+          platform: 'ios',
+        ),
+        '.github/workflows/deploy_dev_android.yml': (
+          secret: 'REVENUECAT_DEV_ANDROID_API_KEY',
+          platform: 'android',
+        ),
+        '.github/workflows/deploy_prod_ios.yml': (
+          secret: 'REVENUECAT_PROD_IOS_API_KEY',
+          platform: 'ios',
+        ),
+        '.github/workflows/deploy_prod_android.yml': (
+          secret: 'REVENUECAT_PROD_ANDROID_API_KEY',
+          platform: 'android',
+        ),
+      };
+
+      for (final entry in workflows.entries) {
+        final yaml = File(entry.key).readAsStringSync();
+        expect(yaml, contains(entry.value.secret));
+        expect(yaml, contains('configure_public_sdk_key.rb'));
+        expect(yaml, contains('--platform ${entry.value.platform}'));
+        expect(yaml, contains('--api-key-env ${entry.value.secret}'));
+      }
+    });
+
+    test('prod workflowはRevenueCat public SDK key未設定を明示的に失敗させる', () {
+      final prodIos = File(
+        '.github/workflows/deploy_prod_ios.yml',
+      ).readAsStringSync();
+      final prodAndroid = File(
+        '.github/workflows/deploy_prod_android.yml',
+      ).readAsStringSync();
+
+      expect(
+        prodIos,
+        contains(
+          r'Missing required secret: $name',
+        ),
+      );
+      expect(prodIos, contains('REVENUECAT_PROD_IOS_API_KEY'));
+      expect(
+        prodAndroid,
+        contains(
+          r'Missing required secret: $name',
+        ),
+      );
+      expect(prodAndroid, contains('REVENUECAT_PROD_ANDROID_API_KEY'));
+    });
   });
 }
 

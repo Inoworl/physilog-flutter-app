@@ -14,12 +14,25 @@
 environments:
   dev:
     project_id: b9208054
-    app_id: app4d5c71b3b2
-    app_note: RevenueCat Test Store app for Physilog Dev
+    apps:
+      test_store:
+        app_id: app4d5c71b3b2
+        store: test_store
+      ios:
+        app_id: appf453300e51
+        store: app_store
+      android:
+        app_id: appbbd1f7da16
+        store: play_store
   prod:
     project_id: ec10fe6b
-    app_id:
-    app_note: Set the App Store or Google Play RevenueCat app id before applying product sync to prod.
+    apps:
+      ios:
+        app_id: appcf636b29a7
+        store: app_store
+      android:
+        app_id: app07c4ac722f
+        store: play_store
 
 entitlements:
   - id: personal_family
@@ -37,6 +50,19 @@ products:
     intended_price:
       currency: JPY
       amount: 100
+    store_products:
+      dev:
+        - app: test_store
+          store_identifier: personal_family_monthly
+        - app: ios
+          store_identifier: com.inoworl.physilog.dev.personal_family.monthly
+        - app: android
+          store_identifier: personal_family:monthly
+      prod:
+        - app: ios
+          store_identifier: com.inoworl.physilog.personal_family.monthly
+        - app: android
+          store_identifier: personal_family:monthly
 
   - id: personal_family_yearly
     display_name: Personal Family Yearly
@@ -47,6 +73,19 @@ products:
     intended_price:
       currency: JPY
       amount: 1000
+    store_products:
+      dev:
+        - app: test_store
+          store_identifier: personal_family_yearly
+        - app: ios
+          store_identifier: com.inoworl.physilog.dev.personal_family.yearly
+        - app: android
+          store_identifier: personal_family:yearly
+      prod:
+        - app: ios
+          store_identifier: com.inoworl.physilog.personal_family.yearly
+        - app: android
+          store_identifier: personal_family:yearly
 
   - id: team_monthly
     display_name: Team Monthly
@@ -59,6 +98,19 @@ products:
       amount: 980
     manual_setup:
       trial: 1 month free trial
+    store_products:
+      dev:
+        - app: test_store
+          store_identifier: team_monthly
+        - app: ios
+          store_identifier: com.inoworl.physilog.dev.team.monthly
+        - app: android
+          store_identifier: team:monthly
+      prod:
+        - app: ios
+          store_identifier: com.inoworl.physilog.team.monthly
+        - app: android
+          store_identifier: team:monthly
 
   - id: team_yearly
     display_name: Team Yearly
@@ -71,6 +123,19 @@ products:
       amount: 8980
     manual_setup:
       trial: 1 month free trial
+    store_products:
+      dev:
+        - app: test_store
+          store_identifier: team_yearly
+        - app: ios
+          store_identifier: com.inoworl.physilog.dev.team.yearly
+        - app: android
+          store_identifier: team:yearly
+      prod:
+        - app: ios
+          store_identifier: com.inoworl.physilog.team.yearly
+        - app: android
+          store_identifier: team:yearly
 
 offering:
   id: default
