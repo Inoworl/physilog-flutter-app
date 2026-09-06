@@ -277,19 +277,9 @@ void main() {
         '.github/workflows/deploy_prod_android.yml',
       ).readAsStringSync();
 
-      expect(
-        prodIos,
-        contains(
-          r'Missing required secret: $name',
-        ),
-      );
+      expect(prodIos, contains(r'Missing required secret: $name'));
       expect(prodIos, contains('REVENUECAT_PROD_IOS_API_KEY'));
-      expect(
-        prodAndroid,
-        contains(
-          r'Missing required secret: $name',
-        ),
-      );
+      expect(prodAndroid, contains(r'Missing required secret: $name'));
       expect(prodAndroid, contains('REVENUECAT_PROD_ANDROID_API_KEY'));
     });
   });
