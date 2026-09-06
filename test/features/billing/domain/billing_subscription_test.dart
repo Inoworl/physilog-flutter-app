@@ -9,7 +9,8 @@ void main() {
     test('商品IDからTierと支払い周期を復元する', () {
       final subscription = BillingSubscription.fromProduct(
         entitlementId: RevenueCatCatalog.teamEntitlementId,
-        productId: RevenueCatCatalog.teamYearlyProductId,
+        productId: 'team',
+        productPlanIdentifier: 'yearly',
         store: BillingStore.playStore,
         isActive: true,
         willRenew: true,
@@ -19,8 +20,22 @@ void main() {
       expect(subscription, isNotNull);
       expect(subscription?.tier, PlanTier.team);
       expect(subscription?.period, BillingPeriod.yearly);
+      expect(subscription?.productId, 'team:yearly');
       expect(subscription?.store, BillingStore.playStore);
       expect(subscription?.isCancellationScheduled, isFalse);
+    });
+
+    test('App Storeのplatform固有商品IDからTierと支払い周期を復元する', () {
+      final subscription = BillingSubscription.fromProduct(
+        entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+        productId: 'com.inoworl.physilog.personal_family.monthly',
+        store: BillingStore.appStore,
+        isActive: true,
+        willRenew: true,
+      );
+
+      expect(subscription?.tier, PlanTier.personalFamily);
+      expect(subscription?.period, BillingPeriod.monthly);
     });
 
     test('未対応の商品IDは契約として扱わない', () {

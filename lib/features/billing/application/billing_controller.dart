@@ -339,7 +339,7 @@ class BillingController extends StateNotifier<BillingState> {
     }
 
     final previousProductId = request.previousProductId;
-    if (!request.isDeferred || previousProductId == null) {
+    if (!request.isScheduledForNextRenewal || previousProductId == null) {
       return state.pendingChange;
     }
 

@@ -45,12 +45,21 @@ class SubscriptionChangePolicy {
       );
     }
 
+    final isPlayStoreBasePlanChange =
+        current.store == BillingStore.playStore &&
+        _playSubscriptionId(current.productId) ==
+            _playSubscriptionId(target.productId);
     return _changeRequest(
       current: current,
       target: target,
       changeType: SubscriptionChangeType.periodChange,
       timing: SubscriptionChangeTiming.nextRenewal,
-      replacementMode: BillingReplacementMode.deferred,
+      previousProductId: isPlayStoreBasePlanChange
+          ? _playSubscriptionId(current.productId)
+          : null,
+      replacementMode: isPlayStoreBasePlanChange
+          ? BillingReplacementMode.withoutProration
+          : BillingReplacementMode.deferred,
     );
   }
 
@@ -60,14 +69,19 @@ class SubscriptionChangePolicy {
     required SubscriptionChangeType changeType,
     required SubscriptionChangeTiming timing,
     required BillingReplacementMode replacementMode,
+    String? previousProductId,
   }) {
     return BillingPurchaseRequest(
       packageId: target.packageId,
       productId: target.productId,
-      previousProductId: current.productId,
+      previousProductId: previousProductId ?? current.productId,
       changeType: changeType,
       timing: timing,
       replacementMode: replacementMode,
     );
+  }
+
+  String _playSubscriptionId(String productId) {
+    return productId.split(':').first;
   }
 }

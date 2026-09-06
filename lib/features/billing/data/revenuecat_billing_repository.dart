@@ -47,6 +47,7 @@ class RevenueCatEntitlementSnapshot {
     required this.store,
     required this.isActive,
     required this.willRenew,
+    this.productPlanIdentifier,
     this.expiresAt,
     this.unsubscribeDetectedAt,
     this.billingIssueDetectedAt,
@@ -57,6 +58,9 @@ class RevenueCatEntitlementSnapshot {
   final BillingStore store;
   final bool isActive;
   final bool willRenew;
+
+  /// Google Playで契約を開始したBase Plan ID。他Storeではnull。
+  final String? productPlanIdentifier;
   final DateTime? expiresAt;
   final DateTime? unsubscribeDetectedAt;
   final DateTime? billingIssueDetectedAt;
@@ -334,6 +338,7 @@ class PurchasesRevenueCatGateway implements RevenueCatGateway {
     return RevenueCatEntitlementSnapshot(
       entitlementId: entitlement.identifier,
       productId: entitlement.productIdentifier,
+      productPlanIdentifier: entitlement.productPlanIdentifier,
       store: _toBillingStore(entitlement.store),
       isActive: entitlement.isActive,
       willRenew: entitlement.willRenew,
@@ -364,6 +369,8 @@ purchases.StoreReplacementMode? revenueCatStoreReplacementModeFor(
   return switch (mode) {
     BillingReplacementMode.withTimeProration =>
       purchases.StoreReplacementMode.withTimeProration,
+    BillingReplacementMode.withoutProration =>
+      purchases.StoreReplacementMode.withoutProration,
     BillingReplacementMode.deferred => purchases.StoreReplacementMode.deferred,
     null => null,
   };
@@ -471,6 +478,7 @@ class RevenueCatBillingRepository implements BillingRepository {
             (subscription) => BillingSubscription.fromProduct(
               entitlementId: subscription.entitlementId,
               productId: subscription.productId,
+              productPlanIdentifier: subscription.productPlanIdentifier,
               store: subscription.store,
               isActive: subscription.isActive,
               willRenew: subscription.willRenew,
@@ -486,8 +494,8 @@ class RevenueCatBillingRepository implements BillingRepository {
   }
 
   BillingProduct? _toBillingProduct(RevenueCatPackageSnapshot package) {
-    final productConfiguration = billingConfigurationForProduct(
-      package.productId,
+    final productConfiguration = billingConfigurationForPackage(
+      package.packageId,
     );
     if (productConfiguration == null) {
       return null;

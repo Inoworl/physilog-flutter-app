@@ -87,6 +87,29 @@ void main() {
       expect(request?.replacementMode, BillingReplacementMode.deferred);
       expect(request?.timing, SubscriptionChangeTiming.nextRenewal);
     });
+
+    test('Google Playの同一Subscription内の周期変更に有効な置換条件を使う', () {
+      final request = policy.createRequest(
+        current: _subscription(
+          productId: 'personal_family:monthly',
+          tier: PlanTier.personalFamily,
+          period: BillingPeriod.monthly,
+          store: BillingStore.playStore,
+        ),
+        target: const BillingProduct(
+          packageId: 'personal_family_yearly',
+          productId: 'personal_family:yearly',
+          tier: PlanTier.personalFamily,
+          period: BillingPeriod.yearly,
+          title: '個人・家族 年額',
+          priceText: '¥1,000',
+        ),
+      );
+
+      expect(request?.previousProductId, 'personal_family');
+      expect(request?.replacementMode?.name, 'withoutProration');
+      expect(request?.timing, SubscriptionChangeTiming.nextRenewal);
+    });
   });
 }
 
@@ -94,6 +117,7 @@ BillingSubscription _subscription({
   required String productId,
   required PlanTier tier,
   required BillingPeriod period,
+  BillingStore store = BillingStore.testStore,
 }) {
   return BillingSubscription(
     entitlementId: tier == PlanTier.team
@@ -102,7 +126,7 @@ BillingSubscription _subscription({
     productId: productId,
     tier: tier,
     period: period,
-    store: BillingStore.testStore,
+    store: store,
     isActive: true,
     willRenew: true,
   );

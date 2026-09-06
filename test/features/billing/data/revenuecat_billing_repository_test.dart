@@ -172,13 +172,13 @@ void main() {
     test('default Offeringの対応商品だけをドメインモデルへ変換する', () async {
       gateway.packages = const [
         RevenueCatPackageSnapshot(
-          packageId: r'$rc_monthly',
+          packageId: RevenueCatCatalog.personalFamilyMonthlyPackageId,
           productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
           title: '個人・家族 月額',
           priceText: '¥500',
         ),
         RevenueCatPackageSnapshot(
-          packageId: r'$rc_annual',
+          packageId: RevenueCatCatalog.teamYearlyPackageId,
           productId: RevenueCatCatalog.teamYearlyProductId,
           title: 'Team 年額',
           priceText: '¥9,800',
@@ -198,7 +198,7 @@ void main() {
       ]);
       expect(products, [
         const BillingProduct(
-          packageId: r'$rc_monthly',
+          packageId: RevenueCatCatalog.personalFamilyMonthlyPackageId,
           productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
           tier: PlanTier.personalFamily,
           period: BillingPeriod.monthly,
@@ -206,13 +206,41 @@ void main() {
           priceText: '¥500',
         ),
         const BillingProduct(
-          packageId: r'$rc_annual',
+          packageId: RevenueCatCatalog.teamYearlyPackageId,
           productId: RevenueCatCatalog.teamYearlyProductId,
           tier: PlanTier.team,
           period: BillingPeriod.yearly,
           title: 'Team 年額',
           priceText: '¥9,800',
         ),
+      ]);
+    });
+
+    test('platform固有商品IDを共通Package IDでドメインモデルへ変換する', () async {
+      gateway.packages = const [
+        RevenueCatPackageSnapshot(
+          packageId: 'personal_family_monthly',
+          productId: 'com.inoworl.physilog.personal_family.monthly',
+          title: '個人・家族 月額',
+          priceText: '¥500',
+        ),
+        RevenueCatPackageSnapshot(
+          packageId: 'team_yearly',
+          productId: 'team:yearly',
+          title: 'Team 年額',
+          priceText: '¥9,800',
+        ),
+      ];
+
+      final products = await repository.fetchProducts();
+
+      expect(products.map((product) => product.productId), [
+        'com.inoworl.physilog.personal_family.monthly',
+        'team:yearly',
+      ]);
+      expect(products.map((product) => (product.tier, product.period)), [
+        (PlanTier.personalFamily, BillingPeriod.monthly),
+        (PlanTier.team, BillingPeriod.yearly),
       ]);
     });
 
@@ -272,7 +300,7 @@ void main() {
         activeSubscriptions: [
           RevenueCatEntitlementSnapshot(
             entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
-            productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+            productId: 'com.inoworl.physilog.personal_family.monthly',
             store: BillingStore.appStore,
             isActive: true,
             willRenew: true,
@@ -280,7 +308,8 @@ void main() {
           ),
           RevenueCatEntitlementSnapshot(
             entitlementId: RevenueCatCatalog.teamEntitlementId,
-            productId: RevenueCatCatalog.teamYearlyProductId,
+            productId: 'team',
+            productPlanIdentifier: 'yearly',
             store: BillingStore.playStore,
             isActive: true,
             willRenew: false,
@@ -297,6 +326,7 @@ void main() {
       final current = access.currentSubscription;
       expect(current?.tier, PlanTier.team);
       expect(current?.period, BillingPeriod.yearly);
+      expect(current?.productId, 'team:yearly');
       expect(current?.store, BillingStore.playStore);
       expect(current?.willRenew, isFalse);
       expect(current?.isCancellationScheduled, isTrue);
@@ -342,6 +372,12 @@ void main() {
           BillingReplacementMode.withTimeProration,
         ),
         purchases.StoreReplacementMode.withTimeProration,
+      );
+      expect(
+        revenueCatStoreReplacementModeFor(
+          BillingReplacementMode.withoutProration,
+        ),
+        purchases.StoreReplacementMode.withoutProration,
       );
       expect(
         revenueCatStoreReplacementModeFor(BillingReplacementMode.deferred),

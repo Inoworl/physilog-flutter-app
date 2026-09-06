@@ -2,7 +2,8 @@ enum SubscriptionChangeType { newPurchase, upgrade, downgrade, periodChange }
 
 enum SubscriptionChangeTiming { immediate, nextRenewal }
 
-enum BillingReplacementMode { withTimeProration, deferred }
+/// Storeへ渡すサブスクリプション置換方法。
+enum BillingReplacementMode { withTimeProration, withoutProration, deferred }
 
 class BillingPurchaseRequest {
   const BillingPurchaseRequest({
@@ -21,8 +22,9 @@ class BillingPurchaseRequest {
   final SubscriptionChangeTiming timing;
   final BillingReplacementMode? replacementMode;
 
-  bool get isDeferred {
-    return replacementMode == BillingReplacementMode.deferred;
+  /// 変更先を次回更新までローカルの予約状態として保持するか。
+  bool get isScheduledForNextRenewal {
+    return timing == SubscriptionChangeTiming.nextRenewal;
   }
 
   @override
