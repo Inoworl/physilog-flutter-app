@@ -22,6 +22,7 @@ module RevenueCatPublicSdkKey
     end
     validated_key = validate!(api_key, platform: platform)
     values = JSON.parse(File.read(dart_define_path))
+    DART_DEFINE_KEYS.each_value { |key| values.delete(key) }
     values[dart_define_key] = validated_key
     File.write(dart_define_path, "#{JSON.pretty_generate(values)}\n")
   end

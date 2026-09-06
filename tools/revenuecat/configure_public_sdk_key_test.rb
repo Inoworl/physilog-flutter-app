@@ -6,7 +6,7 @@ require 'tempfile'
 require_relative 'configure_public_sdk_key'
 
 class RevenueCatPublicSdkKeyTest < Minitest::Test
-  def test_configures_platform_key_without_touching_other_values
+  def test_configures_only_the_target_platform_key_without_touching_other_values
     file = Tempfile.new(['dart-define', '.json'])
     file.write(JSON.generate({
                                'DATA_STORE_MODE' => 'firestore',
@@ -23,7 +23,7 @@ class RevenueCatPublicSdkKeyTest < Minitest::Test
     values = JSON.parse(File.read(file.path))
     assert_equal 'firestore', values.fetch('DATA_STORE_MODE')
     assert_equal 'appl_public-key', values.fetch('REVENUECAT_IOS_API_KEY')
-    assert_equal 'existing-android-key', values.fetch('REVENUECAT_ANDROID_API_KEY')
+    refute values.key?('REVENUECAT_ANDROID_API_KEY')
   ensure
     file&.unlink
   end
