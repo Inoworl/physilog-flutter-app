@@ -31,7 +31,8 @@ Test Storeの公開SDKキー、secret API key、ストア秘密鍵を配信物�
 5. Team月額／年額へ1か月のFree Trialを設定する。
 6. Users and Access > Integrations > In-App PurchaseでRevenueCat専用キーを作成する。
 7. `.p8`、Key ID、Issuer IDをRevenueCatのApp Store Appへ登録する。
-8. App Store Server Notificationsのproduction／sandbox URLをRevenueCat指定値へ設定する。
+8. 商品インポートと価格同期用のApp Store Connect APIキーをRevenueCatのdev／prod両方へ登録する。
+9. App Store Connectで、各RevenueCat App固有のプロダクション／SandboxのServer Notification URLを設定する。
 
 In-App Purchaseキーは一度しかダウンロードできない。内容をログ、Issue、PR、Gitへ出さず、
 承認された秘密情報保管先へ直ちに保存する。
@@ -66,6 +67,8 @@ Sandboxで商品を取得できるまでは購入検証をPASSにしない。
 - API読み戻しでは8商品すべての値と画像assetの`COMPLETE`を確認済み。
 - 最新Subscription Versionは8商品すべて`PREPARE_FOR_SUBMISSION`で、画面上で8商品すべてが「提出準備中」であることを確認済み。
 - 親Subscription APIの`state`は`MISSING_METADATA`のまま残るため、現行Versionと画面の状態を正とする。
+- In-App PurchaseキーとApp Store Connect APIキーはRevenueCatのdev／prod両方で`Valid credentials`を確認済み。
+- dev／prodそれぞれのプロダクション／Sandbox Server Notification URLをApp Store Connectへ設定し、画面で読み戻し済み。URL値は証跡へ残さない。
 - 最初のサブスクリプショングループは新しいアプリバージョンとともに提出する必要がある。
 - App Store Connectには最新のApple Developer Program契約への同意警告が出ている。Account Holderの同意後に審査提出とSandbox／TestFlight実測を行う。
 

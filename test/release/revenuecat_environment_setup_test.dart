@@ -84,6 +84,11 @@ void main() {
       expect(runbook, contains('親Subscription APIの`MISSING_METADATA`だけで'));
       expect(runbook, contains('画面上で8商品すべてが「提出準備中」'));
       expect(runbook, contains('新しいアプリバージョンとともに提出'));
+      expect(
+        runbook,
+        contains('App Store Connect APIキーをRevenueCatのdev／prod両方へ登録'),
+      );
+      expect(runbook, contains('プロダクション／SandboxのServer Notification URL'));
       expect(runbook, contains('最大1時間'));
     });
   });
