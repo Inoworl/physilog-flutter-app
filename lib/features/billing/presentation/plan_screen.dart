@@ -224,7 +224,9 @@ Future<bool?> _confirmSubscriptionChange({
       return AlertDialog(
         title: Text(request.actionLabel(target: target)),
         content: Text(
-          request.timing == SubscriptionChangeTiming.immediate
+          request.replacementMode == BillingReplacementMode.withoutProration
+              ? 'プラン内容はすぐに切り替わり、新しい料金は次回更新時に請求されます。'
+              : request.timing == SubscriptionChangeTiming.immediate
               ? '変更はすぐに反映されます。ストアの確認画面で差額と請求タイミングを確認してください。'
               : '変更は次回更新時に反映されます。それまでは現在のプランを利用できます。',
         ),

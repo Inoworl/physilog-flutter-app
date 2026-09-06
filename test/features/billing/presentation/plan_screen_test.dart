@@ -578,6 +578,38 @@ void main() {
     expect(request.replacementMode, BillingReplacementMode.deferred);
   });
 
+  testWidgets('Google Playの同一Subscription内の周期変更は即時反映と次回請求を案内する', (
+    tester,
+  ) async {
+    final repository = FakeBillingRepository(
+      products: const [_playPersonalMonthly, _playPersonalYearly],
+      currentAccess: _playPersonalMonthlyAccess,
+    );
+
+    await tester.pumpWidget(
+      _planApp(
+        repository: repository,
+        planState: _readyPlanState(PlanTier.personalFamily),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('年額'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '年額へ変更'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プラン内容はすぐに切り替わり、新しい料金は次回更新時に請求されます。'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '変更する'));
+    await tester.pumpAndSettle();
+
+    final request = repository.purchaseRequests.single;
+    expect(request.timing, SubscriptionChangeTiming.immediate);
+    expect(request.replacementMode, BillingReplacementMode.withoutProration);
+  });
+
   testWidgets('保存済みの変更予約を再起動後も表示する', (tester) async {
     final pendingRepository = FakePendingSubscriptionChangeRepository()
       ..changes['registered-uid'] = PendingSubscriptionChange(
@@ -826,6 +858,24 @@ const _personalYearly = BillingProduct(
   priceText: '¥5,000',
 );
 
+const _playPersonalMonthly = BillingProduct(
+  packageId: 'personal_family_monthly',
+  productId: 'personal_family:monthly',
+  tier: PlanTier.personalFamily,
+  period: BillingPeriod.monthly,
+  title: '個人・家族 月額',
+  priceText: '¥100',
+);
+
+const _playPersonalYearly = BillingProduct(
+  packageId: 'personal_family_yearly',
+  productId: 'personal_family:yearly',
+  tier: PlanTier.personalFamily,
+  period: BillingPeriod.yearly,
+  title: '個人・家族 年額',
+  priceText: '¥1,000',
+);
+
 const _teamMonthly = BillingProduct(
   packageId: 'team_monthly',
   productId: RevenueCatCatalog.teamMonthlyProductId,
@@ -893,6 +943,22 @@ final _personalMonthlyAccess = BillingCustomerAccess(
 final _personalMonthlyAccessWithoutManagementUrl = BillingCustomerAccess(
   activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
   activeSubscriptions: _personalMonthlyAccess.activeSubscriptions,
+);
+
+final _playPersonalMonthlyAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
+  activeSubscriptions: const [
+    BillingSubscription(
+      entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+      productId: 'personal_family:monthly',
+      tier: PlanTier.personalFamily,
+      period: BillingPeriod.monthly,
+      store: BillingStore.playStore,
+      isActive: true,
+      willRenew: true,
+    ),
+  ],
+  managementUrl: 'https://play.google.com/store/account/subscriptions',
 );
 
 final _cancelledPersonalMonthlyAccess = BillingCustomerAccess(

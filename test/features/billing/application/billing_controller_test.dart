@@ -61,6 +61,43 @@ void main() {
       expect(controller.state.isIdentitySynchronized, isTrue);
     });
 
+    test('現在契約の取得完了まで購入可能商品を公開しない', () async {
+      final customerAccessCompleter = Completer<BillingCustomerAccess>();
+      final repository = FakeBillingRepository(products: [_personalProduct])
+        ..customerAccessCompleter = customerAccessCompleter;
+      final controller = BillingController(repository: repository);
+      addTearDown(controller.dispose);
+
+      final initialization = controller.initialize(
+        identitySync: Future.value(),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.loading);
+      expect(controller.state.products, isEmpty);
+
+      customerAccessCompleter.complete(
+        BillingCustomerAccess(activeEntitlementIds: const {}),
+      );
+      await initialization;
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.loaded);
+      expect(controller.state.products, [_personalProduct]);
+    });
+
+    test('現在契約を取得できない場合は購入可能商品を公開しない', () async {
+      final repository = FakeBillingRepository(products: [_personalProduct])
+        ..customerAccessError = StateError('customer access error');
+      final controller = BillingController(repository: repository);
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.failed);
+      expect(controller.state.products, isEmpty);
+      expect(controller.state.catalogFailure, BillingCatalogFailure.unknown);
+    });
+
     test('UID同期失敗を安全な分類で保持する', () async {
       final controller = BillingController(repository: FakeBillingRepository());
       addTearDown(controller.dispose);

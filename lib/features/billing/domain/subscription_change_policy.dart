@@ -53,7 +53,9 @@ class SubscriptionChangePolicy {
       current: current,
       target: target,
       changeType: SubscriptionChangeType.periodChange,
-      timing: SubscriptionChangeTiming.nextRenewal,
+      timing: isPlayStoreBasePlanChange
+          ? SubscriptionChangeTiming.immediate
+          : SubscriptionChangeTiming.nextRenewal,
       previousProductId: isPlayStoreBasePlanChange
           ? _playSubscriptionId(current.productId)
           : null,
@@ -74,7 +76,11 @@ class SubscriptionChangePolicy {
     return BillingPurchaseRequest(
       packageId: target.packageId,
       productId: target.productId,
-      previousProductId: previousProductId ?? current.productId,
+      previousProductId:
+          previousProductId ??
+          (current.store == BillingStore.playStore
+              ? _playSubscriptionId(current.productId)
+              : current.productId),
       changeType: changeType,
       timing: timing,
       replacementMode: replacementMode,

@@ -108,7 +108,28 @@ void main() {
 
       expect(request?.previousProductId, 'personal_family');
       expect(request?.replacementMode?.name, 'withoutProration');
-      expect(request?.timing, SubscriptionChangeTiming.nextRenewal);
+      expect(request?.timing, SubscriptionChangeTiming.immediate);
+    });
+
+    test('Google PlayのTier変更では旧Subscription IDだけを渡す', () {
+      final request = policy.createRequest(
+        current: _subscription(
+          productId: 'personal_family:monthly',
+          tier: PlanTier.personalFamily,
+          period: BillingPeriod.monthly,
+          store: BillingStore.playStore,
+        ),
+        target: const BillingProduct(
+          packageId: 'team_monthly',
+          productId: 'team:monthly',
+          tier: PlanTier.team,
+          period: BillingPeriod.monthly,
+          title: 'Team 月額',
+          priceText: '¥980',
+        ),
+      );
+
+      expect(request?.previousProductId, 'personal_family');
     });
   });
 }

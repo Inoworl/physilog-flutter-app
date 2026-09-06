@@ -104,9 +104,11 @@ fvm flutter run \
 | --- | --- | --- | --- |
 | 個人・家族 → Team | アップグレード | `withTimeProration` | 即時 |
 | Team → 個人・家族 | プラン変更 | `deferred` | 次回更新時 |
-| 同一Tierの月額 ↔ 年額 | 周期変更 | `deferred` | 次回更新時 |
+| 同一Tierの月額 ↔ 年額（同一Google Play Subscription） | 周期変更 | `withoutProration` | プランは即時、新料金は次回更新時 |
 
 iOSでは旧商品IDとAndroid固有のReplacement Modeを渡さない。同一Subscription GroupのStoreKit挙動へ委ね、アプリの確認画面で想定タイミングを説明する。
+
+[Google Play Billingの定期購入変更仕様](https://developer.android.com/google/play/billing/subscriptions#replacement-modes)では、同一Subscription内のBase Plan変更に使用できるReplacement Modeが`CHARGE_FULL_PRICE`または`WITHOUT_PRORATION`に限定される。現在の月額／年額は同じSubscriptionのBase Planなので、`withoutProration`を使い「プラン内容はすぐに切り替わり、新しい料金は次回更新時に請求」と案内する。完全な次回更新時切替が必要なら、月額／年額を別Subscriptionへ分ける商品設計変更が必要になる。
 
 ### Test Storeでの変更確認
 
@@ -148,7 +150,8 @@ Test StoreはApple／Google固有の請求状態を完全には再現しない�
 
 - 4つのBase Planが購入可能で、RevenueCatのStore product identifierと一致する。
 - 個人・家族 → Teamで旧商品IDと`withTimeProration`が適用される。
-- Team → 個人・家族と月額 ↔ 年額で`deferred`が適用される。
+- Team → 個人・家族で`deferred`が適用される。
+- 同一Subscription内の月額 ↔ 年額で`withoutProration`が適用され、プランは即時、新料金は次回更新になる。
 - Google Playの購入確認画面に差額、次回請求日、変更先が正しく表示される。
 - 解約、Billing Retry、Grace Period／Account HoldでCustomerInfoと画面表示が一致する。
 - 購入復元と「契約を管理」がGoogle Playテストアカウントで動作する。

@@ -133,22 +133,36 @@ class BillingController extends StateNotifier<BillingState> {
       return;
     }
     state = state.copyWith(isIdentitySynchronized: true);
+    final customerAccessLoaded = await _loadCustomerAccess();
+    if (!mounted) {
+      return;
+    }
+    if (!customerAccessLoaded) {
+      const failure = BillingCatalogFailure.unknown;
+      _debugFailure('customer-access', failure);
+      state = state.copyWith(
+        catalogStatus: BillingCatalogStatus.failed,
+        products: const [],
+        catalogFailure: failure,
+      );
+      return;
+    }
     await loadProducts();
-    await loadCustomerAccess();
     if (!mounted) {
       return;
     }
     _watchCustomerAccess();
   }
 
-  Future<void> loadCustomerAccess() async {
+  Future<bool> _loadCustomerAccess() async {
     BillingCustomerAccess customerAccess;
     try {
       customerAccess = await _repository.getCustomerAccess();
     } on Object {
-      return;
+      return false;
     }
     await _applyCustomerAccess(customerAccess, notifyAccessChanged: false);
+    return true;
   }
 
   Future<void> loadProducts() async {

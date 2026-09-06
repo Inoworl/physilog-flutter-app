@@ -42,7 +42,7 @@
 | 19 | 現在商品の再購入防止 | 現在商品を「利用中」にして購入ボタンを無効化 | PASS |
 | 20 | 個人・家族 → Team | 即時変更、旧商品ID、`withTimeProration`、確認ダイアログ | PASS |
 | 21 | Team → 個人・家族 | 次回更新時変更、旧商品ID、`deferred`、確認ダイアログ | PASS |
-| 22 | 同一Tierの周期変更 | 次回更新時変更、旧商品ID、`deferred`、確認ダイアログ | PASS |
+| 22 | 同一Tierの周期変更 | Test Store / iOSは次回更新、Google Playの同一Subscription内は即時切替＋次回請求、旧Subscription ID、Store別確認ダイアログ | PASS |
 | 23 | iOS変更購入 | Android固有の商品変更情報を渡さずStoreKitへ委譲 | PASS |
 | 24 | キャンセル／失敗 | 現在契約、権限、変更予約を維持 | PASS |
 | 25 | 変更予約 | UID別保存、再起動復元、CustomerInfo更新時の消し込み | PASS |

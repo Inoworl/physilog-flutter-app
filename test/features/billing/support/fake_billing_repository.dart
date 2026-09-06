@@ -29,10 +29,12 @@ class FakeBillingRepository implements BillingRepository {
   BillingCustomerAccess currentAccess;
   final Stream<BillingCustomerAccess> customerAccessUpdates;
   Object? fetchError;
+  Object? customerAccessError;
   Object? purchaseError;
   Object? restoreError;
   Completer<BillingPurchaseResult>? purchaseCompleter;
   Completer<List<BillingProduct>>? fetchProductsCompleter;
+  Completer<BillingCustomerAccess>? customerAccessCompleter;
   Completer<BillingCustomerAccess>? restoreCompleter;
   final purchaseRequests = <BillingPurchaseRequest>[];
   List<String> get purchasePackageIds {
@@ -57,7 +59,11 @@ class FakeBillingRepository implements BillingRepository {
 
   @override
   Future<BillingCustomerAccess> getCustomerAccess() async {
-    return currentAccess;
+    final error = customerAccessError;
+    if (error != null) {
+      throw error;
+    }
+    return customerAccessCompleter?.future ?? currentAccess;
   }
 
   @override
