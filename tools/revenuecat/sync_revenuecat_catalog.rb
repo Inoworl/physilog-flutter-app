@@ -576,12 +576,12 @@ if $PROGRAM_NAME == __FILE__
   api_key_source = 'shell environment'
   if api_key.nil? || api_key.empty?
     api_key = env_file_values[api_key_env]
-    api_key_source = options[:env_file] ? "--env-file #{options.fetch(:env_file)}" : 'not set'
+    api_key_source = options[:env_file] ? 'env file' : 'not set'
   end
 
   puts "config: env=#{options.fetch(:env)}"
   puts "config: api_key_env=#{api_key_env}"
-  puts "config: env_file=#{options[:env_file] || '(none)'}"
+  puts "config: env_file=#{options[:env_file] ? 'provided' : '(none)'}"
   puts "config: api_key=#{api_key.nil? || api_key.empty? ? 'missing' : "present from #{api_key_source}"}"
 
   catalog = RevenueCatCatalog::Catalog.load(options.fetch(:catalog))

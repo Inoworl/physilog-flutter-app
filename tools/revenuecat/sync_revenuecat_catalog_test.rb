@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'minitest/autorun'
+require 'open3'
+require 'rbconfig'
 require 'tempfile'
 require_relative 'sync_revenuecat_catalog'
 
@@ -69,6 +71,28 @@ class RevenueCatCatalogSyncTest < Minitest::Test
 
     assert_equal 'sk_dev_secret', values.fetch('REVENUECAT_DEV_SECRET_API_KEY')
     assert_equal 'sk_prod_secret', values.fetch('REVENUECAT_PROD_SECRET_API_KEY')
+  ensure
+    file&.unlink
+  end
+
+  def test_cli_does_not_print_the_env_file_path
+    file = Tempfile.new('revenuecat-private-env')
+    file.write("UNRELATED=value\n")
+    file.close
+
+    output, status = Open3.capture2e(
+      RbConfig.ruby,
+      File.expand_path('sync_revenuecat_catalog.rb', __dir__),
+      '--env',
+      'dev',
+      '--env-file',
+      file.path,
+      '--dry-run'
+    )
+
+    assert status.success?, output
+    assert_includes output, 'config: env_file=provided'
+    refute_includes output, file.path
   ensure
     file&.unlink
   end
