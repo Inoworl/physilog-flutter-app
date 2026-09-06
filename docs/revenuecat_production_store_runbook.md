@@ -43,10 +43,18 @@ In-App Purchaseキーは一度しかダウンロードできない。内容を�
 3. 各SubscriptionへBase Plan `monthly`と`yearly`を作成する。
 4. 自動更新期間とJPY価格をカタログの`intended_price`に合わせる。
 5. Teamの両Base Planへ1か月のFree Trial Offerを設定する。
-6. RevenueCat用Service Accountへ必要最小限の注文／サブスクリプション権限を付与する。
+6. RevenueCat用Service Accountへ、後述する対象アプリ権限とアカウント権限を付与する。
 7. Service Account credentialをRevenueCatのGoogle Play Appへ登録する。
-8. RevenueCatの案内に従ってReal-time Developer Notificationsを接続する。
+8. Real-time Developer NotificationsはこのIssueでは構成しない。必要になった時点で別Issueとして追加する。
 9. Internal testing trackへ検証ビルドを配信し、テスターを登録する。
+
+Service Accountのアプリ権限は環境ごとに分離する。
+
+- dev用Service AccountはPhysiLog Devだけを対象にし、「アプリ情報の閲覧（読み取り専用）」と「ストアでの表示の管理」を付与する。
+- prod用Service AccountはPhysiLogだけを対象にし、同じ2権限を付与する。
+- 「売上閲覧と注文管理はアカウント全体」というPlay Consoleの仕様上、財務・注文権限だけはアプリ単位に分離できない。
+
+既存のdev用Service AccountにはPhysiLogとPhysiLog Devの両方が登録されている。prod credentialをRevenueCatで検証してから、dev用Service AccountからPhysiLogのアプリ権限を削除する。切り替え前に削除して購入検証を停止させない。
 
 RevenueCatのGoogle store identifierは`<subscription_id>:<base_plan_id>`形式にする。
 `Valid credentials`だけでは環境分離を確認できない。Credentials Validation Detailsを開き、

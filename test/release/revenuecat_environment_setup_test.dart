@@ -59,5 +59,16 @@ void main() {
       expect(mainSource, isNot(contains('_initializeRevenueCat')));
       expect(appSource, contains('billingIdentitySyncProvider'));
     });
+
+    test('Google Play用Service Accountをdevとprodの対象アプリで分離する', () {
+      final runbook = File(
+        'docs/revenuecat_production_store_runbook.md',
+      ).readAsStringSync();
+
+      expect(runbook, contains('dev用Service AccountはPhysiLog Devだけ'));
+      expect(runbook, contains('prod用Service AccountはPhysiLogだけ'));
+      expect(runbook, contains('dev用Service AccountからPhysiLogのアプリ権限を削除'));
+      expect(runbook, contains('売上閲覧と注文管理はアカウント全体'));
+    });
   });
 }
