@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
 import 'package:physi_log/features/billing/domain/billing_catalog_failure.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
+import 'package:physi_log/features/billing/domain/billing_subscription.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/revenuecat_catalog.dart';
 import 'package:physi_log/features/billing/domain/revenuecat_environment.dart';
@@ -170,13 +172,13 @@ void main() {
     test('default Offeringの対応商品だけをドメインモデルへ変換する', () async {
       gateway.packages = const [
         RevenueCatPackageSnapshot(
-          packageId: r'$rc_monthly',
+          packageId: RevenueCatCatalog.personalFamilyMonthlyPackageId,
           productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
           title: '個人・家族 月額',
           priceText: '¥500',
         ),
         RevenueCatPackageSnapshot(
-          packageId: r'$rc_annual',
+          packageId: RevenueCatCatalog.teamYearlyPackageId,
           productId: RevenueCatCatalog.teamYearlyProductId,
           title: 'Team 年額',
           priceText: '¥9,800',
@@ -196,7 +198,7 @@ void main() {
       ]);
       expect(products, [
         const BillingProduct(
-          packageId: r'$rc_monthly',
+          packageId: RevenueCatCatalog.personalFamilyMonthlyPackageId,
           productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
           tier: PlanTier.personalFamily,
           period: BillingPeriod.monthly,
@@ -204,7 +206,7 @@ void main() {
           priceText: '¥500',
         ),
         const BillingProduct(
-          packageId: r'$rc_annual',
+          packageId: RevenueCatCatalog.teamYearlyPackageId,
           productId: RevenueCatCatalog.teamYearlyProductId,
           tier: PlanTier.team,
           period: BillingPeriod.yearly,
@@ -214,25 +216,53 @@ void main() {
       ]);
     });
 
+    test('platform固有商品IDを共通Package IDでドメインモデルへ変換する', () async {
+      gateway.packages = const [
+        RevenueCatPackageSnapshot(
+          packageId: 'personal_family_monthly',
+          productId: 'com.inoworl.physilog.personal_family.monthly',
+          title: '個人・家族 月額',
+          priceText: '¥500',
+        ),
+        RevenueCatPackageSnapshot(
+          packageId: 'team_yearly',
+          productId: 'team:yearly',
+          title: 'Team 年額',
+          priceText: '¥9,800',
+        ),
+      ];
+
+      final products = await repository.fetchProducts();
+
+      expect(products.map((product) => product.productId), [
+        'com.inoworl.physilog.personal_family.monthly',
+        'team:yearly',
+      ]);
+      expect(products.map((product) => (product.tier, product.period)), [
+        (PlanTier.personalFamily, BillingPeriod.monthly),
+        (PlanTier.team, BillingPeriod.yearly),
+      ]);
+    });
+
     test('購入成功を更新後の顧客アクセスへ変換する', () async {
       gateway.purchaseAccess = const RevenueCatCustomerSnapshot(
         activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
       );
 
-      final result = await repository.purchase(r'$rc_monthly');
+      final result = await repository.purchase(_newPurchaseRequest);
 
       expect(result.status, BillingPurchaseStatus.purchased);
       expect(result.customerAccess?.hasPersonalFamily, isTrue);
-      expect(gateway.purchaseCalls, [r'$rc_monthly']);
+      expect(gateway.purchaseCalls.single.packageId, r'$rc_monthly');
     });
 
     test('ユーザーキャンセルとその他の購入失敗を区別する', () async {
       gateway.purchaseError = const RevenueCatGatewayException.cancelled();
 
-      final cancelled = await repository.purchase(r'$rc_monthly');
+      final cancelled = await repository.purchase(_newPurchaseRequest);
 
       gateway.purchaseError = const RevenueCatGatewayException.failed();
-      final failed = await repository.purchase(r'$rc_monthly');
+      final failed = await repository.purchase(_newPurchaseRequest);
 
       expect(cancelled.status, BillingPurchaseStatus.cancelled);
       expect(failed.status, BillingPurchaseStatus.failed);
@@ -259,6 +289,100 @@ void main() {
       expect(restored.hasTeam, isTrue);
       expect(current.hasPersonalFamily, isTrue);
       expect(updated.hasTeam, isTrue);
+    });
+
+    test('CustomerInfoの契約詳細と管理URLをドメインへ変換する', () async {
+      gateway.currentAccess = RevenueCatCustomerSnapshot(
+        activeEntitlementIds: const {
+          RevenueCatCatalog.personalFamilyEntitlementId,
+          RevenueCatCatalog.teamEntitlementId,
+        },
+        activeSubscriptions: [
+          RevenueCatEntitlementSnapshot(
+            entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+            productId: 'com.inoworl.physilog.personal_family.monthly',
+            store: BillingStore.appStore,
+            isActive: true,
+            willRenew: true,
+            expiresAt: DateTime.utc(2026, 8, 1),
+          ),
+          RevenueCatEntitlementSnapshot(
+            entitlementId: RevenueCatCatalog.teamEntitlementId,
+            productId: 'team',
+            productPlanIdentifier: 'yearly',
+            store: BillingStore.playStore,
+            isActive: true,
+            willRenew: false,
+            expiresAt: DateTime.utc(2027, 1, 1),
+            unsubscribeDetectedAt: DateTime.utc(2026, 7, 1),
+            billingIssueDetectedAt: DateTime.utc(2026, 7, 2),
+          ),
+        ],
+        managementUrl: 'https://play.google.com/store/account/subscriptions',
+      );
+
+      final access = await repository.getCustomerAccess();
+
+      final current = access.currentSubscription;
+      expect(current?.tier, PlanTier.team);
+      expect(current?.period, BillingPeriod.yearly);
+      expect(current?.productId, 'team:yearly');
+      expect(current?.store, BillingStore.playStore);
+      expect(current?.willRenew, isFalse);
+      expect(current?.isCancellationScheduled, isTrue);
+      expect(current?.hasBillingIssue, isTrue);
+      expect(current?.expiresAt, DateTime.utc(2027, 1, 1));
+      expect(
+        access.managementUri,
+        Uri.parse('https://play.google.com/store/account/subscriptions'),
+      );
+    });
+
+    test('Androidの変更購入へ旧商品IDとReplacement Modeを渡す', () async {
+      repository = RevenueCatBillingRepository(
+        gateway: gateway,
+        environment: const RevenueCatEnvironment(
+          iosApiKey: 'ios-public-sdk-key',
+          androidApiKey: 'android-public-sdk-key',
+        ),
+        platform: RevenueCatPlatform.android,
+      );
+
+      await repository.purchase(_upgradeRequest);
+
+      final request = gateway.purchaseCalls.single;
+      expect(
+        request.previousProductId,
+        RevenueCatCatalog.personalFamilyMonthlyProductId,
+      );
+      expect(request.replacementMode, BillingReplacementMode.withTimeProration);
+    });
+
+    test('iOSの変更購入はStoreKitへ委ねAndroid固有情報を渡さない', () async {
+      await repository.purchase(_upgradeRequest);
+
+      final request = gateway.purchaseCalls.single;
+      expect(request.previousProductId, isNull);
+      expect(request.replacementMode, isNull);
+    });
+
+    test('Replacement ModeをRevenueCat SDK型へ明示変換する', () {
+      expect(
+        revenueCatStoreReplacementModeFor(
+          BillingReplacementMode.withTimeProration,
+        ),
+        purchases.StoreReplacementMode.withTimeProration,
+      );
+      expect(
+        revenueCatStoreReplacementModeFor(
+          BillingReplacementMode.withoutProration,
+        ),
+        purchases.StoreReplacementMode.withoutProration,
+      );
+      expect(
+        revenueCatStoreReplacementModeFor(BillingReplacementMode.deferred),
+        purchases.StoreReplacementMode.deferred,
+      );
     });
   });
 }
@@ -298,7 +422,7 @@ class _FakeRevenueCatGateway implements RevenueCatGateway {
   final configureCalls = <_ConfigureCall>[];
   final logInCalls = <String>[];
   final requestedOfferingIds = <String>[];
-  final purchaseCalls = <String>[];
+  final purchaseCalls = <RevenueCatPurchaseRequest>[];
   final customerInfoController =
       StreamController<RevenueCatCustomerSnapshot>.broadcast();
 
@@ -341,8 +465,10 @@ class _FakeRevenueCatGateway implements RevenueCatGateway {
   }
 
   @override
-  Future<RevenueCatCustomerSnapshot> purchase(String packageId) async {
-    purchaseCalls.add(packageId);
+  Future<RevenueCatCustomerSnapshot> purchase(
+    RevenueCatPurchaseRequest request,
+  ) async {
+    purchaseCalls.add(request);
     final error = purchaseError;
     if (error != null) {
       throw error;
@@ -358,6 +484,22 @@ class _FakeRevenueCatGateway implements RevenueCatGateway {
     return customerInfoController.stream;
   }
 }
+
+const _newPurchaseRequest = BillingPurchaseRequest(
+  packageId: r'$rc_monthly',
+  productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+  changeType: SubscriptionChangeType.newPurchase,
+  timing: SubscriptionChangeTiming.immediate,
+);
+
+const _upgradeRequest = BillingPurchaseRequest(
+  packageId: 'team_monthly',
+  productId: RevenueCatCatalog.teamMonthlyProductId,
+  previousProductId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+  changeType: SubscriptionChangeType.upgrade,
+  timing: SubscriptionChangeTiming.immediate,
+  replacementMode: BillingReplacementMode.withTimeProration,
+);
 
 class _ConfigureCall {
   const _ConfigureCall({required this.apiKey, required this.appUserId});

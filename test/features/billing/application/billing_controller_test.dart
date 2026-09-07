@@ -5,7 +5,10 @@ import 'package:physi_log/features/billing/application/billing_controller.dart';
 import 'package:physi_log/features/billing/domain/billing_catalog_failure.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
+import 'package:physi_log/features/billing/domain/billing_subscription.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/revenuecat_catalog.dart';
 
@@ -56,6 +59,43 @@ void main() {
       expect(repository.fetchProductsCalls, 1);
       expect(controller.state.catalogStatus, BillingCatalogStatus.loaded);
       expect(controller.state.isIdentitySynchronized, isTrue);
+    });
+
+    test('現在契約の取得完了まで購入可能商品を公開しない', () async {
+      final customerAccessCompleter = Completer<BillingCustomerAccess>();
+      final repository = FakeBillingRepository(products: [_personalProduct])
+        ..customerAccessCompleter = customerAccessCompleter;
+      final controller = BillingController(repository: repository);
+      addTearDown(controller.dispose);
+
+      final initialization = controller.initialize(
+        identitySync: Future.value(),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.loading);
+      expect(controller.state.products, isEmpty);
+
+      customerAccessCompleter.complete(
+        BillingCustomerAccess(activeEntitlementIds: const {}),
+      );
+      await initialization;
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.loaded);
+      expect(controller.state.products, [_personalProduct]);
+    });
+
+    test('現在契約を取得できない場合は購入可能商品を公開しない', () async {
+      final repository = FakeBillingRepository(products: [_personalProduct])
+        ..customerAccessError = StateError('customer access error');
+      final controller = BillingController(repository: repository);
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+
+      expect(controller.state.catalogStatus, BillingCatalogStatus.failed);
+      expect(controller.state.products, isEmpty);
+      expect(controller.state.catalogFailure, BillingCatalogFailure.unknown);
     });
 
     test('UID同期失敗を安全な分類で保持する', () async {
@@ -133,14 +173,14 @@ void main() {
       );
       addTearDown(controller.dispose);
 
-      await controller.purchase(_personalProduct.packageId);
+      await controller.purchase(_personalPurchaseRequest);
 
       expect(
         controller.state.actionStatus,
         BillingActionStatus.purchaseSucceeded,
       );
       expect(notifiedAccess, access);
-      expect(repository.purchasePackageIds, [_personalProduct.packageId]);
+      expect(repository.purchaseRequests, [_personalPurchaseRequest]);
     });
 
     test('購入キャンセルと購入失敗を異なる状態へ変換する', () async {
@@ -149,14 +189,14 @@ void main() {
       addTearDown(controller.dispose);
 
       repository.purchaseResult = const BillingPurchaseResult.cancelled();
-      await controller.purchase(_personalProduct.packageId);
+      await controller.purchase(_personalPurchaseRequest);
       expect(
         controller.state.actionStatus,
         BillingActionStatus.purchaseCancelled,
       );
 
       repository.purchaseResult = const BillingPurchaseResult.failed();
-      await controller.purchase(_personalProduct.packageId);
+      await controller.purchase(_personalPurchaseRequest);
       expect(controller.state.actionStatus, BillingActionStatus.purchaseFailed);
     });
 
@@ -166,11 +206,11 @@ void main() {
       final controller = BillingController(repository: repository);
       addTearDown(controller.dispose);
 
-      final firstPurchase = controller.purchase(_personalProduct.packageId);
+      final firstPurchase = controller.purchase(_personalPurchaseRequest);
       await Future<void>.delayed(Duration.zero);
-      final secondPurchase = controller.purchase(_personalProduct.packageId);
+      final secondPurchase = controller.purchase(_personalPurchaseRequest);
 
-      expect(repository.purchasePackageIds, [_personalProduct.packageId]);
+      expect(repository.purchaseRequests, [_personalPurchaseRequest]);
       expect(controller.state.actionStatus, BillingActionStatus.purchasing);
 
       completer.complete(const BillingPurchaseResult.cancelled());
@@ -183,7 +223,7 @@ void main() {
       final controller = BillingController(repository: repository);
       addTearDown(controller.dispose);
 
-      await controller.purchase(_personalProduct.packageId);
+      await controller.purchase(_personalPurchaseRequest);
 
       expect(controller.state.actionStatus, BillingActionStatus.purchaseFailed);
     });
@@ -200,13 +240,170 @@ void main() {
         onCustomerAccessChanged: (_) => notificationCount++,
       );
 
-      final purchasing = controller.purchase(_personalProduct.packageId);
+      final purchasing = controller.purchase(_personalPurchaseRequest);
       await Future<void>.delayed(Duration.zero);
       controller.dispose();
       completer.complete(BillingPurchaseResult.purchased(access));
 
       await expectLater(purchasing, completes);
       expect(notificationCount, 0);
+    });
+
+    test('起動時に現在契約とUID別の変更予約を復元する', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository()
+        ..changes['user-1'] = _pendingTeamChange;
+      final repository = FakeBillingRepository(currentAccess: _personalAccess);
+      final controller = BillingController(
+        repository: repository,
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+
+      expect(
+        controller.state.customerAccess?.currentSubscription?.productId,
+        RevenueCatCatalog.personalFamilyMonthlyProductId,
+      );
+      expect(controller.state.pendingChange, _pendingTeamChange);
+    });
+
+    test('成功したDeferred変更だけを保存する', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository();
+      final repository = FakeBillingRepository(
+        currentAccess: _personalAccess,
+        purchaseResult: BillingPurchaseResult.purchased(_personalAccess),
+      );
+      final controller = BillingController(
+        repository: repository,
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+        now: () => DateTime.utc(2026, 7, 22, 12),
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+      await controller.purchase(_deferredTeamRequest);
+
+      expect(pendingRepository.changes['user-1'], _pendingTeamChange);
+      expect(controller.state.pendingChange, _pendingTeamChange);
+    });
+
+    test('Deferred変更のキャンセル・失敗では予約と現在契約を変更しない', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository();
+      final repository = FakeBillingRepository(currentAccess: _personalAccess);
+      final controller = BillingController(
+        repository: repository,
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+      repository.purchaseResult = const BillingPurchaseResult.cancelled();
+      await controller.purchase(_deferredTeamRequest);
+      repository.purchaseResult = const BillingPurchaseResult.failed();
+      await controller.purchase(_deferredTeamRequest);
+
+      expect(pendingRepository.changes, isEmpty);
+      expect(controller.state.pendingChange, isNull);
+      expect(
+        controller.state.customerAccess?.currentSubscription?.productId,
+        RevenueCatCatalog.personalFamilyMonthlyProductId,
+      );
+    });
+
+    test('CustomerInfoが変更先商品になった予約を起動時に消し込む', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository()
+        ..changes['user-1'] = _pendingTeamChange;
+      final controller = BillingController(
+        repository: FakeBillingRepository(currentAccess: _teamAccess),
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+
+      expect(controller.state.pendingChange, isNull);
+      expect(pendingRepository.deleteUserIds, ['user-1']);
+    });
+
+    test('CustomerInfo更新で変更先商品が有効になった予約を消し込む', () async {
+      final customerAccessUpdates =
+          StreamController<BillingCustomerAccess>.broadcast();
+      addTearDown(customerAccessUpdates.close);
+      final pendingRepository = FakePendingSubscriptionChangeRepository()
+        ..changes['user-1'] = _pendingTeamChange;
+      final controller = BillingController(
+        repository: FakeBillingRepository(
+          currentAccess: _personalAccess,
+          customerAccessUpdates: customerAccessUpdates.stream,
+        ),
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+      customerAccessUpdates.add(_teamAccess);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        controller.state.customerAccess?.currentSubscription?.productId,
+        RevenueCatCatalog.teamYearlyProductId,
+      );
+      expect(controller.state.pendingChange, isNull);
+      expect(pendingRepository.deleteUserIds, ['user-1']);
+    });
+
+    test('変更予約の読み込み失敗でも取得済みの現在契約を保持する', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository()
+        ..getError = StateError('local storage error');
+      final controller = BillingController(
+        repository: FakeBillingRepository(currentAccess: _personalAccess),
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+
+      expect(
+        controller.state.customerAccess?.currentSubscription?.productId,
+        RevenueCatCatalog.personalFamilyMonthlyProductId,
+      );
+    });
+
+    test('変更予約の保存失敗でもStore購入成功と現在契約を保持する', () async {
+      final pendingRepository = FakePendingSubscriptionChangeRepository()
+        ..saveError = StateError('local storage error');
+      final repository = FakeBillingRepository(
+        currentAccess: _personalAccess,
+        purchaseResult: BillingPurchaseResult.purchased(_personalAccess),
+      );
+      final controller = BillingController(
+        repository: repository,
+        pendingChangeRepository: pendingRepository,
+        userId: 'user-1',
+        now: () => DateTime.utc(2026, 7, 22, 12),
+      );
+      addTearDown(controller.dispose);
+
+      await controller.initialize(identitySync: Future.value());
+      await expectLater(controller.purchase(_deferredTeamRequest), completes);
+
+      expect(
+        controller.state.actionStatus,
+        BillingActionStatus.purchaseSucceeded,
+      );
+      expect(
+        controller.state.customerAccess?.currentSubscription?.productId,
+        RevenueCatCatalog.personalFamilyMonthlyProductId,
+      );
+      expect(controller.state.pendingChange, _pendingTeamChange);
     });
 
     test('復元成功時にaccessを通知して成功状態へ遷移する', () async {
@@ -272,4 +469,56 @@ const _personalProduct = BillingProduct(
   period: BillingPeriod.monthly,
   title: '個人・家族 月額',
   priceText: '¥500',
+);
+
+const _personalPurchaseRequest = BillingPurchaseRequest(
+  packageId: r'$rc_monthly',
+  productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+  changeType: SubscriptionChangeType.newPurchase,
+  timing: SubscriptionChangeTiming.immediate,
+);
+
+const _deferredTeamRequest = BillingPurchaseRequest(
+  packageId: 'team_yearly',
+  productId: RevenueCatCatalog.teamYearlyProductId,
+  previousProductId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+  changeType: SubscriptionChangeType.upgrade,
+  timing: SubscriptionChangeTiming.nextRenewal,
+  replacementMode: BillingReplacementMode.deferred,
+);
+
+final _pendingTeamChange = PendingSubscriptionChange(
+  previousProductId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+  targetProductId: RevenueCatCatalog.teamYearlyProductId,
+  createdAt: DateTime.utc(2026, 7, 22, 12),
+);
+
+final _personalAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.personalFamilyEntitlementId},
+  activeSubscriptions: [
+    const BillingSubscription(
+      entitlementId: RevenueCatCatalog.personalFamilyEntitlementId,
+      productId: RevenueCatCatalog.personalFamilyMonthlyProductId,
+      tier: PlanTier.personalFamily,
+      period: BillingPeriod.monthly,
+      store: BillingStore.testStore,
+      isActive: true,
+      willRenew: true,
+    ),
+  ],
+);
+
+final _teamAccess = BillingCustomerAccess(
+  activeEntitlementIds: {RevenueCatCatalog.teamEntitlementId},
+  activeSubscriptions: [
+    const BillingSubscription(
+      entitlementId: RevenueCatCatalog.teamEntitlementId,
+      productId: RevenueCatCatalog.teamYearlyProductId,
+      tier: PlanTier.team,
+      period: BillingPeriod.yearly,
+      store: BillingStore.testStore,
+      isActive: true,
+      willRenew: true,
+    ),
+  ],
 );

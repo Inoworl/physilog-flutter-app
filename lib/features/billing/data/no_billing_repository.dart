@@ -1,5 +1,6 @@
 import '../domain/billing_customer_access.dart';
 import '../domain/billing_product.dart';
+import '../domain/billing_purchase_request.dart';
 import '../domain/billing_purchase_result.dart';
 import '../domain/billing_repository.dart';
 
@@ -24,7 +25,7 @@ class NoBillingRepository implements BillingRepository {
   Future<void> identify(String appUserId) async {}
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     return const BillingPurchaseResult.failed();
   }
 

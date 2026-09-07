@@ -5,8 +5,12 @@ import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/billing/application/billing_controller.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
+import 'package:physi_log/features/billing/domain/billing_subscription.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/domain/subscription_change_policy.dart';
 import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/shared/widgets/empty_state.dart';
 import 'package:physi_log/shared/widgets/error_state.dart';
@@ -22,13 +26,37 @@ class PlanScreen extends ConsumerWidget {
     final planState = ref.watch(planAccessStateProvider);
     final billingEnabled = ref.watch(useFirestoreProvider);
     final controller = ref.read(billingControllerProvider.notifier);
+    final managementLauncher = ref.read(subscriptionManagementLauncherProvider);
     final actionMessage = billingState.actionStatus.message;
 
     void retryCatalog() {
       ref.invalidate(billingIdentitySyncProvider);
     }
 
-    Future<void> purchase(String packageId) async {
+    Future<void> executePurchase(BillingProduct product) async {
+      final request = const SubscriptionChangePolicy().createRequest(
+        current: billingState.customerAccess?.currentSubscription,
+        target: product,
+      );
+      if (request == null) {
+        return;
+      }
+
+      if (request.changeType != SubscriptionChangeType.newPurchase) {
+        final confirmed = await _confirmSubscriptionChange(
+          context: context,
+          request: request,
+          target: product,
+        );
+        if (confirmed != true || !context.mounted) {
+          return;
+        }
+      }
+
+      await controller.purchase(request);
+    }
+
+    Future<void> purchase(BillingProduct product) async {
       final user = authState.valueOrNull;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -40,17 +68,46 @@ class PlanScreen extends ConsumerWidget {
       final email = user.email?.trim();
       final needsEmailRegistration =
           user.isAnonymous || email == null || email.isEmpty;
-      if (needsEmailRegistration) {
-        final registered = await context.pushNamed<bool>(
-          'settingsAccountAuth',
-          pathParameters: {'mode': 'register'},
-        );
-        if (registered != true || !context.mounted) {
-          return;
-        }
+      if (!needsEmailRegistration) {
+        await executePurchase(product);
+        return;
       }
 
-      await controller.purchase(packageId);
+      final registered = await context.pushNamed<bool>(
+        'settingsAccountAuth',
+        pathParameters: {'mode': 'register'},
+      );
+      if (registered != true || !context.mounted) {
+        return;
+      }
+
+      await executePurchase(product);
+    }
+
+    Future<void> manageSubscription() async {
+      final managementUri = billingState.customerAccess?.managementUri;
+      if (managementUri == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('契約管理画面を開けません。購入したストアのアカウント設定から確認してください。'),
+          ),
+        );
+        return;
+      }
+
+      var opened = false;
+      try {
+        opened = await managementLauncher.open(managementUri);
+      } on Object {
+        opened = false;
+      }
+      if (!context.mounted || opened) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('契約管理画面を開けませんでした。時間をおいて再度お試しください。')),
+      );
     }
 
     return Scaffold(
@@ -65,8 +122,22 @@ class PlanScreen extends ConsumerWidget {
                 AppSpacing.xl,
                 AppSpacing.sm,
               ),
-              child: _CurrentPlanCard(state: planState),
+              child: _CurrentPlanCard(
+                state: planState,
+                subscription: billingState.customerAccess?.currentSubscription,
+                onManage: manageSubscription,
+              ),
             ),
+            if (billingState.pendingChange case final pendingChange?)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.sm,
+                ),
+                child: _PendingChangeCard(change: pendingChange),
+              ),
             if (billingEnabled && actionMessage != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -142,10 +213,48 @@ class PlanScreen extends ConsumerWidget {
   }
 }
 
+Future<bool?> _confirmSubscriptionChange({
+  required BuildContext context,
+  required BillingPurchaseRequest request,
+  required BillingProduct target,
+}) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text(request.actionLabel(target: target)),
+        content: Text(
+          request.replacementMode == BillingReplacementMode.withoutProration
+              ? 'プラン内容はすぐに切り替わり、新しい料金は次回更新時に請求されます。'
+              : request.timing == SubscriptionChangeTiming.immediate
+              ? '変更はすぐに反映されます。ストアの確認画面で差額と請求タイミングを確認してください。'
+              : '変更は次回更新時に反映されます。それまでは現在のプランを利用できます。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('変更する'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 class _CurrentPlanCard extends StatelessWidget {
-  const _CurrentPlanCard({required this.state});
+  const _CurrentPlanCard({
+    required this.state,
+    required this.subscription,
+    required this.onManage,
+  });
 
   final PlanAccessState state;
+  final BillingSubscription? subscription;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -155,11 +264,90 @@ class _CurrentPlanCard extends StatelessWidget {
       PlanAccessReady(:final tier) => (Icons.verified_outlined, tier.label),
     };
 
-    return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: const Text('現在のプラン'),
-        subtitle: Text(label),
+    final subscription = this.subscription;
+    if (subscription == null) {
+      return Card(
+        child: ListTile(
+          leading: Icon(icon),
+          title: const Text('現在のプラン'),
+          subtitle: Text(label),
+        ),
+      );
+    }
+
+    return Semantics(
+      container: true,
+      label: '現在の契約内容',
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.verified_outlined),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('現在のプラン', style: AppTextStyles.cardTitle),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '${subscription.tier.label}・${subscription.period.label}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text('商品ID: ${subscription.productId}'),
+              Text(subscription.store.label),
+              if (subscription.expiresAt case final expiresAt?)
+                Text('有効期限: ${_formatDate(expiresAt)}'),
+              Text(subscription.renewalLabel),
+              if (subscription.hasBillingIssue)
+                Text(
+                  '支払い情報を確認してください',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton.icon(
+                onPressed: onManage,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('契約を管理'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingChangeCard extends StatelessWidget {
+  const _PendingChangeCard({required this.change});
+
+  final PendingSubscriptionChange change;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = billingConfigurationForProduct(change.targetProductId);
+    final targetLabel = target == null
+        ? change.targetProductId
+        : '${target.tier.label}・${target.period.label}';
+
+    return Semantics(
+      container: true,
+      label: '契約変更予約',
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.schedule),
+          title: const Text('変更予約中'),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('次回: $targetLabel'),
+              const Text('反映状況は契約管理画面で確認してください。'),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -169,7 +357,7 @@ class _ProductList extends StatefulWidget {
   const _ProductList({required this.state, required this.onPurchase});
 
   final BillingState state;
-  final ValueChanged<String> onPurchase;
+  final ValueChanged<BillingProduct> onPurchase;
 
   @override
   State<_ProductList> createState() => _ProductListState();
@@ -226,6 +414,13 @@ class _ProductListState extends State<_ProductList> {
       tier: tier,
       period: _selectedPeriod,
     );
+    final request = product == null
+        ? null
+        : const SubscriptionChangePolicy().createRequest(
+            current: state.customerAccess?.currentSubscription,
+            target: product,
+          );
+    final isCurrent = product != null && request == null;
 
     return _PlanCard(
       tier: tier,
@@ -235,6 +430,8 @@ class _ProductListState extends State<_ProductList> {
       isPurchasing:
           state.actionStatus == BillingActionStatus.purchasing &&
           state.activePackageId == product?.packageId,
+      request: request,
+      isCurrent: isCurrent,
       onPurchase: widget.onPurchase,
     );
   }
@@ -260,6 +457,8 @@ class _PlanCard extends StatelessWidget {
     required this.product,
     required this.isBusy,
     required this.isPurchasing,
+    required this.request,
+    required this.isCurrent,
     required this.onPurchase,
   });
 
@@ -268,7 +467,9 @@ class _PlanCard extends StatelessWidget {
   final BillingProduct? product;
   final bool isBusy;
   final bool isPurchasing;
-  final ValueChanged<String> onPurchase;
+  final BillingPurchaseRequest? request;
+  final bool isCurrent;
+  final ValueChanged<BillingProduct> onPurchase;
 
   @override
   Widget build(BuildContext context) {
@@ -294,15 +495,17 @@ class _PlanCard extends StatelessWidget {
                 Text('${period.label}商品は現在購入できません'),
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
-                onPressed: isBusy || product == null
+                onPressed: isBusy || product == null || isCurrent
                     ? null
-                    : () => onPurchase(product.packageId),
+                    : () => onPurchase(product),
                 child: Text(
                   isPurchasing
                       ? '購入処理中...'
                       : product == null
                       ? '購入できません'
-                      : '${tier.label}を購入',
+                      : isCurrent
+                      ? '利用中'
+                      : request!.actionLabel(target: product),
                 ),
               ),
             ],
@@ -359,6 +562,40 @@ extension on BillingPeriod {
     BillingPeriod.monthly => '月',
     BillingPeriod.yearly => '年',
   };
+}
+
+extension on BillingPurchaseRequest {
+  String actionLabel({required BillingProduct target}) {
+    return switch (changeType) {
+      SubscriptionChangeType.newPurchase => '${target.tier.label}を購入',
+      SubscriptionChangeType.upgrade => '${target.tier.label}へアップグレード',
+      SubscriptionChangeType.downgrade => '${target.tier.label}へ変更',
+      SubscriptionChangeType.periodChange => '${target.period.label}へ変更',
+    };
+  }
+}
+
+extension on BillingStore {
+  String get label => switch (this) {
+    BillingStore.appStore => 'App Store',
+    BillingStore.playStore => 'Google Play',
+    BillingStore.testStore => 'Test Store',
+    BillingStore.other => 'その他のストア',
+  };
+}
+
+extension on BillingSubscription {
+  String get renewalLabel {
+    if (isCancellationScheduled) {
+      return '更新: 有効期限で終了予定';
+    }
+    return willRenew ? '更新: 自動更新予定' : '更新: 自動更新なし';
+  }
+}
+
+String _formatDate(DateTime date) {
+  final localDate = date.toLocal();
+  return '${localDate.year}年${localDate.month}月${localDate.day}日';
 }
 
 extension on BillingActionStatus {

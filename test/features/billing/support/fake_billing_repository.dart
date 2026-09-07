@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
 import 'package:physi_log/features/billing/domain/billing_repository.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 
 class FakeBillingRepository implements BillingRepository {
   FakeBillingRepository({
@@ -11,6 +13,7 @@ class FakeBillingRepository implements BillingRepository {
     BillingPurchaseResult? purchaseResult,
     BillingCustomerAccess? restoreAccess,
     BillingCustomerAccess? currentAccess,
+    this.customerAccessUpdates = const Stream.empty(),
   }) : purchaseResult =
            purchaseResult ?? const BillingPurchaseResult.cancelled(),
        restoreAccess =
@@ -24,13 +27,20 @@ class FakeBillingRepository implements BillingRepository {
   BillingPurchaseResult purchaseResult;
   BillingCustomerAccess restoreAccess;
   BillingCustomerAccess currentAccess;
+  final Stream<BillingCustomerAccess> customerAccessUpdates;
   Object? fetchError;
+  Object? customerAccessError;
   Object? purchaseError;
   Object? restoreError;
   Completer<BillingPurchaseResult>? purchaseCompleter;
   Completer<List<BillingProduct>>? fetchProductsCompleter;
+  Completer<BillingCustomerAccess>? customerAccessCompleter;
   Completer<BillingCustomerAccess>? restoreCompleter;
-  final purchasePackageIds = <String>[];
+  final purchaseRequests = <BillingPurchaseRequest>[];
+  List<String> get purchasePackageIds {
+    return purchaseRequests.map((request) => request.packageId).toList();
+  }
+
   var fetchProductsCalls = 0;
   var restorePurchasesCalls = 0;
 
@@ -49,15 +59,19 @@ class FakeBillingRepository implements BillingRepository {
 
   @override
   Future<BillingCustomerAccess> getCustomerAccess() async {
-    return currentAccess;
+    final error = customerAccessError;
+    if (error != null) {
+      throw error;
+    }
+    return customerAccessCompleter?.future ?? currentAccess;
   }
 
   @override
   Future<void> identify(String appUserId) async {}
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
-    purchasePackageIds.add(packageId);
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
+    purchaseRequests.add(request);
     final error = purchaseError;
     if (error != null) {
       throw error;
@@ -85,5 +99,47 @@ class FakeBillingRepository implements BillingRepository {
   }
 
   @override
-  Stream<BillingCustomerAccess> watchCustomerAccess() => const Stream.empty();
+  Stream<BillingCustomerAccess> watchCustomerAccess() => customerAccessUpdates;
+}
+
+class FakePendingSubscriptionChangeRepository
+    implements PendingSubscriptionChangeRepository {
+  final changes = <String, PendingSubscriptionChange>{};
+  final saveUserIds = <String>[];
+  final deleteUserIds = <String>[];
+  Object? getError;
+  Object? saveError;
+  Object? deleteError;
+
+  @override
+  Future<void> delete({required String userId}) async {
+    final error = deleteError;
+    if (error != null) {
+      throw error;
+    }
+    deleteUserIds.add(userId);
+    changes.remove(userId);
+  }
+
+  @override
+  Future<PendingSubscriptionChange?> get({required String userId}) async {
+    final error = getError;
+    if (error != null) {
+      throw error;
+    }
+    return changes[userId];
+  }
+
+  @override
+  Future<void> save({
+    required String userId,
+    required PendingSubscriptionChange change,
+  }) async {
+    final error = saveError;
+    if (error != null) {
+      throw error;
+    }
+    saveUserIds.add(userId);
+    changes[userId] = change;
+  }
 }
