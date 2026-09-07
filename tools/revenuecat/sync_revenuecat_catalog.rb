@@ -87,11 +87,43 @@ module RevenueCatCatalog
       data.fetch('offering', {})
     end
 
+    def store_products(env_name)
+      env = environment(env_name)
+      apps = env.fetch('apps', {})
+
+      products.flat_map do |product|
+        Array(product.dig('store_products', env_name)).map do |store_product|
+          app_key = store_product['app']
+          app = apps.fetch(app_key, {})
+          product.merge(
+            'catalog_product_id' => product['id'],
+            'config_id' => "#{product['id']}@#{app_key}",
+            'app' => app_key,
+            'app_id' => app['app_id'],
+            'store' => app['store'],
+            'store_identifier' => store_product['store_identifier']
+          )
+        end
+      end
+    end
+
+    def store_products_for(env_name, catalog_product_id)
+      store_products(env_name).select do |product|
+        product.fetch('catalog_product_id') == catalog_product_id
+      end
+    end
+
     def validate(env_name)
       errors = []
       env = environments[env_name]
       errors << "Missing environments.#{env_name}" if env.nil?
       errors << "Missing project_id for #{env_name}" if env && blank?(env['project_id'])
+      apps = env&.fetch('apps', {}) || {}
+      errors << "Missing apps for #{env_name}" if apps.empty?
+      apps.each do |app_key, app|
+        errors << "Missing app_id for #{env_name}.#{app_key}" if blank?(app['app_id'])
+        errors << "Missing store for #{env_name}.#{app_key}" if blank?(app['store'])
+      end
 
       entitlement_ids = entitlements.map { |item| item['id'] }
       duplicate(entitlement_ids).each { |id| errors << "Duplicate entitlement id: #{id}" }
@@ -103,8 +135,9 @@ module RevenueCatCatalog
       product_ids = products.map { |item| item['id'] }
       duplicate(product_ids).each { |id| errors << "Duplicate product id: #{id}" }
       products.each do |item|
-        validate_product(item, entitlement_ids, errors)
+        validate_product(item, entitlement_ids, env_name, apps, errors)
       end
+      validate_store_product_uniqueness(env_name, errors) if env
 
       package_ids = packages.map { |item| item['id'] }
       duplicate(package_ids).each { |id| errors << "Duplicate package id: #{id}" }
@@ -121,16 +154,44 @@ module RevenueCatCatalog
 
     private
 
-    def validate_product(item, entitlement_ids, errors)
+    def validate_product(item, entitlement_ids, env_name, apps, errors)
       id = item['id']
       errors << 'Product id is required' if blank?(id)
       errors << "Product #{id} display_name is required" if blank?(item['display_name'])
       errors << "Product #{id} title is required" if blank?(item['title'])
       errors << "Product #{id} type must be subscription" unless item['type'] == 'subscription'
       errors << "Product #{id} duration is unsupported" unless SUPPORTED_DURATIONS.include?(item['duration'])
-      return if entitlement_ids.include?(item['entitlement_id'])
+      errors << "Product #{id} references unknown entitlement #{item['entitlement_id']}" unless entitlement_ids.include?(item['entitlement_id'])
 
-      errors << "Product #{id} references unknown entitlement #{item['entitlement_id']}"
+      store_products = Array(item.dig('store_products', env_name))
+      if store_products.empty?
+        errors << "Product #{id} has no store product for #{env_name}"
+        return
+      end
+
+      store_products.each do |store_product|
+        app_key = store_product['app']
+        errors << "Product #{id} store app is required for #{env_name}" if blank?(app_key)
+        errors << "Product #{id} references unknown app #{app_key} for #{env_name}" unless apps.key?(app_key)
+        if blank?(store_product['store_identifier'])
+          errors << "Product #{id} store_identifier is required for #{env_name}.#{app_key}"
+        end
+      end
+
+      configured_apps = store_products.map { |store_product| store_product['app'] }.compact
+      (apps.keys - configured_apps).each do |app_key|
+        errors << "Product #{id} has no store product for #{env_name}.#{app_key}"
+      end
+    end
+
+    def validate_store_product_uniqueness(env_name, errors)
+      configured_products = store_products(env_name)
+      duplicate(configured_products.map { |item| item['config_id'] }).each do |id|
+        errors << "Duplicate store product config: #{id}"
+      end
+      duplicate(configured_products.map { |item| [item['app'], item['store_identifier']] }).each do |app, identifier|
+        errors << "Duplicate store product identifier: #{app}.#{identifier}"
+      end
     end
 
     def duplicate(values)
@@ -167,16 +228,19 @@ module RevenueCatCatalog
     end
 
     def create_product(project_id, app_id, product)
-      post("/projects/#{project_id}/products", {
-        store_identifier: product.fetch('id'),
+      payload = {
+        store_identifier: product.fetch('store_identifier'),
         app_id: app_id,
         type: product.fetch('type'),
-        display_name: product.fetch('display_name'),
-        title: product.fetch('title'),
-        subscription: {
+        display_name: product.fetch('display_name')
+      }
+      if product.fetch('store') == 'test_store'
+        payload[:title] = product.fetch('title')
+        payload[:subscription] = {
           duration: product.fetch('duration')
         }
-      })
+      end
+      post("/projects/#{project_id}/products", payload)
     end
 
     def list_offerings(project_id)
@@ -286,9 +350,6 @@ module RevenueCatCatalog
     def run(apply:)
       errors = @catalog.validate(@env_name)
       raise ArgumentError, errors.join("\n") unless errors.empty?
-      if apply && blank?(app_id) && @catalog.products.any?
-        raise ArgumentError, "Missing app_id for #{@env_name}; product sync needs a RevenueCat app id"
-      end
 
       return offline_plan if @api.nil?
 
@@ -326,23 +387,28 @@ module RevenueCatCatalog
     end
 
     def ensure_products(apply)
-      existing = index_by_store_identifier(@api.list_products(project_id))
-      @catalog.products.each do |product|
-        next if existing.key?(product.fetch('id'))
-
-        record(:create, "product #{product.fetch('id')}", price_detail(product))
-        created = if apply
-                    @api.create_product(project_id, app_id, product)
-                  else
-                    {
-                      'id' => product.fetch('id'),
-                      'store_identifier' => product.fetch('id'),
-                      'planned' => true
-                    }
-                  end
-        existing[created.fetch('store_identifier')] = created
+      existing = index_by_store_product(@api.list_products(project_id))
+      by_config_id = {}
+      @catalog.store_products(@env_name).each do |product|
+        key = store_product_key(product.fetch('app_id'), product.fetch('store_identifier'))
+        current = existing[key]
+        unless current
+          record(:create, "product #{product.fetch('config_id')}", price_detail(product))
+          current = if apply
+                      @api.create_product(project_id, product.fetch('app_id'), product)
+                    else
+                      {
+                        'id' => product.fetch('config_id'),
+                        'store_identifier' => product.fetch('store_identifier'),
+                        'app_id' => product.fetch('app_id'),
+                        'planned' => true
+                      }
+                    end
+          existing[key] = current
+        end
+        by_config_id[product.fetch('config_id')] = current
       end
-      existing
+      by_config_id
     end
 
     def ensure_offering(apply)
@@ -393,17 +459,22 @@ module RevenueCatCatalog
     end
 
     def ensure_entitlement_product_links(entitlements_by_config_id, products_by_config_id, apply)
-      @catalog.products.group_by { |product| product.fetch('entitlement_id') }.each do |entitlement_id, products|
+      @catalog.store_products(@env_name).group_by { |product| product.fetch('entitlement_id') }.each do |entitlement_id, products|
         entitlement = entitlements_by_config_id.fetch(entitlement_id)
         attached = entitlement['planned'] ? [] : @api.list_entitlement_products(project_id, entitlement.fetch('id'))
-        attached_ids = attached.map { |item| item.fetch('store_identifier') }
-        missing = products.reject { |product| attached_ids.include?(product.fetch('id')) }
+        attached_keys = attached.map do |item|
+          store_product_key(item.fetch('app_id'), item.fetch('store_identifier'))
+        end
+        missing = products.reject do |product|
+          attached_keys.include?(store_product_key(product.fetch('app_id'), product.fetch('store_identifier')))
+        end
         next if missing.empty?
 
-        record(:attach, "entitlement #{entitlement_id}", missing.map { |product| product.fetch('id') }.join(', '))
+        logical_ids = missing.map { |product| product.fetch('catalog_product_id') }.uniq
+        record(:attach, "entitlement #{entitlement_id}", logical_ids.join(', '))
         next unless apply
 
-        ids = missing.map { |product| products_by_config_id.fetch(product.fetch('id')).fetch('id') }
+        ids = missing.map { |product| products_by_config_id.fetch(product.fetch('config_id')).fetch('id') }
         @api.attach_products_to_entitlement(project_id, entitlement.fetch('id'), ids)
       end
     end
@@ -412,14 +483,23 @@ module RevenueCatCatalog
       @catalog.packages.each do |package|
         actual_package = packages_by_config_id.fetch(package.fetch('id'))
         attached = actual_package['planned'] ? [] : @api.list_package_products(project_id, actual_package.fetch('id'))
-        attached_ids = attached.map { |item| item.fetch('product').fetch('store_identifier') }
-        next if attached_ids.include?(package.fetch('product_id'))
+        attached_keys = attached.map do |item|
+          product = item.fetch('product')
+          store_product_key(product.fetch('app_id'), product.fetch('store_identifier'))
+        end
+        expected = @catalog.store_products_for(@env_name, package.fetch('product_id'))
+        missing = expected.reject do |product|
+          attached_keys.include?(store_product_key(product.fetch('app_id'), product.fetch('store_identifier')))
+        end
+        next if missing.empty?
 
         record(:attach, "package #{package.fetch('id')}", package.fetch('product_id'))
         next unless apply
 
-        product_id = products_by_config_id.fetch(package.fetch('product_id')).fetch('id')
-        @api.attach_products_to_package(project_id, actual_package.fetch('id'), [product_id])
+        product_ids = missing.map do |product|
+          products_by_config_id.fetch(product.fetch('config_id')).fetch('id')
+        end
+        @api.attach_products_to_package(project_id, actual_package.fetch('id'), product_ids)
       end
     end
 
@@ -431,10 +511,6 @@ module RevenueCatCatalog
       environment.fetch('project_id')
     end
 
-    def app_id
-      environment.fetch('app_id')
-    end
-
     def environment
       @environment ||= @catalog.environment(@env_name)
     end
@@ -443,8 +519,14 @@ module RevenueCatCatalog
       items.to_h { |item| [item.fetch('lookup_key'), item] }
     end
 
-    def index_by_store_identifier(items)
-      items.to_h { |item| [item.fetch('store_identifier'), item] }
+    def index_by_store_product(items)
+      items.to_h do |item|
+        [store_product_key(item.fetch('app_id'), item.fetch('store_identifier')), item]
+      end
+    end
+
+    def store_product_key(app_id, store_identifier)
+      [app_id, store_identifier]
     end
 
     def planned_entity(config)
@@ -462,10 +544,6 @@ module RevenueCatCatalog
       return nil unless price
 
       "intended #{price.fetch('currency')} #{price.fetch('amount')}"
-    end
-
-    def blank?(value)
-      value.nil? || value.to_s.strip.empty?
     end
   end
 end
@@ -498,12 +576,12 @@ if $PROGRAM_NAME == __FILE__
   api_key_source = 'shell environment'
   if api_key.nil? || api_key.empty?
     api_key = env_file_values[api_key_env]
-    api_key_source = options[:env_file] ? "--env-file #{options.fetch(:env_file)}" : 'not set'
+    api_key_source = options[:env_file] ? 'env file' : 'not set'
   end
 
   puts "config: env=#{options.fetch(:env)}"
   puts "config: api_key_env=#{api_key_env}"
-  puts "config: env_file=#{options[:env_file] || '(none)'}"
+  puts "config: env_file=#{options[:env_file] ? 'provided' : '(none)'}"
   puts "config: api_key=#{api_key.nil? || api_key.empty? ? 'missing' : "present from #{api_key_source}"}"
 
   catalog = RevenueCatCatalog::Catalog.load(options.fetch(:catalog))
