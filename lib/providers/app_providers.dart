@@ -6,11 +6,14 @@ import 'package:physi_log/features/auth/application/auth_service.dart';
 import 'package:physi_log/features/billing/application/billing_controller.dart';
 import 'package:physi_log/features/billing/application/billing_identity_sync.dart';
 import 'package:physi_log/features/billing/application/plan_access_controller.dart';
+import 'package:physi_log/features/billing/data/hive_pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/data/no_billing_repository.dart';
 import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
 import 'package:physi_log/features/billing/domain/billing_repository.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/presentation/subscription_management_launcher.dart';
 import 'package:physi_log/features/entitlements/data/firestore_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/data/no_entitlement_repository.dart';
 import 'package:physi_log/features/entitlements/domain/entitlement_repository.dart';
@@ -111,6 +114,16 @@ final billingRepositoryProvider = Provider<BillingRepository>((ref) {
   return RevenueCatBillingRepository();
 });
 
+final pendingSubscriptionChangeRepositoryProvider =
+    Provider<PendingSubscriptionChangeRepository>((ref) {
+      return HivePendingSubscriptionChangeRepository();
+    });
+
+final subscriptionManagementLauncherProvider =
+    Provider<SubscriptionManagementLauncher>((ref) {
+      return const UrlSubscriptionManagementLauncher();
+    });
+
 final billingIdentitySyncServiceProvider = Provider<BillingIdentitySync>((ref) {
   return BillingIdentitySync(repository: ref.watch(billingRepositoryProvider));
 });
@@ -175,6 +188,10 @@ final billingControllerProvider =
     StateNotifierProvider.autoDispose<BillingController, BillingState>((ref) {
       final controller = BillingController(
         repository: ref.watch(billingRepositoryProvider),
+        pendingChangeRepository: ref.watch(
+          pendingSubscriptionChangeRepositoryProvider,
+        ),
+        userId: ref.watch(currentUserIdProvider),
         onCustomerAccessChanged: (_) {
           ref.invalidate(planAccessStateStreamProvider);
         },

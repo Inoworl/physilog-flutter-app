@@ -6,8 +6,10 @@ import 'package:physi_log/features/billing/application/billing_controller.dart';
 import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
 import 'package:physi_log/features/billing/domain/billing_repository.dart';
+import 'package:physi_log/features/billing/domain/pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/billing/domain/revenuecat_catalog.dart';
@@ -175,6 +177,9 @@ void main() {
         dataStoreModeProvider.overrideWithValue(DataStoreMode.firestore),
         currentUserIdProvider.overrideWithValue('firebase-user-id'),
         billingRepositoryProvider.overrideWithValue(repository),
+        pendingSubscriptionChangeRepositoryProvider.overrideWithValue(
+          const NoPendingSubscriptionChangeRepository(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -273,7 +278,7 @@ class _FakeBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     return const BillingPurchaseResult.cancelled();
   }
 

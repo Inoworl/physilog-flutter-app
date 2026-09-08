@@ -1,6 +1,6 @@
 # RevenueCat購入テストマトリクス
 
-最終更新: 2026-07-20
+最終更新: 2026-07-24
 
 ## 対象環境
 
@@ -31,6 +31,33 @@
 | 15 | Sandbox access | 検証用UIDだけがtest entitlementを取得 | `Allowed App User IDs only (4)`を確認 | PASS |
 | 16 | release keyガード | releaseでTest Store keyを拒否 | ガードを含む全自動テストが成功 | PASS |
 | 17 | 全自動テスト・解析 | format/test/analyzeが成功 | format差分なし、全テスト成功、analyze指摘なし、秘密情報混入検査成功 | PASS |
+
+## Issue #96 自動検証結果
+
+実Storeでしか確認できない請求結果と、自動テストで確認したアプリ境界を分けて記録する。
+
+| # | シナリオ | 自動検証範囲 | 結果 |
+| --- | --- | --- | --- |
+| 18 | CustomerInfo契約詳細 | 商品ID、Tier、周期、Store、期限、更新、解約、請求問題、管理URLの変換 | PASS |
+| 19 | 現在商品の再購入防止 | 現在商品を「利用中」にして購入ボタンを無効化 | PASS |
+| 20 | 個人・家族 → Team | 即時変更、旧商品ID、`withTimeProration`、確認ダイアログ | PASS |
+| 21 | Team → 個人・家族 | 次回更新時変更、旧商品ID、`deferred`、確認ダイアログ | PASS |
+| 22 | 同一Tierの周期変更 | Test Store / iOSは次回更新、Google Playの同一Subscription内は即時切替＋次回請求、旧Subscription ID、Store別確認ダイアログ | PASS |
+| 23 | iOS変更購入 | Android固有の商品変更情報を渡さずStoreKitへ委譲 | PASS |
+| 24 | キャンセル／失敗 | 現在契約、権限、変更予約を維持 | PASS |
+| 25 | 変更予約 | UID別保存、再起動復元、CustomerInfo更新時の消し込み | PASS |
+| 26 | 契約管理 | 管理URL起動、URLなし、外部起動失敗の案内 | PASS |
+| 27 | Android端末統合 | スクロール、変更確認、購入要求生成をAPI 34 Emulatorで実行 | PASS |
+
+## Issue #96 実Store検証状況
+
+| 環境 | 確認対象 | 状況 |
+| --- | --- | --- |
+| RevenueCat Test Store | 変更成功、キャンセル、失敗、再起動後の予約表示 | 未実施 |
+| Apple Sandbox／TestFlight | upgrade、downgrade、周期変更、解約、復元、期限切れ | Issue #97で実施 |
+| Google Play Internal Testing | Replacement Mode、解約、復元、請求状態、期限切れ | Issue #97で実施 |
+
+未実施項目をPASSとして扱わない。実行後は本表の状況と下記の再実行記録を更新する。
 
 ## 手動実行手順
 
