@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/presentation/upgrade_prompt.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/models/event.dart';
@@ -39,21 +40,30 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     }
   }
 
-  void _startSession(Event event) {
+  Future<void> _startSession(Event event) async {
     final planState = ref.read(planAccessStateProvider);
     if (planState is! PlanAccessReady) {
       return;
     }
     final capabilities = planState.capabilities;
-    if (!capabilities.canUseMeasurementSessions) {
-      _showTeamFeatureDialog(context);
+    if (capabilities.canUseMeasurementSessions) {
+      context.pushNamed(
+        'measurementSession',
+        extra: SessionArgs(event: event, date: _selectedDate),
+      );
       return;
     }
 
-    context.pushNamed(
-      'measurementSession',
-      extra: SessionArgs(event: event, date: _selectedDate),
+    final shouldViewPlans = await showUpgradePromptDialog(
+      context,
+      title: 'Teamプラン限定機能です',
+      message: '計測会はTeamプランで利用できます。',
     );
+    if (!mounted || !shouldViewPlans) {
+      return;
+    }
+
+    context.pushNamed('settingsPlan');
   }
 
   @override
@@ -82,10 +92,14 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     if (!capabilities.canUseMeasurementSessions) {
       return Scaffold(
         appBar: AppBar(title: const Text('計測会を始める')),
-        body: const EmptyState(
+        body: EmptyState(
           icon: Icons.lock_outline,
           title: '計測会はTeamプランで利用できます',
           subtitle: '個人・家族プランでは、動画計測と手入力の記録追加を利用できます',
+          action: FilledButton(
+            onPressed: () => context.pushNamed('settingsPlan'),
+            child: const Text('プランを見る'),
+          ),
         ),
       );
     }
@@ -158,22 +172,6 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
       ),
     );
   }
-}
-
-Future<void> _showTeamFeatureDialog(BuildContext context) {
-  return showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Teamプラン限定機能です'),
-      content: const Text('計測会はTeamプランで利用できます。'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
 }
 
 class _EventTile extends StatelessWidget {

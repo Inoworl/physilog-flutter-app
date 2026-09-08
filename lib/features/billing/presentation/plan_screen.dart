@@ -40,14 +40,17 @@ class PlanScreen extends ConsumerWidget {
       final email = user.email?.trim();
       final needsEmailRegistration =
           user.isAnonymous || email == null || email.isEmpty;
-      if (needsEmailRegistration) {
-        final registered = await context.pushNamed<bool>(
-          'settingsAccountAuth',
-          pathParameters: {'mode': 'register'},
-        );
-        if (registered != true || !context.mounted) {
-          return;
-        }
+      if (!needsEmailRegistration) {
+        await controller.purchase(packageId);
+        return;
+      }
+
+      final registered = await context.pushNamed<bool>(
+        'settingsAccountAuth',
+        pathParameters: {'mode': 'register'},
+      );
+      if (registered != true || !context.mounted) {
+        return;
       }
 
       await controller.purchase(packageId);
