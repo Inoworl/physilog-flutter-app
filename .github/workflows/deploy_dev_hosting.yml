@@ -4,7 +4,8 @@ on:
   push:
     branches: [dev]
     paths:
-      - docs/pages/**
+      - web/**
+      - scripts/test_web_hosting.mjs
       - firebase.json
       - .github/workflows/deploy_dev_hosting.yml
   workflow_dispatch:
@@ -21,6 +22,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Validate public Web
+        run: node --test scripts/test_web_hosting.mjs
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
