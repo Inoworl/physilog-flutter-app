@@ -225,7 +225,7 @@ void main() {
       final devYaml = dev.readAsStringSync();
       expect(devYaml, contains('name: "[Release] Dev Hosting"'));
       expect(devYaml, contains('branches: [dev]'));
-      expect(devYaml, contains('docs/pages/**'));
+      expect(devYaml, contains('web/**'));
       expect(devYaml, contains('firebase.json'));
       expect(devYaml, contains('DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64'));
       expect(devYaml, contains('DEV_FIREBASE_PROJECT_ID'));
