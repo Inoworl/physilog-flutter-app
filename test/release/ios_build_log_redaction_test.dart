@@ -160,6 +160,36 @@ void main() {
   });
 
   for (final environment in ['dev', 'prod']) {
+    test('$environment failure logs render on macOS system Bash', () {
+      final script = Process.runSync('ruby', [
+        '-ryaml',
+        '-e',
+        '''
+steps = YAML.load_file(ARGV.fetch(0)).fetch('jobs').fetch('build').fetch('steps')
+puts steps.find { |step| step['name'] == 'Show redacted iOS build logs' }.fetch('run')
+''',
+        '.github/workflows/deploy_${environment}_ios.yml',
+      ]);
+      expect(script.exitCode, 0, reason: script.stderr as String);
+      final workspace = Directory.systemTemp.createTempSync('ios-log-shell-');
+      addTearDown(() => workspace.deleteSync(recursive: true));
+      final logs = Directory('${workspace.path}/ios/build/logs')
+        ..createSync(recursive: true);
+      File(
+        '${logs.path}/build.log',
+      ).writeAsStringSync('Safe build diagnostic\n');
+
+      final result = Process.runSync(
+        '/bin/bash',
+        ['-e', '-o', 'pipefail', '-c', script.stdout as String],
+        workingDirectory: workspace.path,
+        environment: {'HOME': workspace.path},
+      );
+
+      expect(result.exitCode, 0, reason: result.stderr as String);
+      expect(result.stdout, 'Safe build diagnostic\n');
+    });
+
     test('$environment diagnostics require successful log redaction', () {
       final workflow = File(
         '.github/workflows/deploy_${environment}_ios.yml',
