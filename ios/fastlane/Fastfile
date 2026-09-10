@@ -1,7 +1,10 @@
+require_relative "dart_define_log_redaction"
+
 default_platform(:ios)
 
 def flutter_dart_defines(values)
   require "base64"
+  DartDefineLogRedaction.mask(values)
   values.map do |key, value|
     Base64.strict_encode64("#{key}=#{value}")
   end.join(",")

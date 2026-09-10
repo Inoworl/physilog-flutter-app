@@ -123,3 +123,15 @@ final capabilities = PlanCapabilities.forTier(tier);
 - RevenueCat の public SDK key は公開前提のキーだが、ストア提出ビルドには Test Store API key を入れない。
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
 - Team の1ヶ月無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。
+
+### iOS リリースログの秘匿
+
+- `Fastfile` は GitHub Actions 上で Dart Define の値・代入形式・各 Base64 文字列を、ビルド引数へ渡す前にマスク登録する。Base64 は暗号化ではない。
+- dev/prod の iOS workflow は失敗時の診断表示とログ添付の前に、`dart_define_log_redaction.rb` で対象環境の設定値を `.log` ファイルから除去する。
+- ログが存在するのに設定ファイルを読み取れない場合など、秘匿処理が失敗したときは診断ログを表示・添付しない。生の `xcodebuild -showBuildSettings` 出力も添付しない。
+- ビルドへ渡す値、署名、配信先は変更しない。この処理は過去の Actions ログを遡って秘匿するものではない。
+- 再発防止テストは実際の鍵・設定ファイルを使わず、次のコマンドで実行できる。
+
+```bash
+fvm flutter test test/release/ios_build_log_redaction_test.dart
+```
