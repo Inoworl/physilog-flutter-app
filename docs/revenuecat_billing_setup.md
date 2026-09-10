@@ -123,6 +123,7 @@ final capabilities = PlanCapabilities.forTier(tier);
 - RevenueCat の public SDK key は公開前提のキーだが、ストア提出ビルドには Test Store API key を入れない。
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
 - Team の1ヶ月無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。
+- TestFlight の日本語メタデータには Apple 対応の locale `ja` を使う。`ja-JP` はアップロード後のメタデータ登録で拒否されるため、送信・処理済みビルドを再生成する前に既存ビルドの状態を確認する。
 
 ### iOS リリースログの秘匿
 
