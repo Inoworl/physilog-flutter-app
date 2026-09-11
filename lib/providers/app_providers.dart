@@ -97,15 +97,19 @@ final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
   return const NoEntitlementRepository();
 });
 
-final currentEntitlementProvider = FutureProvider<Entitlement?>((ref) async {
+final currentEntitlementProvider = StreamProvider<Entitlement?>((ref) {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) {
-    return null;
+    return Stream.value(null);
   }
   return ref
       .watch(entitlementRepositoryProvider)
-      .getCurrentEntitlement(userId: userId);
+      .watchCurrentEntitlement(userId: userId);
 });
+
+final billingClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
 
 final billingRepositoryProvider = Provider<BillingRepository>((ref) {
   if (!ref.watch(useFirestoreProvider)) {
@@ -138,41 +142,58 @@ final billingIdentitySyncProvider = FutureProvider<void>((ref) async {
   await ref.watch(billingIdentitySyncServiceProvider).synchronize(userId);
 });
 
-final planAccessStateStreamProvider = StreamProvider<PlanAccessState>((
-  ref,
-) async* {
+final planAccessStateStreamProvider = StreamProvider<PlanAccessState>((ref) {
   final useFirestore = ref.watch(useFirestoreProvider);
   final userId = ref.watch(currentUserIdProvider);
   if (!useFirestore || userId == null) {
-    yield PlanAccessReady(
-      const PlanAccessPolicy().evaluate(
-        hasRevenueCatPersonalFamily: false,
-        hasRevenueCatTeam: false,
-        hasLegacyPersonalFamily: false,
-        hasLegacyTeam: false,
-        hasManualTeam: false,
+    return Stream.value(
+      PlanAccessReady(
+        const PlanAccessPolicy().evaluate(
+          hasRevenueCatPersonalFamily: false,
+          hasRevenueCatTeam: false,
+          hasLegacyPersonalFamily: false,
+          hasLegacyTeam: false,
+          hasManualTeam: false,
+        ),
       ),
     );
-    return;
   }
 
-  try {
-    await ref.watch(billingIdentitySyncProvider.future);
-    final entitlement = await ref.watch(currentEntitlementProvider.future);
-    final now = DateTime.now();
-    final controller = PlanAccessController(
-      repository: ref.watch(billingRepositoryProvider),
-    );
+  final identitySync = ref.watch(billingIdentitySyncProvider.future);
+  final entitlementFuture = ref.watch(currentEntitlementProvider.future);
+  final repository = ref.watch(billingRepositoryProvider);
+  final clock = ref.watch(billingClockProvider);
+  Timer? expiryTimer;
+  var disposed = false;
+  ref.onDispose(() {
+    disposed = true;
+    expiryTimer?.cancel();
+  });
+  Stream<PlanAccessState> watchAccess() async* {
+    if (disposed) return;
+    try {
+      await identitySync;
+      final entitlement = await entitlementFuture;
+      if (disposed) return;
+      final now = clock();
+      final expiresAt = entitlement?.expiresAt;
+      if (entitlement?.isActiveAt(now) == true && expiresAt != null) {
+        expiryTimer = Timer(expiresAt.difference(now), ref.invalidateSelf);
+      }
+      final controller = PlanAccessController(repository: repository);
 
-    yield* controller.watchAccess(
-      hasLegacyPersonalFamily:
-          entitlement?.hasLegacyPersonalFamilyAccessAt(now) ?? false,
-      hasLegacyTeam: entitlement?.hasLegacyTeamAccessAt(now) ?? false,
-      hasManualTeam: entitlement?.hasManualTeamAccessAt(now) ?? false,
-    );
-  } on Object {
-    yield const PlanAccessError();
+      yield* controller.watchAccess(
+        hasLegacyPersonalFamily:
+            entitlement?.hasLegacyPersonalFamilyAccessAt(now) ?? false,
+        hasLegacyTeam: entitlement?.hasLegacyTeamAccessAt(now) ?? false,
+        hasManualTeam: entitlement?.hasManualTeamAccessAt(now) ?? false,
+      );
+    } on Object {
+      yield const PlanAccessError();
+    }
   }
+
+  return watchAccess();
 });
 
 final planAccessStateProvider = Provider<PlanAccessState>((ref) {
@@ -192,6 +213,7 @@ final billingControllerProvider =
           pendingSubscriptionChangeRepositoryProvider,
         ),
         userId: ref.watch(currentUserIdProvider),
+        now: ref.watch(billingClockProvider),
         onCustomerAccessChanged: (_) {
           ref.invalidate(planAccessStateStreamProvider);
         },

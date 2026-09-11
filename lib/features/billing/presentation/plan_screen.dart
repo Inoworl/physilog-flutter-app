@@ -101,7 +101,11 @@ class PlanScreen extends ConsumerWidget {
       } on Object {
         opened = false;
       }
-      if (!context.mounted || opened) {
+      if (!context.mounted) {
+        return;
+      }
+      if (opened) {
+        await controller.refreshCustomerAccess();
         return;
       }
 

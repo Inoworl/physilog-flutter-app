@@ -19,7 +19,9 @@ class NoBillingRepository implements BillingRepository {
   Future<List<BillingProduct>> fetchProducts() async => const [];
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async => _noAccess;
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async => _noAccess;
 
   @override
   Future<void> identify(String appUserId) async {}

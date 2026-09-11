@@ -5,6 +5,11 @@ class NoEntitlementRepository implements EntitlementRepository {
   const NoEntitlementRepository();
 
   @override
+  Stream<Entitlement?> watchCurrentEntitlement({required String userId}) {
+    return Stream.value(null);
+  }
+
+  @override
   Future<Entitlement?> getCurrentEntitlement({required String userId}) async {
     return null;
   }
