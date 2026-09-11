@@ -14,7 +14,7 @@ abstract interface class BillingRepository {
 
   Future<BillingCustomerAccess> restorePurchases();
 
-  Future<BillingCustomerAccess> getCustomerAccess();
+  Future<BillingCustomerAccess> getCustomerAccess({bool forceRefresh = false});
 
   Stream<BillingCustomerAccess> watchCustomerAccess();
 }

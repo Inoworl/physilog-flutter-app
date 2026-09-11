@@ -263,7 +263,9 @@ class _FakeBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async {
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async {
     getCustomerAccessCalls++;
     final error = getError;
     if (error != null) {
@@ -293,6 +295,10 @@ class _FakeEntitlementRepository implements EntitlementRepository {
   const _FakeEntitlementRepository(this.entitlement);
 
   final Entitlement? entitlement;
+
+  @override
+  Stream<Entitlement?> watchCurrentEntitlement({required String userId}) =>
+      Stream.value(entitlement);
 
   @override
   Future<Entitlement?> getCurrentEntitlement({required String userId}) async {

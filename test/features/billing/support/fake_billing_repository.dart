@@ -43,6 +43,7 @@ class FakeBillingRepository implements BillingRepository {
 
   var fetchProductsCalls = 0;
   var restorePurchasesCalls = 0;
+  final customerAccessRefreshes = <bool>[];
 
   @override
   Future<void> configure({required String? appUserId}) async {}
@@ -58,7 +59,10 @@ class FakeBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async {
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async {
+    customerAccessRefreshes.add(forceRefresh);
     final error = customerAccessError;
     if (error != null) {
       throw error;
@@ -108,6 +112,7 @@ class FakePendingSubscriptionChangeRepository
   final saveUserIds = <String>[];
   final deleteUserIds = <String>[];
   Object? getError;
+  Completer<PendingSubscriptionChange?>? getCompleter;
   Object? saveError;
   Object? deleteError;
 
@@ -127,7 +132,7 @@ class FakePendingSubscriptionChangeRepository
     if (error != null) {
       throw error;
     }
-    return changes[userId];
+    return getCompleter?.future ?? changes[userId];
   }
 
   @override

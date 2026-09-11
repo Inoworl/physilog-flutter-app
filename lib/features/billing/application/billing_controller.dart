@@ -9,6 +9,7 @@ import '../domain/billing_product.dart';
 import '../domain/billing_purchase_request.dart';
 import '../domain/billing_purchase_result.dart';
 import '../domain/billing_repository.dart';
+import '../domain/billing_subscription.dart';
 import '../domain/pending_subscription_change_repository.dart';
 
 enum BillingCatalogStatus { initial, loading, loaded, failed }
@@ -105,7 +106,81 @@ class BillingController extends StateNotifier<BillingState> {
   final PendingSubscriptionChangeRepository _pendingChangeRepository;
   final String? _userId;
   final DateTime Function() _now;
-  StreamSubscription<void>? _customerAccessSubscription;
+  StreamSubscription<BillingCustomerAccess>? _customerAccessSubscription;
+  Timer? _refreshTimer;
+  Future<bool>? _refreshInFlight;
+  var _isForeground = false;
+  var _customerAccessRevision = 0;
+
+  void setForeground(bool isForeground) {
+    if (!mounted || _isForeground == isForeground) return;
+    _isForeground = isForeground;
+    _refreshTimer?.cancel();
+    if (isForeground) {
+      unawaited(refreshCustomerAccess());
+    }
+  }
+
+  Future<bool> refreshCustomerAccess() {
+    return _refreshCustomerAccess(notifyAccessChanged: true);
+  }
+
+  Future<bool> _refreshCustomerAccess({required bool notifyAccessChanged}) {
+    if (!mounted || !state.isIdentitySynchronized || state.isActionInProgress) {
+      return Future.value(false);
+    }
+    return _refreshInFlight ??=
+        _fetchCustomerAccess(
+          notifyAccessChanged: notifyAccessChanged,
+        ).whenComplete(() {
+          _refreshInFlight = null;
+          _scheduleNextRefresh();
+        });
+  }
+
+  Future<bool> _fetchCustomerAccess({required bool notifyAccessChanged}) async {
+    final revision = _customerAccessRevision;
+    try {
+      final access = await _repository.getCustomerAccess(forceRefresh: true);
+      if (!mounted) return false;
+      if (revision == _customerAccessRevision && !state.isActionInProgress) {
+        await _applyCustomerAccess(
+          access,
+          notifyAccessChanged: notifyAccessChanged,
+        );
+      }
+      return mounted;
+    } on Object {
+      return false;
+    }
+  }
+
+  void _scheduleNextRefresh() {
+    _refreshTimer?.cancel();
+    if (!mounted ||
+        !_isForeground ||
+        !state.isIdentitySynchronized ||
+        state.isActionInProgress ||
+        _refreshInFlight != null) {
+      return;
+    }
+    var delay = const Duration(minutes: 1);
+    final now = _now();
+    for (final subscription
+        in state.customerAccess?.activeSubscriptions ??
+            const <BillingSubscription>[]) {
+      final expiresAt = subscription.expiresAt;
+      if (!subscription.isActive || expiresAt == null) continue;
+      final untilExpiry = expiresAt.difference(now);
+      final nextCheck = untilExpiry <= Duration.zero
+          ? const Duration(seconds: 30)
+          : untilExpiry + const Duration(seconds: 1);
+      if (nextCheck < delay) delay = nextCheck;
+    }
+    _refreshTimer = Timer(delay, () {
+      unawaited(refreshCustomerAccess());
+    });
+  }
 
   Future<void> initialize({required Future<void> identitySync}) async {
     state = state.copyWith(
@@ -133,6 +208,7 @@ class BillingController extends StateNotifier<BillingState> {
       return;
     }
     state = state.copyWith(isIdentitySynchronized: true);
+    _watchCustomerAccess();
     final customerAccessLoaded = await _loadCustomerAccess();
     if (!mounted) {
       return;
@@ -151,18 +227,10 @@ class BillingController extends StateNotifier<BillingState> {
     if (!mounted) {
       return;
     }
-    _watchCustomerAccess();
   }
 
-  Future<bool> _loadCustomerAccess() async {
-    BillingCustomerAccess customerAccess;
-    try {
-      customerAccess = await _repository.getCustomerAccess();
-    } on Object {
-      return false;
-    }
-    await _applyCustomerAccess(customerAccess, notifyAccessChanged: false);
-    return true;
+  Future<bool> _loadCustomerAccess() {
+    return _refreshCustomerAccess(notifyAccessChanged: false);
   }
 
   Future<void> loadProducts() async {
@@ -220,10 +288,13 @@ class BillingController extends StateNotifier<BillingState> {
       return;
     }
 
+    _customerAccessRevision++;
+
     state = state.copyWith(
       actionStatus: BillingActionStatus.purchasing,
       activePackageId: request.packageId,
     );
+    _scheduleNextRefresh();
 
     BillingPurchaseResult result;
     try {
@@ -236,6 +307,7 @@ class BillingController extends StateNotifier<BillingState> {
         actionStatus: BillingActionStatus.purchaseFailed,
         activePackageId: null,
       );
+      _scheduleNextRefresh();
       return;
     }
 
@@ -252,6 +324,7 @@ class BillingController extends StateNotifier<BillingState> {
         if (!mounted) {
           return;
         }
+        _customerAccessRevision++;
         state = state.copyWith(
           actionStatus: BillingActionStatus.purchaseSucceeded,
           activePackageId: null,
@@ -272,6 +345,7 @@ class BillingController extends StateNotifier<BillingState> {
           activePackageId: null,
         );
     }
+    _scheduleNextRefresh();
   }
 
   Future<void> restorePurchases() async {
@@ -279,16 +353,20 @@ class BillingController extends StateNotifier<BillingState> {
       return;
     }
 
+    _customerAccessRevision++;
+
     state = state.copyWith(
       actionStatus: BillingActionStatus.restoring,
       activePackageId: null,
     );
+    _scheduleNextRefresh();
     try {
       final customerAccess = await _repository.restorePurchases();
       final pendingChange = await _loadPendingChange(customerAccess);
       if (!mounted) {
         return;
       }
+      _customerAccessRevision++;
       state = state.copyWith(
         actionStatus: BillingActionStatus.restoreSucceeded,
         customerAccess: customerAccess,
@@ -301,6 +379,7 @@ class BillingController extends StateNotifier<BillingState> {
       }
       state = state.copyWith(actionStatus: BillingActionStatus.restoreFailed);
     }
+    _scheduleNextRefresh();
   }
 
   Future<PendingSubscriptionChange?> _loadPendingChange(
@@ -375,38 +454,44 @@ class BillingController extends StateNotifier<BillingState> {
 
   void _watchCustomerAccess() {
     unawaited(_customerAccessSubscription?.cancel());
-    _customerAccessSubscription = _repository
-        .watchCustomerAccess()
-        .asyncMap((customerAccess) async {
+    _customerAccessSubscription = _repository.watchCustomerAccess().listen(
+      (customerAccess) async {
+        try {
           await _applyCustomerAccess(customerAccess, notifyAccessChanged: true);
-        })
-        .listen(
-          (_) {},
-          onError: (Object _) {
-            _debugPendingChangeFailure('customer-info-stream');
-          },
-        );
+        } on Object {
+          _debugPendingChangeFailure('customer-info-stream');
+        }
+      },
+      onError: (Object _) {
+        _debugPendingChangeFailure('customer-info-stream');
+      },
+    );
   }
 
   Future<void> _applyCustomerAccess(
     BillingCustomerAccess customerAccess, {
     required bool notifyAccessChanged,
   }) async {
+    final revision = ++_customerAccessRevision;
     final pendingChange = await _loadPendingChange(customerAccess);
-    if (!mounted) {
+    if (!mounted || revision != _customerAccessRevision) {
       return;
     }
+    final changed = state.customerAccess != customerAccess;
     state = state.copyWith(
       customerAccess: customerAccess,
       pendingChange: pendingChange,
     );
-    if (notifyAccessChanged) {
+    if (notifyAccessChanged && changed) {
       _onCustomerAccessChanged?.call(customerAccess);
     }
+    _scheduleNextRefresh();
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
+    _customerAccessRevision++;
     unawaited(_customerAccessSubscription?.cancel());
     super.dispose();
   }

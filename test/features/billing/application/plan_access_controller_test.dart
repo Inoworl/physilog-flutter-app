@@ -97,7 +97,9 @@ class _FakeBillingRepository implements BillingRepository {
   Future<List<BillingProduct>> fetchProducts() async => const [];
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async {
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async {
     final error = getError;
     if (error != null) {
       throw error;

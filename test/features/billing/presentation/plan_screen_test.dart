@@ -656,6 +656,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(launcher.openedUris, [Uri.parse('https://store.example/manage')]);
+    expect(repository.customerAccessRefreshes, [true, true]);
+    expect(repository.restorePurchasesCalls, 0);
   });
 
   testWidgets('契約管理URLがない場合はStoreのアカウント設定を案内する', (tester) async {
@@ -833,6 +835,10 @@ PlanAccessReady _readyPlanState(PlanTier tier) {
 
 class _NoEntitlementRepository implements EntitlementRepository {
   const _NoEntitlementRepository();
+
+  @override
+  Stream<Entitlement?> watchCurrentEntitlement({required String userId}) =>
+      Stream.value(null);
 
   @override
   Future<Entitlement?> getCurrentEntitlement({required String userId}) async {

@@ -457,7 +457,9 @@ class _FakeRevenueCatGateway implements RevenueCatGateway {
   }
 
   @override
-  Future<RevenueCatCustomerSnapshot> getCustomerInfo() async => currentAccess;
+  Future<RevenueCatCustomerSnapshot> getCustomerInfo({
+    bool forceRefresh = false,
+  }) async => currentAccess;
 
   @override
   Future<void> logIn(String appUserId) async {

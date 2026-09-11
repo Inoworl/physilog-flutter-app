@@ -142,7 +142,9 @@ abstract interface class RevenueCatGateway {
 
   Future<RevenueCatCustomerSnapshot> restorePurchases();
 
-  Future<RevenueCatCustomerSnapshot> getCustomerInfo();
+  Future<RevenueCatCustomerSnapshot> getCustomerInfo({
+    bool forceRefresh = false,
+  });
 
   Stream<RevenueCatCustomerSnapshot> watchCustomerInfo();
 }
@@ -255,7 +257,12 @@ class PurchasesRevenueCatGateway implements RevenueCatGateway {
   }
 
   @override
-  Future<RevenueCatCustomerSnapshot> getCustomerInfo() async {
+  Future<RevenueCatCustomerSnapshot> getCustomerInfo({
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) {
+      await purchases.Purchases.invalidateCustomerInfoCache();
+    }
     final customerInfo = await purchases.Purchases.getCustomerInfo();
     return _toCustomerSnapshot(customerInfo);
   }
@@ -418,8 +425,10 @@ class RevenueCatBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async {
-    final snapshot = await _gateway.getCustomerInfo();
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async {
+    final snapshot = await _gateway.getCustomerInfo(forceRefresh: forceRefresh);
     return _toCustomerAccess(snapshot);
   }
 
