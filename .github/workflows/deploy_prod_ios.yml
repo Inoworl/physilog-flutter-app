@@ -28,10 +28,11 @@ jobs:
           DEV_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.DEV_FIREBASE_OPTIONS_DART_BASE64 }}
           PROD_FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.PROD_FIREBASE_OPTIONS_DART_BASE64 }}
           PROD_DART_DEFINE_JSON_BASE64: ${{ secrets.PROD_DART_DEFINE_JSON_BASE64 }}
+          REVENUECAT_PROD_IOS_API_KEY: ${{ secrets.REVENUECAT_PROD_IOS_API_KEY }}
         run: |
           set -euo pipefail
           missing=0
-          for name in PROD_GOOGLESERVICE_INFO_PLIST_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 PROD_DART_DEFINE_JSON_BASE64; do
+          for name in PROD_GOOGLESERVICE_INFO_PLIST_BASE64 APP_FIREBASE_OPTIONS_DART_BASE64 DEV_FIREBASE_OPTIONS_DART_BASE64 PROD_FIREBASE_OPTIONS_DART_BASE64 PROD_DART_DEFINE_JSON_BASE64 REVENUECAT_PROD_IOS_API_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error ::Missing required secret: $name"
               missing=1
@@ -46,6 +47,10 @@ jobs:
           echo "$DEV_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_dev.dart
           echo "$PROD_FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options_prod.dart
           echo "$PROD_DART_DEFINE_JSON_BASE64" | base64 --decode > dart_define/prod_dart_define.json
+          ruby tools/revenuecat/configure_public_sdk_key.rb \
+            --dart-define dart_define/prod_dart_define.json \
+            --platform ios \
+            --api-key-env REVENUECAT_PROD_IOS_API_KEY
 
       - name: Import Code Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2

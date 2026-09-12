@@ -41,7 +41,8 @@ PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスク�
 - `BillingRepository`がOffering取得、購入、復元、CustomerInfo更新を抽象化する。
 - `BillingController`が4商品の表示と購入・キャンセル・失敗・復元のUI状態を管理する。
 - `PlanAccessController`がRevenueCat CustomerInfo更新を購読し、最新の利用権をプラン表示へ反映する。
-- プラン画面では個人・家族／Teamの月額・年額を選択し、Test Store購入と購入復元を実行できる。
+- プラン画面では個人・家族／Teamの月額・年額を選択し、RevenueCat Package IDを使って購入と購入復元を実行できる。
+- ストア固有Product IDはRevenueCat Packageへ集約し、アプリのプラン判定へ漏らさない。
 - Firestore の `users/{uid}/entitlements/current` はアプリから読み取りのみ許可し、書き込みは拒否する。
 - `PlanAccessPolicy` は RevenueCat の購入状態と Firestore の legacy / manual entitlement を合成し、`PlanTier`(free / personalFamily / team)を解決する。Team 判定を個人・家族より優先する。
 
@@ -60,16 +61,27 @@ PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスク�
 - Entitlement ID:
   - `personal_family`: 個人・家族プラン
   - `team`: Team プラン
-- Product ID:
+- Package ID:
   - `personal_family_monthly`
   - `personal_family_yearly`
   - `team_monthly`
   - `team_yearly`
+- App Store Product ID:
+  - `com.inoworl.physilog.personal_family.monthly`
+  - `com.inoworl.physilog.personal_family.yearly`
+  - `com.inoworl.physilog.team.monthly`
+  - `com.inoworl.physilog.team.yearly`
+- Google Play Subscription／Base Plan:
+  - `personal_family:monthly`
+  - `personal_family:yearly`
+  - `team:monthly`
+  - `team:yearly`
 - Offering:
   - `default`: 個人・家族と Team を表示する通常オファリング
 - Team の1ヶ月無料は、RevenueCat 側の仕組みではなく App Store Connect / Google Play Console の introductory offer(無料トライアル)として各サブスクリプション商品に設定する。RevenueCat は store 側のトライアル状態をそのまま entitlement 判定に反映する。
 - Test Store: 開発・テスト用に使う。Test Store API key をストア提出ビルドに入れない。
 - Production: iOS / Android それぞれの app-specific public SDK key を dart-define 経由で設定する。
+- dev／prodの配信workflowはplatform別GitHub Environment secretを検証し、対象のdart-defineへ注入する。空値、Test Store／secret key、別platformのkeyはビルド前に値を表示せず拒否する。
 
 ## Firestore 側の entitlement
 
@@ -123,7 +135,6 @@ final capabilities = PlanCapabilities.forTier(tier);
 
 ## 現在のスコープ外
 
-- App Store / Google Play の本番商品作成
 - RevenueCat Webhook による Firestore 同期
 - チームメンバー管理の詳細実装
 - 学校向け請求・見積・請求書払い対応
@@ -133,6 +144,7 @@ final capabilities = PlanCapabilities.forTier(tier);
 - RevenueCat の public SDK key は公開前提のキーだが、ストア提出ビルドには Test Store API key を入れない。
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
 - Team の1ヶ月無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。
+- 本番ストア設定と実機検証は`revenuecat_production_store_runbook.md`に従い、秘密値を証跡へ残さない。
 - TestFlight の日本語メタデータには Apple 対応の locale `ja` を使う。`ja-JP` はアップロード後のメタデータ登録で拒否されるため、送信・処理済みビルドを再生成する前に既存ビルドの状態を確認する。
 
 ### iOS リリースログの秘匿
