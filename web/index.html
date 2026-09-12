@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>フィジログ — 動画でカンタン、体力測定記録アプリ</title>
+  <meta name="description" content="フィジログは、スマホ動画から50m走などの記録を計測・管理できるスポーツ体力測定アプリ。選手・種目ごとの記録をまとめて管理し、チームでの計測会にも対応。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">本文へ移動</a>
+
+  <!-- ナビゲーション -->
+  <nav class="nav" aria-label="メインナビゲーション">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo"><img src="images/logo-mark.png" alt=""><span>フィジログ</span></a>
+      <ul class="nav-links">
+        <li><a href="#features">特徴</a></li>
+        <li><a href="#how">使い方</a></li>
+        <li><a href="#plans">プラン</a></li>
+        <li><a href="#faq">よくある質問</a></li>
+      </ul>
+      <div class="nav-download">
+        <a href="#download" class="nav-cta">公開予定</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main-content" tabindex="-1">
+  <!-- ヒーロー -->
+  <section class="hero">
+    <div class="hero-speedlines" aria-hidden="true">
+      <span class="speed-line line-1"></span>
+      <span class="speed-line line-2"></span>
+      <span class="speed-line line-3"></span>
+      <span class="speed-block"></span>
+    </div>
+    <div class="hero-track" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div class="hero-text">
+        <span class="hero-bubble">近日公開</span>
+        <h1><span class="nobr">ストップウォッチより、</span><span class="nobr"><span class="text-teal">動画</span>で正確に。</span></h1>
+        <p class="hero-desc"><span class="nobr">スマホで撮った動画をそのまま、</span><span class="nobr">50m走などの記録計測に。</span><span class="nobr">選手ごとの記録をまとめて管理できる、</span><span class="nobr">スポーツ体力測定アプリ、フィジログ。</span></p>
+        <div class="hero-buttons">
+          <a href="#download" class="btn btn-primary">公開予定を確認する</a>
+          <a href="#features" class="btn btn-outline">どんなアプリ？</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="phone-stack">
+          <div class="phone-mockup phone-back">
+            <div class="phone-screen placeholder-screen">
+              <div class="placeholder-content">
+                <svg viewBox="0 0 24 24" class="ph-icon"><path d="M15 8v8H5V8h10m1-2H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4V7a1 1 0 00-1-1z"/></svg>
+                <p>記録一覧画面<br><span>（準備中）</span></p>
+              </div>
+            </div>
+          </div>
+          <div class="phone-mockup phone-front">
+            <div class="phone-screen placeholder-screen">
+              <div class="placeholder-content">
+                <svg viewBox="0 0 24 24" class="ph-icon"><path d="M10 8l6 4-6 4V8z"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                <p>動画計測画面<br><span>（準備中）</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 課題提示セクション -->
+  <section class="problems">
+    <div class="section-inner">
+      <div class="problems-row">
+        <div class="problems-illust">
+          <div class="problems-thought">
+            <p><span class="nobr">こんなお悩み、</span><span class="nobr">ありませんか？</span></p>
+          </div>
+          <img src="images/illust-problems-worry.png" alt="" class="problems-illust-img">
+        </div>
+        <ul class="problems-list">
+          <li>
+            <span class="problems-num">01</span>
+            <p>ストップウォッチの目視計測、<span class="nobr">押すタイミングで結果がブレる</span></p>
+          </li>
+          <li>
+            <span class="problems-num">02</span>
+            <p>紙のメモやExcelへの<span class="nobr">転記が地味に手間</span></p>
+          </li>
+          <li>
+            <span class="problems-num">03</span>
+            <p>選手が増えるほど、<span class="nobr">記録の管理がバラバラに</span></p>
+          </li>
+          <li>
+            <span class="problems-num">04</span>
+            <p>計測会でまとめて測りたいのに、<span class="nobr">一人ずつしか対応できない</span></p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- サービス特徴 -->
+  <section class="features" id="features">
+    <div class="section-inner">
+      <h2 class="section-title"><span class="text-primary">フィジログ</span>でできること</h2>
+      <p class="section-lead">動画を撮るだけで、記録が正確に、管理がラクになる。</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon icon-primary">
+            <img src="images/icon-video-player.png" alt="">
+          </div>
+          <h3>動画からフレーム単位で計測</h3>
+          <p>撮影した動画のスタート・ゴール位置を指定するだけ。30〜240fpsに対応し、目視より正確なタイムを記録できます。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-teal">
+            <img src="images/icon-roster-table.png" alt="">
+          </div>
+          <h3>選手・種目をまとめて管理</h3>
+          <p>選手ごとのプロフィールと、50m走・シャトルランなどの種目を登録。記録の推移を選手単位でいつでも振り返れます。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-primary">
+            <img src="images/icon-record-checklist.png" alt="">
+          </div>
+          <h3>記録一覧・絞り込み表示</h3>
+          <p>種目・選手・期間で記録を絞り込み、一覧で確認。手入力での追加記録にも対応しています。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-teal">
+            <img src="images/icon-flag.png" alt="">
+          </div>
+          <h3>計測会でまとめて計測（Team）</h3>
+          <p>チーム全員分の記録を1回の計測会でまとめて記録。CSV出力にも対応し、部活・チーム運営の記録業務を効率化します。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 使い方 -->
+  <section class="how" id="how">
+    <div class="section-inner">
+      <h2 class="section-title">使い方はシンプル、3ステップ</h2>
+      <div class="how-steps">
+        <div class="how-step">
+          <div class="step-phone">
+            <div class="step-screen">
+              <!-- TODO: 実機スクリーンショットに差し替え。src="images/screenshot-step1.png" -->
+            </div>
+          </div>
+          <span class="how-num">1</span>
+          <h3>選手・種目を登録</h3>
+          <p>計測したい選手と種目（50m走など）をアプリに登録します。</p>
+        </div>
+        <div class="how-step">
+          <div class="step-phone step-illust-only">
+            <img src="images/icon-selfie-stick.png" alt="" class="step-illust">
+          </div>
+          <span class="how-num">2</span>
+          <h3>動画を撮影・取り込み</h3>
+          <p>スマホでいつも通り撮影するだけ。撮影済みの動画を取り込むこともできます。</p>
+        </div>
+        <div class="how-step">
+          <div class="step-phone">
+            <div class="step-screen">
+              <!-- TODO: 実機スクリーンショットに差し替え。src="images/screenshot-step3.png" -->
+            </div>
+          </div>
+          <span class="how-num">3</span>
+          <h3>スタート・ゴールを指定</h3>
+          <p>動画上でスタートとゴールの位置を指定すれば、フレーム単位のタイムが自動で記録されます。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- プラン -->
+  <section class="plans" id="plans">
+    <div class="section-inner">
+      <h2 class="section-title">プラン</h2>
+      <p class="section-lead">個人利用から、チーム・部活動での運用まで。</p>
+
+      <div class="plan-grid">
+        <div class="plan-card">
+          <h3>フリー</h3>
+          <p class="plan-price">無料</p>
+          <ul>
+            <li>選手登録 1名まで</li>
+            <li>種目登録 3つまで</li>
+            <li>動画計測・記録管理</li>
+          </ul>
+        </div>
+        <div class="plan-card">
+          <span class="plan-badge">個人・家族向け</span>
+          <h3>パーソナル</h3>
+          <p class="plan-price">近日公開</p>
+          <ul>
+            <li>選手登録 5名まで</li>
+            <li>種目登録 無制限</li>
+            <li>動画計測・記録管理</li>
+          </ul>
+        </div>
+        <div class="plan-card">
+          <span class="plan-badge">チーム・部活向け</span>
+          <h3>チーム</h3>
+          <p class="plan-price">近日公開</p>
+          <ul>
+            <li>選手登録 無制限</li>
+            <li>種目登録 無制限</li>
+            <li>計測会でまとめて計測</li>
+            <li>CSV出力</li>
+            <li>成長シェア機能</li>
+          </ul>
+        </div>
+      </div>
+      <p class="plan-note">※ 料金・提供開始時期は現在調整中です。詳細はリリース時にご案内します。</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="faq">
+    <div class="section-inner">
+      <h2 class="section-title">よくある質問</h2>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>どんな動画でも計測できますか？</summary>
+          <p>スマホで撮影した動画であれば計測に利用できます。より正確な計測のためには、選手の動きが横から見える角度で、fpsが高い設定（60fps以上推奨）で撮影することをおすすめします。</p>
+        </details>
+        <details class="faq-item">
+          <summary>対応している種目は何ですか？</summary>
+          <p>50m走・100m走・20mシャトルランなど、スタートとゴールが明確な種目に対応しています。種目名は自由に登録できるため、独自の測定項目にも利用可能です。</p>
+        </details>
+        <details class="faq-item">
+          <summary>チームプランの「計測会」とは何ですか？</summary>
+          <p>チームプラン限定の機能で、複数選手分の計測を1つのセッションとしてまとめて記録できます。部活動やスポーツチームでの一斉計測に便利です。</p>
+        </details>
+        <details class="faq-item">
+          <summary>対応OSを教えてください。</summary>
+          <p>iOS / Android の両方に対応予定です。リリース時期の詳細は、このページでご案内します。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ダウンロード -->
+  <section class="download" id="download">
+    <div class="section-inner">
+      <h2 class="section-title">リリースをお待ちください</h2>
+      <p class="section-lead">フィジログは現在準備中です。公開時期が決まり次第、このページでお知らせします。</p>
+      <div class="download-badges">
+        <span class="badge-soon">近日公開 — App Store / Google Play</span>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- フッター -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="images/logo-mark.png" alt="">
+        <span>フィジログ</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="support.html">サポート</a></li>
+        <li><a href="account-deletion.html">アカウント削除</a></li>
+        <li><a href="privacy.html">プライバシーポリシー</a></li>
+        <li><a href="terms.html">利用規約</a></li>
+        <li><a href="usage.html">使い方ガイド</a></li>
+      </ul>
+      <p class="footer-copy">&copy; Inoworl. フィジログ is a product by Inoworl.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

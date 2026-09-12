@@ -105,23 +105,30 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Debug build settings on failure
-        if: failure()
+      - name: Redact iOS build logs
+        id: redact_ios_build_logs
+        if: always()
         run: |
-          echo "=== Xcode Build Settings Debug ==="
-          cd ios
-          xcodebuild -showBuildSettings -workspace Runner.xcworkspace -scheme dev -configuration Release-dev | tail -n 80 || true
-          echo "=== Gym Log Tail ==="
-          tail -n 200 /Users/runner/Library/Logs/gym/*.log || true
-          echo "=== Build Logs Directory ==="
-          ls -la ./build/logs/ || true
+          ruby ios/fastlane/dart_define_log_redaction.rb \
+            dart_define/dev_dart_define.json \
+            "$HOME/Library/Logs/gym/*.log" \
+            "ios/build/logs/**/*.log"
+
+      - name: Show redacted iOS build logs
+        if: failure() && steps.redact_ios_build_logs.outcome == 'success'
+        run: |
+          for log in "$HOME"/Library/Logs/gym/*.log ios/build/logs/*.log; do
+            if [ -f "$log" ]; then
+              tail -n 200 "$log"
+            fi
+          done
 
       - name: Upload build logs
-        if: failure()
+        if: failure() && steps.redact_ios_build_logs.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-${{ github.run_id }}
           path: |
             /Users/runner/Library/Logs/gym/*.log
-            ios/build/logs/
+            ios/build/logs/**/*.log
           retention-days: 7

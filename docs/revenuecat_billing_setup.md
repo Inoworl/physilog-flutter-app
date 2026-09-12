@@ -1,6 +1,6 @@
 # RevenueCat 課金基盤メモ
 
-最終更新: 2026-07-28
+最終更新: 2026-09-11
 
 ## 目的
 
@@ -45,6 +45,16 @@ PhysiLog の利用権を、Free / 個人・家族 / Team の3段階サブスク�
 - ストア固有Product IDはRevenueCat Packageへ集約し、アプリのプラン判定へ漏らさない。
 - Firestore の `users/{uid}/entitlements/current` はアプリから読み取りのみ許可し、書き込みは拒否する。
 - `PlanAccessPolicy` は RevenueCat の購入状態と Firestore の legacy / manual entitlement を合成し、`PlanTier`(free / personalFamily / team)を解決する。Team 判定を個人・家族より優先する。
+
+### 購入情報の自動同期
+
+- 通常購入の取得元はRevenueCat、legacy / manualの特別利用権はFirestoreとし、購入情報をFirestoreへ二重保存しない。
+- `BillingSyncGate` がプラン画面以外でも同期を維持する。起動・フォアグラウンド復帰・契約管理画面の終了時にSDKキャッシュを無効化してCustomerInfoを再取得する。外部ストア画面からの帰還はアプリの復帰で検知する。
+- SDKのCustomerInfo通知に加え、フォアグラウンド中は通常1分後、有効期限が近い場合は期限の1秒後に再確認する。期限が過ぎてもactiveの場合や期限後の取得失敗は30秒後に再確認する。バックグラウンドと購入・復元処理中は再確認タイマーを停止する。
+- 同時の再確認は1リクエストにまとめる。古い取得結果は、新しいSDK通知・購入成功・復元成功・アカウント切替後の状態を上書きしない。
+- 端末時刻だけでRevenueCatの有料権限を剥奪しない。通信失敗時は最後に取得した購入状態を維持し、再確認する。ストア／RevenueCatへの反映待ちや通信時間があるため、失効の即時反映や1分以内の反映を保証するものではない。
+- Firestoreの特別利用権は既存ドキュメントの `snapshots()` で付与・変更・削除を監視し、`expiresAt` 到達時にも再評価する。UID変更・サインアウト時には旧ユーザーの購読を解除する。
+- 「購入を復元」は再インストール等の復旧導線として残す。通常の状態更新のために押す必要はない。
 
 ## RevenueCat 側の設定
 
@@ -135,3 +145,16 @@ final capabilities = PlanCapabilities.forTier(tier);
 - RevenueCat の料金は月間 tracked revenue が一定額を超えると従量課金になるため、公開前に最新の Pricing を再確認する。
 - Team の1ヶ月無料トライアルの提供条件(初回のみ等)は、App Store / Google Play それぞれの introductory offer 仕様に従う。
 - 本番ストア設定と実機検証は`revenuecat_production_store_runbook.md`に従い、秘密値を証跡へ残さない。
+- TestFlight の日本語メタデータには Apple 対応の locale `ja` を使う。`ja-JP` はアップロード後のメタデータ登録で拒否されるため、送信・処理済みビルドを再生成する前に既存ビルドの状態を確認する。
+
+### iOS リリースログの秘匿
+
+- `Fastfile` は GitHub Actions 上で Dart Define の値・代入形式・各 Base64 文字列を、ビルド引数へ渡す前にマスク登録する。Base64 は暗号化ではない。
+- dev/prod の iOS workflow は失敗時の診断表示とログ添付の前に、`dart_define_log_redaction.rb` で対象環境の設定値を `.log` ファイルから除去する。
+- ログが存在するのに設定ファイルを読み取れない場合など、秘匿処理が失敗したときは診断ログを表示・添付しない。生の `xcodebuild -showBuildSettings` 出力も添付しない。
+- ビルドへ渡す値、署名、配信先は変更しない。この処理は過去の Actions ログを遡って秘匿するものではない。
+- 再発防止テストは実際の鍵・設定ファイルを使わず、次のコマンドで実行できる。
+
+```bash
+fvm flutter test test/release/ios_build_log_redaction_test.dart
+```

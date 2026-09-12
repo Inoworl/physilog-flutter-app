@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/presentation/upgrade_prompt.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/records/presentation/manual_record_form.dart';
 import 'package:physi_log/models/athlete.dart';
@@ -102,13 +103,21 @@ class _StartSessionButton extends ConsumerWidget {
         ),
         PlanAccessReady(:final capabilities) => FilledButton.icon(
           onPressed: () async {
-            if (!capabilities.canUseMeasurementSessions) {
-              await _showTeamFeatureDialog(context);
+            if (capabilities.canUseMeasurementSessions) {
+              context.pushNamed('measurementSessionSetup');
               return;
             }
-            if (context.mounted) {
-              context.pushNamed('measurementSessionSetup');
+
+            final shouldViewPlans = await showUpgradePromptDialog(
+              context,
+              title: 'Teamプラン限定機能です',
+              message: '計測会はTeamプランで利用できます。',
+            );
+            if (!context.mounted || !shouldViewPlans) {
+              return;
             }
+
+            context.pushNamed('settingsPlan');
           },
           icon: const Icon(Icons.groups),
           label: const Text('計測会を開始（チームでまとめて計測）'),
@@ -116,22 +125,6 @@ class _StartSessionButton extends ConsumerWidget {
       },
     );
   }
-}
-
-Future<void> _showTeamFeatureDialog(BuildContext context) {
-  return showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Teamプラン限定機能です'),
-      content: const Text('計測会はTeamプランで利用できます。'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
 }
 
 class _QuickActionsSection extends StatelessWidget {

@@ -9,7 +9,14 @@ import 'package:uuid/uuid.dart';
 
 /// 計測会の1選手ぶんの状態（その種目・その日のベスト記録と試技数）。
 class SessionEntry {
-  const SessionEntry({required this.record, required this.attemptCount});
+  const SessionEntry({
+    required this.record,
+    required this.attemptCount,
+    this.pendingRejectedValue,
+    this.pendingRejectedVideoRef,
+    this.pendingRejectedFps,
+    this.pendingRejectedMemoBeforeAppend,
+  });
 
   /// 1選手×1種目×1日＝1レコードに上書きする運用なので、保持するのは1件だけ。
   final MeasurementRecord record;
@@ -17,18 +24,23 @@ class SessionEntry {
   /// その日その種目で何本測ったか（不採用ぶんも含む）。
   final int attemptCount;
 
+  /// 直前の「更新ならず」で不採用になった値（forceAdoptなしのnotImproved時のみ
+  /// セットされる）。次に同じ値で forceAdopt が来たら、新規試技として数えず
+  /// 直前の判定の訂正として扱う（試技数の重複カウント・不採用メモの残留を防ぐ）。
+  /// 他の値で recordAttempt が呼ばれると（採用・更新・別の不採用いずれでも）クリアされる。
+  final double? pendingRejectedValue;
+  final String? pendingRejectedVideoRef;
+  final double? pendingRejectedFps;
+
+  /// pendingRejectedValue の不採用行を追記する「前」の memo。訂正採用時にこれへ
+  /// 戻してから、今度は不採用側に回った値を改めて追記する。
+  final String? pendingRejectedMemoBeforeAppend;
+
   String get athleteId => record.athleteId ?? '';
   String get athleteName => record.athleteName;
   double get bestValue => record.effectiveRecordValue;
   String get unit => record.effectiveRecordUnit;
   String get formattedBest => record.formattedRecordValue;
-
-  SessionEntry copyWith({MeasurementRecord? record, int? attemptCount}) {
-    return SessionEntry(
-      record: record ?? this.record,
-      attemptCount: attemptCount ?? this.attemptCount,
-    );
-  }
 }
 
 /// 計測会モードの状態。種目と日付は最初に固定し、選手ごとのベストを貯めていく。
@@ -217,6 +229,22 @@ class MeasurementSessionNotifier
         ? _event.unit
         : unit.trim();
     final existing = state.entries[athleteId];
+
+    // forceAdopt が直前の「更新ならず」試技（同じ値）への訂正なら、新規試技として
+    // 数えず、そのときのメモ追記を取り消して採用する（同じ物理試技の重複カウント・
+    // 古い不採用メモの残留を防ぐ）。
+    if (forceAdopt &&
+        existing != null &&
+        existing.pendingRejectedValue == value) {
+      return _adoptPendingRejection(
+        existing: existing,
+        athleteName: athleteName,
+        videoRef: videoRef,
+        fps: fps,
+        resolvedUnit: resolvedUnit,
+      );
+    }
+
     final decision = BestRecordPolicy.evaluate(
       candidate: value,
       previousBest: existing?.bestValue,
@@ -262,8 +290,9 @@ class MeasurementSessionNotifier
     final base = existing.record;
     final newValue = adoptCandidate ? value : existing.bestValue;
     final droppedValue = adoptCandidate ? existing.bestValue : value;
+    final memoBeforeDrop = base.memo;
     final newMemo = BestRecordPolicy.appendDroppedAttempt(
-      memo: base.memo,
+      memo: memoBeforeDrop,
       droppedValue: droppedValue,
       unit: resolvedUnit,
     );
@@ -283,13 +312,70 @@ class MeasurementSessionNotifier
       updatedAt: now,
     );
     await _repository.updateRecord(updated);
+
+    // 更新ならず・forceAdoptで即採用しなかった場合だけ「訂正可能な直前の不採用」
+    // として記憶する。それ以外（採用・別の不採用に置き換わる場合）は明示的にクリアする。
+    final isPendingRejection = decision.isNotImproved && !forceAdopt;
     _putEntry(
-      existing.copyWith(
+      SessionEntry(
         record: updated,
         attemptCount: existing.attemptCount + 1,
+        pendingRejectedValue: isPendingRejection ? value : null,
+        pendingRejectedVideoRef: isPendingRejection ? videoRef : null,
+        pendingRejectedFps: isPendingRejection ? fps : null,
+        pendingRejectedMemoBeforeAppend: isPendingRejection
+            ? memoBeforeDrop
+            : null,
       ),
     );
     return decision;
+  }
+
+  /// 直前の「更新ならず」試技を、新規試技として数えずに訂正採用する。
+  ///
+  /// 採用によって、今度は"それまでのベスト"が不採用側に回る。measuredAtは
+  /// 更新しない（訂正であって新しい物理試技ではないため、元の計測時刻を保つ）。
+  Future<BestAttemptDecision> _adoptPendingRejection({
+    required SessionEntry existing,
+    required String athleteName,
+    required String? videoRef,
+    required double? fps,
+    required String resolvedUnit,
+  }) async {
+    final base = existing.record;
+    final adoptedValue = existing.pendingRejectedValue!;
+    final droppedValue = existing.bestValue;
+    final revertedMemo = existing.pendingRejectedMemoBeforeAppend ?? base.memo;
+    final newMemo = BestRecordPolicy.appendDroppedAttempt(
+      memo: revertedMemo,
+      droppedValue: droppedValue,
+      unit: resolvedUnit,
+    );
+    final durationMs = _durationMsFor(adoptedValue, resolvedUnit);
+    final now = DateTime.now();
+
+    final updated = base.copyWith(
+      athleteName: athleteName,
+      recordValue: adoptedValue,
+      recordUnit: resolvedUnit,
+      startMs: 0,
+      endMs: durationMs,
+      durationMs: durationMs,
+      videoRef: videoRef ?? existing.pendingRejectedVideoRef ?? base.videoRef,
+      fps: fps ?? existing.pendingRejectedFps ?? base.fps,
+      memo: newMemo,
+      updatedAt: now,
+    );
+    await _repository.updateRecord(updated);
+    // 同じ物理試技の訂正なので attemptCount は増やさない。
+    _putEntry(
+      SessionEntry(record: updated, attemptCount: existing.attemptCount),
+    );
+    return BestAttemptDecision(
+      outcome: BestAttemptOutcome.improved,
+      bestValue: adoptedValue,
+      previousBestValue: droppedValue,
+    );
   }
 
   void _putEntry(SessionEntry entry) {

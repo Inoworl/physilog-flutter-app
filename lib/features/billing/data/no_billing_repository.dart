@@ -1,5 +1,6 @@
 import '../domain/billing_customer_access.dart';
 import '../domain/billing_product.dart';
+import '../domain/billing_purchase_request.dart';
 import '../domain/billing_purchase_result.dart';
 import '../domain/billing_repository.dart';
 
@@ -18,13 +19,15 @@ class NoBillingRepository implements BillingRepository {
   Future<List<BillingProduct>> fetchProducts() async => const [];
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async => _noAccess;
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async => _noAccess;
 
   @override
   Future<void> identify(String appUserId) async {}
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     return const BillingPurchaseResult.failed();
   }
 

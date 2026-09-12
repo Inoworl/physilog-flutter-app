@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:physi_log/features/billing/application/billing_identity_sync.dart';
 import 'package:physi_log/features/billing/domain/billing_customer_access.dart';
 import 'package:physi_log/features/billing/domain/billing_product.dart';
+import 'package:physi_log/features/billing/domain/billing_purchase_request.dart';
 import 'package:physi_log/features/billing/domain/billing_purchase_result.dart';
 import 'package:physi_log/features/billing/domain/billing_repository.dart';
 
@@ -75,7 +76,9 @@ class _RecordingBillingRepository implements BillingRepository {
   Future<List<BillingProduct>> fetchProducts() async => const [];
 
   @override
-  Future<BillingCustomerAccess> getCustomerAccess() async {
+  Future<BillingCustomerAccess> getCustomerAccess({
+    bool forceRefresh = false,
+  }) async {
     return BillingCustomerAccess(activeEntitlementIds: const {});
   }
 
@@ -85,7 +88,7 @@ class _RecordingBillingRepository implements BillingRepository {
   }
 
   @override
-  Future<BillingPurchaseResult> purchase(String packageId) async {
+  Future<BillingPurchaseResult> purchase(BillingPurchaseRequest request) async {
     return const BillingPurchaseResult.cancelled();
   }
 

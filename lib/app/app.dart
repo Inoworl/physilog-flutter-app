@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/app/router.dart';
 import 'package:physi_log/app/theme/app_theme.dart';
+import 'package:physi_log/features/billing/presentation/billing_sync_gate.dart';
 import 'package:physi_log/features/force_update/presentation/force_update_gate.dart';
 import 'package:physi_log/providers/app_providers.dart';
 
@@ -56,7 +57,7 @@ class App extends ConsumerWidget {
                 ],
               );
 
-        return ForceUpdateGate(child: body);
+        return BillingSyncGate(child: ForceUpdateGate(child: body));
       },
     );
   }

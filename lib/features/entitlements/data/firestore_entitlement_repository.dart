@@ -8,6 +8,14 @@ class FirestoreEntitlementRepository implements EntitlementRepository {
 
   final FirebaseFirestore _firestore;
 
+  @override
+  Stream<Entitlement?> watchCurrentEntitlement({required String userId}) {
+    return _currentDocument(userId).snapshots().map(
+      (snapshot) =>
+          snapshot.exists ? Entitlement.fromFirestore(snapshot) : null,
+    );
+  }
+
   DocumentReference<Map<String, dynamic>> _currentDocument(String userId) {
     return _firestore
         .collection('users')

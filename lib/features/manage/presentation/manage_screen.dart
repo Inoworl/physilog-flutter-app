@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/presentation/upgrade_prompt.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
 import 'package:physi_log/features/manage/application/event_list_notifier.dart';
 import 'package:physi_log/features/manage/presentation/athlete_form_sheet.dart';
@@ -49,12 +51,12 @@ class ManageScreen extends ConsumerWidget {
                 title: '選手',
                 onAdd: loadedAthletes == null || capabilities == null
                     ? null
-                    : () {
+                    : () async {
                         final maxAthleteCount = capabilities.maxAthleteCount;
                         if (!capabilities.canAddAthlete(
                           loadedAthletes.length,
                         )) {
-                          _showPlanLimitDialog(
+                          await _showPlanLimitDialog(
                             context,
                             targetName: '選手',
                             unit: '人',
@@ -93,10 +95,10 @@ class ManageScreen extends ConsumerWidget {
                 title: '種目',
                 onAdd: loadedEvents == null || capabilities == null
                     ? null
-                    : () {
+                    : () async {
                         final maxEventCount = capabilities.maxEventCount;
                         if (!capabilities.canAddEvent(loadedEvents.length)) {
-                          _showPlanLimitDialog(
+                          await _showPlanLimitDialog(
                             context,
                             targetName: '種目',
                             unit: 'つ',
@@ -184,20 +186,17 @@ Future<void> _showPlanLimitDialog(
   required String targetName,
   required String unit,
   required int limit,
-}) {
-  return showDialog<void>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('現在のプラン上限に達しています'),
-      content: Text('現在のプランでは$targetNameは$limit$unitまで登録できます。'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
+}) async {
+  final shouldViewPlans = await showUpgradePromptDialog(
+    context,
+    title: '現在のプラン上限に達しています',
+    message: '現在のプランでは$targetNameは$limit$unitまで登録できます。',
   );
+  if (!context.mounted || !shouldViewPlans) {
+    return;
+  }
+
+  context.pushNamed('settingsPlan');
 }
 
 class _SectionHeader extends StatelessWidget {

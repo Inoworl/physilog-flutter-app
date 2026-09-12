@@ -116,6 +116,13 @@ void main() {
       expect(fastfile, contains('PROD_TESTFLIGHT_WHATS_NEW_JA'));
     });
 
+    test('TestFlightの日本語メタデータはApple対応localeを使う', () {
+      final fastfile = File('ios/fastlane/Fastfile').readAsStringSync();
+
+      expect(fastfile, contains('"ja" =>'));
+      expect(fastfile, isNot(contains('"ja-JP" =>')));
+    });
+
     test('リリースビルドはFirestore保存モードを有効にする', () {
       final devAndroid = File(
         '.github/workflows/deploy_dev_android.yml',
@@ -225,7 +232,7 @@ void main() {
       final devYaml = dev.readAsStringSync();
       expect(devYaml, contains('name: "[Release] Dev Hosting"'));
       expect(devYaml, contains('branches: [dev]'));
-      expect(devYaml, contains('docs/pages/**'));
+      expect(devYaml, contains('web/**'));
       expect(devYaml, contains('firebase.json'));
       expect(devYaml, contains('DEV_FIREBASE_SERVICE_ACCOUNT_KEY_BASE64'));
       expect(devYaml, contains('DEV_FIREBASE_PROJECT_ID'));
