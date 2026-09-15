@@ -6,6 +6,8 @@ import 'package:physi_log/features/auth/application/auth_service.dart';
 import 'package:physi_log/features/billing/application/billing_controller.dart';
 import 'package:physi_log/features/billing/application/billing_identity_sync.dart';
 import 'package:physi_log/features/billing/application/plan_access_controller.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
+import 'package:physi_log/features/billing/data/plan_limited_record_repository.dart';
 import 'package:physi_log/features/billing/data/hive_pending_subscription_change_repository.dart';
 import 'package:physi_log/features/billing/data/no_billing_repository.dart';
 import 'package:physi_log/features/billing/data/revenuecat_billing_repository.dart';
@@ -69,11 +71,18 @@ final useFirestoreProvider = Provider<bool>((ref) {
       userId != 'local-user';
 });
 
-final recordRepositoryProvider = Provider<RecordRepository>((ref) {
+final recordDataRepositoryProvider = Provider<RecordRepository>((ref) {
   if (ref.watch(useFirestoreProvider)) {
     return FirestoreRecordRepository();
   }
   return LocalRecordRepository();
+});
+
+final recordRepositoryProvider = Provider<RecordRepository>((ref) {
+  return PlanLimitedRecordRepository(
+    repository: ref.watch(recordDataRepositoryProvider),
+    access: ref.watch(recordingAccessServiceProvider),
+  );
 });
 
 final athleteRepositoryProvider = Provider<AthleteRepository>((ref) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:physi_log/features/records/presentation/record_csv_export_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/records/presentation/daily_sheet_view.dart';
@@ -46,6 +47,7 @@ class _RecordsTabScreenState extends ConsumerState<RecordsTabScreen> {
       appBar: AppBar(
         title: const Text('記録'),
         actions: [
+          const RecordCsvExportButton(),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {

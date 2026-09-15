@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/providers/app_providers.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/app/theme/app_text_styles.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
@@ -149,6 +151,7 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final planReady = ref.watch(planAccessStateProvider) is PlanAccessReady;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -178,7 +181,9 @@ class _AthleteFormSheetState extends ConsumerState<AthleteFormSheet> {
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: _isSubmitting ? null : _submit,
+            onPressed: _isSubmitting || (!_isEditing && !planReady)
+                ? null
+                : _submit,
             child: _isSubmitting
                 ? const SizedBox(
                     height: 20,

@@ -11,6 +11,11 @@ LP、利用規約、プライバシーポリシー、使い方、アカウント
 変更時は `node --test scripts/test_web_hosting.mjs` を実行してください。
 配置、既存URL、ローカル確認、公開手順は [公開Webの運用](docs/web-hosting.md) を参照してください。
 
+## プランと課金の検証
+
+Free／個人・家族／Teamの上限、ダウングレード、CSV、ログイン不要の固定プレビューは
+[3プランMVPの仕様と検証](docs/plan_mvp_verification.md)を参照してください。
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

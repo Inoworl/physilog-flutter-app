@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:physi_log/features/manage/domain/event_repository.dart';
 import 'package:physi_log/models/event.dart';
@@ -18,20 +19,28 @@ final eventListNotifierProvider =
     StateNotifierProvider<EventListNotifier, EventListState>((ref) {
       final repository = ref.watch(eventRepositoryProvider);
       final userId = ref.watch(currentUserIdProvider);
-      return EventListNotifier(repository: repository, userId: userId);
+      return EventListNotifier(
+        repository: repository,
+        userId: userId,
+        beforeCreate: () =>
+            ref.read(recordingAccessServiceProvider).requireEventCreation(),
+      );
     });
 
 class EventListNotifier extends StateNotifier<EventListState> {
   EventListNotifier({
     required EventRepository repository,
     required String? userId,
+    Future<void> Function()? beforeCreate,
   }) : _repository = repository,
+       _beforeCreate = beforeCreate,
        _userId = userId,
        super(const EventListState.loading()) {
     loadEvents();
   }
 
   final EventRepository _repository;
+  final Future<void> Function()? _beforeCreate;
   final String? _userId;
   final Uuid _uuid = const Uuid();
 
@@ -63,6 +72,9 @@ class EventListNotifier extends StateNotifier<EventListState> {
   }) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
+
+    await _beforeCreate?.call();
+    if (!mounted) return null;
 
     final resolvedUnit = (unit == null || unit.trim().isEmpty)
         ? recordType.defaultUnit

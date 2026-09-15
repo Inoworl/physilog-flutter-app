@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
 import 'package:physi_log/features/measurement/application/best_record_policy.dart';
 import 'package:physi_log/features/records/domain/record_filter.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
@@ -112,6 +113,8 @@ final measurementSessionProvider = StateNotifierProvider.autoDispose
         userId: ref.watch(currentUserIdProvider),
         event: args.event,
         now: args.date,
+        beforeAttempt: () =>
+            ref.read(recordingAccessServiceProvider).requireTeam(),
       );
     });
 
@@ -127,7 +130,9 @@ class MeasurementSessionNotifier
     required String? userId,
     required Event event,
     DateTime? now,
+    Future<void> Function()? beforeAttempt,
   }) : _repository = repository,
+       _beforeAttempt = beforeAttempt,
        _userId = userId,
        _uuid = const Uuid(),
        super(
@@ -140,6 +145,7 @@ class MeasurementSessionNotifier
   }
 
   final RecordRepository _repository;
+  final Future<void> Function()? _beforeAttempt;
   final String? _userId;
   final Uuid _uuid;
 
@@ -224,6 +230,7 @@ class MeasurementSessionNotifier
     double? fps,
     bool forceAdopt = false,
   }) async {
+    await _beforeAttempt?.call();
     // 既定は種目に設定した単位（kg/% など独自単位を尊重する）。
     final resolvedUnit = (unit == null || unit.trim().isEmpty)
         ? _event.unit
