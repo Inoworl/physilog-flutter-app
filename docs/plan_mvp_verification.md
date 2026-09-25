@@ -74,6 +74,7 @@ git diff --check
 
 主な回帰テスト:
 
+- `test/features/measurement/presentation/measurement_session_access_test.dart`: 計測会を開いた後のTeam失効時に、手入力・採用し直しを拒否し、入力・既存記録を保持して理由とプラン確認導線を表示する。
 - `test/features/billing/domain/recording_scope_test.dart`: Free・個人・家族・Teamの境界、期限切れ後の明示選択。
 - `test/features/billing/application/recording_access_service_test.dart`: 保存・編集・登録、取得中／エラー、途中のプラン変更・アカウント変更。
 - `test/features/billing/application/recording_access_providers_test.dart`: 実際のprovider接続と計測会の更新時チェック。
@@ -85,6 +86,13 @@ git diff --check
 - `test/providers/mock_app_overrides_test.dart`: 3プランの固定構成でも本物の書き込みガードを通ること。
 
 ## まだ完了扱いにしない項目
+
+実機確認用の配信は、検証対象のコミットを含むブランチを明示する。PR未マージの間に`dev`を配信してもPRの変更は含まれない。配信runの`headSha`とPRのHEADが一致することを確認する。
+
+```bash
+gh workflow run deploy_dev_android.yml --repo Inoworl/physilog-flutter-app --ref feature/plan-mvp-completion
+gh workflow run deploy_dev_ios.yml --repo Inoworl/physilog-flutter-app --ref feature/plan-mvp-completion
+```
 
 - #108: 通信断が長期継続した場合の購入情報の鮮度・有料権限保持期限。新しい猶予日数をこの変更で勝手に決めない。最後に取得した購入情報を維持する既存処理を置き換えていない。
 - #110: 実在するテストアカウントの確認・準備。認証情報を読まずに使える固定プレビューは実アカウントの代替証跡にはならない。

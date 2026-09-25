@@ -7,6 +7,7 @@ import 'package:physi_log/features/measurement/application/best_record_policy.da
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/application/min_sec_input.dart';
 import 'package:physi_log/features/measurement/application/video_player_notifier.dart';
+import 'package:physi_log/features/measurement/presentation/session_save_feedback.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_keypad.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_summary_sheet.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_video_loop.dart';
@@ -138,11 +139,15 @@ class _MeasurementSessionScreenState
     }
 
     final notifier = ref.read(measurementSessionProvider(_args).notifier);
-    final decision = await notifier.recordAttempt(
-      athleteId: athleteId,
-      athleteName: athlete.name,
-      value: value,
+    final decision = await saveSessionWithFeedback(
+      context,
+      () => notifier.recordAttempt(
+        athleteId: athleteId,
+        athleteName: athlete.name,
+        value: value,
+      ),
     );
+    if (decision == null) return;
     ref.invalidate(recordListNotifierProvider);
 
     if (!mounted) return;
@@ -163,12 +168,16 @@ class _MeasurementSessionScreenState
     final fb = _feedback;
     if (fb == null) return;
     final notifier = ref.read(measurementSessionProvider(_args).notifier);
-    await notifier.recordAttempt(
-      athleteId: fb.athleteId,
-      athleteName: fb.athleteName,
-      value: fb.value,
-      forceAdopt: true,
+    final decision = await saveSessionWithFeedback(
+      context,
+      () => notifier.recordAttempt(
+        athleteId: fb.athleteId,
+        athleteName: fb.athleteName,
+        value: fb.value,
+        forceAdopt: true,
+      ),
     );
+    if (decision == null) return;
     ref.invalidate(recordListNotifierProvider);
     if (!mounted) return;
     setState(() => _feedback = null);
