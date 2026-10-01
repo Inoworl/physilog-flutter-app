@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
 import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
 import 'package:physi_log/features/billing/domain/plan_access_state.dart';
 import 'package:physi_log/features/home/presentation/home_screen.dart';
@@ -14,6 +15,8 @@ import 'package:physi_log/models/athlete.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
+
+import '../../billing/support/plan_fixture.dart';
 
 class _FakeAthleteRepository implements AthleteRepository {
   _FakeAthleteRepository(this._athletes);
@@ -159,6 +162,9 @@ void main() {
       ProviderScope(
         overrides: [
           currentUserIdProvider.overrideWithValue('test-user'),
+          recordingSelectionRepositoryProvider.overrideWithValue(
+            MemoryRecordingSelectionRepository(),
+          ),
           athleteRepositoryProvider.overrideWithValue(
             _FakeAthleteRepository(athletes),
           ),

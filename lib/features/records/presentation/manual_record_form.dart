@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/presentation/recording_scope_card.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
 import 'package:intl/intl.dart';
 import 'package:physi_log/app/theme/app_colors.dart';
 import 'package:physi_log/features/manage/application/athlete_list_notifier.dart';
@@ -194,6 +196,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final athleteState = ref.watch(athleteListNotifierProvider);
     final eventState = ref.watch(eventListNotifierProvider);
+    final recordingScope = ref.watch(recordingScopeStateProvider);
     final athletes = athleteState.maybeWhen(
       loaded: (athletes) => athletes,
       orElse: () => const <Athlete>[],
@@ -241,6 +244,7 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                   ),
                 ),
                 Text('手動記録', style: Theme.of(context).textTheme.titleLarge),
+                const RecordingScopeCard(),
                 const SizedBox(height: AppSpacing.xl),
                 if (athletes.isEmpty) ...[
                   Container(
@@ -267,6 +271,11 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                         .map(
                           (athlete) => DropdownMenuItem<String>(
                             value: athlete.id,
+                            enabled:
+                                recordingScope?.athleteIds.contains(
+                                  athlete.id,
+                                ) ??
+                                false,
                             child: Text(athlete.name),
                           ),
                         )
@@ -303,6 +312,9 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                         .map(
                           (event) => DropdownMenuItem<String>(
                             value: event.id,
+                            enabled:
+                                recordingScope?.eventIds.contains(event.id) ??
+                                false,
                             child: Text(event.name),
                           ),
                         )
@@ -369,7 +381,15 @@ class _ManualRecordFormState extends ConsumerState<ManualRecordForm> {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 FilledButton(
-                  onPressed: _isSaving || athletes.isEmpty || events.isEmpty
+                  onPressed:
+                      _isSaving ||
+                          athletes.isEmpty ||
+                          events.isEmpty ||
+                          !(recordingScope?.canRecord(
+                                _selectedAthleteId,
+                                _selectedEventId,
+                              ) ??
+                              false)
                       ? null
                       : () => _submit(athletes, events),
                   child: _isSaving

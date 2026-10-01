@@ -8,6 +8,7 @@ import 'package:physi_log/features/measurement/application/measurement_notifier.
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/application/session_video_loop_notifier.dart';
 import 'package:physi_log/features/measurement/application/video_player_notifier.dart';
+import 'package:physi_log/features/measurement/presentation/session_save_feedback.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/seek_controls.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/session_player_pick_sheet.dart';
 import 'package:physi_log/features/measurement/presentation/widgets/time_display.dart';
@@ -146,12 +147,15 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
     final videoPath = ref.read(sessionVideoLoopProvider(widget.args)).videoPath;
 
     // 保存中は notifier 側でガードされ、二重タップしても二重保存されない。
-    final decision = await loopNotifier.recordAttempt(
-      athleteId: athleteId,
-      athleteName: athlete.name,
-      value: value,
-      fps: measure.fps,
-      videoRef: videoPath,
+    final decision = await saveSessionWithFeedback(
+      context,
+      () => loopNotifier.recordAttempt(
+        athleteId: athleteId,
+        athleteName: athlete.name,
+        value: value,
+        fps: measure.fps,
+        videoRef: videoPath,
+      ),
     );
     if (decision == null || !mounted) return;
 
@@ -197,16 +201,19 @@ class _SessionVideoLoopState extends ConsumerState<SessionVideoLoop> {
       action = SnackBarAction(
         label: '今回を採用',
         onPressed: () async {
-          await ref
-              .read(sessionVideoLoopProvider(widget.args).notifier)
-              .recordAttempt(
-                athleteId: athleteId,
-                athleteName: athleteName,
-                value: value,
-                fps: fps,
-                videoRef: videoRef,
-                forceAdopt: true,
-              );
+          await saveSessionWithFeedback(
+            context,
+            () => ref
+                .read(sessionVideoLoopProvider(widget.args).notifier)
+                .recordAttempt(
+                  athleteId: athleteId,
+                  athleteName: athleteName,
+                  value: value,
+                  fps: fps,
+                  videoRef: videoRef,
+                  forceAdopt: true,
+                ),
+          );
         },
       );
     } else {

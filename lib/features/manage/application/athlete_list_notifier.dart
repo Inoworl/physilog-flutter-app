@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
+import 'package:physi_log/features/billing/data/plan_limited_record_repository.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:physi_log/features/manage/domain/athlete_repository.dart';
 import 'package:physi_log/features/records/domain/record_repository.dart';
@@ -20,12 +22,17 @@ class AthleteListState with _$AthleteListState {
 final athleteListNotifierProvider =
     StateNotifierProvider<AthleteListNotifier, AthleteListState>((ref) {
       final repository = ref.watch(athleteRepositoryProvider);
-      final recordRepository = ref.watch(recordRepositoryProvider);
+      final guardedRepository = ref.watch(recordRepositoryProvider);
+      final recordRepository = guardedRepository is PlanLimitedRecordRepository
+          ? guardedRepository.migrationRepository
+          : guardedRepository;
       final userId = ref.watch(currentUserIdProvider);
       return AthleteListNotifier(
         repository: repository,
         recordRepository: recordRepository,
         userId: userId,
+        beforeCreate: () =>
+            ref.read(recordingAccessServiceProvider).requireAthleteCreation(),
       );
     });
 
@@ -34,7 +41,9 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
     required AthleteRepository repository,
     required RecordRepository recordRepository,
     required String? userId,
+    Future<void> Function()? beforeCreate,
   }) : _repository = repository,
+       _beforeCreate = beforeCreate,
        _recordRepository = recordRepository,
        _userId = userId,
        super(const AthleteListState.loading()) {
@@ -42,6 +51,7 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
   }
 
   final AthleteRepository _repository;
+  final Future<void> Function()? _beforeCreate;
   final RecordRepository _recordRepository;
   final String? _userId;
   final Uuid _uuid = const Uuid();
@@ -169,6 +179,9 @@ class AthleteListNotifier extends StateNotifier<AthleteListState> {
   Future<Athlete?> addAthlete(String name, {int? age}) async {
     final trimmed = name.trim();
     if (_userId == null || trimmed.isEmpty) return null;
+
+    await _beforeCreate?.call();
+    if (!mounted) return null;
 
     final now = DateTime.now();
     final athlete = Athlete(

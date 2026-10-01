@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:physi_log/features/billing/presentation/recording_scope_card.dart';
+import 'package:physi_log/features/billing/application/recording_access_providers.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:physi_log/app/theme/app_colors.dart';
@@ -68,6 +70,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
     final measureState = ref.watch(measurementProvider);
     final athleteState = ref.watch(athleteListNotifierProvider);
     final eventState = ref.watch(eventListNotifierProvider);
+    final recordingScope = ref.watch(recordingScopeStateProvider);
     final List<Athlete> athletes = athleteState.maybeWhen(
       loaded: (athletes) => athletes,
       orElse: () => const <Athlete>[],
@@ -131,6 +134,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
               ),
               child: Column(
                 children: [
+                  const RecordingScopeCard(),
                   // ── 動画プレビューセクション ──
                   _MeasurementSectionCard(
                     title: '動画プレビュー',
@@ -418,6 +422,11 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 .map(
                                   (athlete) => DropdownMenuItem<String>(
                                     value: athlete.id,
+                                    enabled:
+                                        recordingScope?.athleteIds.contains(
+                                          athlete.id,
+                                        ) ??
+                                        false,
                                     child: Text(athlete.name),
                                   ),
                                 )
@@ -462,6 +471,11 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                 .map(
                                   (event) => DropdownMenuItem<String>(
                                     value: event.id,
+                                    enabled:
+                                        recordingScope?.eventIds.contains(
+                                          event.id,
+                                        ) ??
+                                        false,
                                     child: Text(event.name),
                                   ),
                                 )
@@ -526,7 +540,12 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen> {
                                           events.isEmpty ||
                                           measureState.athleteId == null ||
                                           measureState.athleteName.isEmpty ||
-                                          measureState.eventType.isEmpty
+                                          measureState.eventType.isEmpty ||
+                                          !(recordingScope?.canRecord(
+                                                measureState.athleteId,
+                                                measureState.eventId,
+                                              ) ??
+                                              false)
                                       ? null
                                       : () => _onSave(context),
                                   icon: measureState.isSaving

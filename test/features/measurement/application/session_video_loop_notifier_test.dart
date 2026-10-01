@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:physi_log/features/billing/domain/plan_access_policy.dart';
+import 'package:physi_log/features/billing/domain/plan_access_state.dart';
+import 'package:physi_log/features/billing/domain/recording_scope.dart';
 import 'package:physi_log/features/measurement/application/measurement_session_notifier.dart';
 import 'package:physi_log/features/measurement/application/session_video_loop_notifier.dart';
 import 'package:physi_log/features/records/application/record_list_notifier.dart';
@@ -8,6 +11,8 @@ import 'package:physi_log/features/records/domain/record_repository.dart';
 import 'package:physi_log/models/event.dart';
 import 'package:physi_log/models/measurement_record.dart';
 import 'package:physi_log/providers/app_providers.dart';
+
+import '../../billing/support/plan_fixture.dart';
 
 /// テスト用のインメモリ記録リポジトリ（measurement_session_notifier_test.dart と同型）。
 class _InMemoryRecordRepository implements RecordRepository {
@@ -83,6 +88,9 @@ Event _event() {
 }
 
 void main() {
+  final planProvider = StateProvider<PlanAccessState>(
+    (ref) => fixturePlan(PlanTier.team),
+  );
   late _InMemoryRecordRepository repo;
   late ProviderContainer container;
   late SessionArgs args;
@@ -92,6 +100,7 @@ void main() {
     container = ProviderContainer(
       overrides: [
         recordRepositoryProvider.overrideWithValue(repo),
+        planAccessStateProvider.overrideWith((ref) => ref.watch(planProvider)),
         // authStateProvider（Firebase依存）を経由させないよう、userIdは直接固定する。
         currentUserIdProvider.overrideWithValue('user-1'),
         // recordAttempt が invalidate するが、このテストの対象ではないため
@@ -107,6 +116,29 @@ void main() {
   });
 
   tearDown(() => container.dispose());
+
+  test('Team失効後は開いている計測会からの更新を拒否し既存記録を保持する', () async {
+    final notifier = container.read(sessionVideoLoopProvider(args).notifier);
+    await notifier.recordAttempt(
+      athleteId: 'a1',
+      athleteName: 'たろう',
+      value: 7.2,
+      fps: 60,
+    );
+    container.read(planProvider.notifier).state = fixturePlan(PlanTier.free);
+    await expectLater(
+      notifier.recordAttempt(
+        athleteId: 'a1',
+        athleteName: 'たろう',
+        value: 6.9,
+        fps: 60,
+      ),
+      throwsA(isA<PlanAccessException>()),
+    );
+    final saved = await repo.getRecords(userId: 'user-1');
+    expect(saved, hasLength(1));
+    expect(saved.single.effectiveRecordValue, 7.2);
+  });
 
   test('recordAttempt は保存中の二重実行をブロックする（後勝ちは無視されnullを返す）', () async {
     final notifier = container.read(sessionVideoLoopProvider(args).notifier);
